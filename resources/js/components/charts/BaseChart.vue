@@ -67,14 +67,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (chartInstance.value) {
-    chartInstance.value.destroy()
+  if (chartInstance.value && chartInstance.value.chart) {
+    chartInstance.value.chart.destroy()
   }
 })
 
 watch(() => props.data, () => {
-  if (chartInstance.value) {
-    chartInstance.value.update()
+  if (chartInstance.value && chartInstance.value.chart) {
+    chartInstance.value.chart.update()
   }
 }, { deep: true })
 </script>
