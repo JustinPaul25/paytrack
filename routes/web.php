@@ -76,6 +76,10 @@ Route::middleware(['auth'])->group(function () {
     // Sales Analytics routes
     Route::get('sales/analytics', [SalesAnalyticsController::class, 'index'])->name('sales.analytics');
     Route::get('sales/transactions', [SalesTransactionController::class, 'index'])->name('sales.transactions');
+
+    // Demo Expenses routes
+    Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->except(['update']);
+    Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
 });
 
 require __DIR__.'/settings.php';
