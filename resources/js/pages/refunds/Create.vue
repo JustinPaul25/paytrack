@@ -195,6 +195,28 @@ function onRefundTypeChange() {
 }
 
 function submit(createAnother = false) {
+    // Validate that an invoice item is selected
+    if (!selectedInvoiceItem.value) {
+        Swal.fire({
+            icon: 'error',
+            title: 'No Invoice Item Selected',
+            text: 'Please select an invoice item before creating a refund.',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    // Validate that quantity is available for refund
+    if (maxQuantity.value === 0) {
+        Swal.fire({
+            icon: 'error',
+            title: 'No Quantity Available',
+            text: 'This item has no quantity available for refund.',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
     // Validate quantity
     if (form.quantity_refunded > maxQuantity.value) {
         form.quantity_refunded = maxQuantity.value;
@@ -302,6 +324,9 @@ function formatCurrency(amount: number) {
                                 @update:model-value="onInvoiceItemChange"
                                 required
                             />
+                            <div v-if="selectedInvoice && !selectedInvoiceItem" class="text-xs text-blue-500 mt-1">
+                                Please select an item from this invoice to proceed with the refund
+                            </div>
                             <InputError :message="form.errors.invoice_item_id" />
                         </div>
                     </div>
@@ -500,8 +525,21 @@ function formatCurrency(amount: number) {
             <!-- Form Actions -->
             <Card>
                 <CardFooter class="flex gap-2 justify-end">
-                    <Button type="submit" variant="default">Create Refund</Button>
-                    <Button type="button" variant="secondary" @click="submit(true)">Create & create another</Button>
+                    <Button 
+                        type="submit" 
+                        variant="default"
+                        :disabled="!selectedInvoiceItem || maxQuantity === 0"
+                    >
+                        Create Refund
+                    </Button>
+                    <Button 
+                        type="button" 
+                        variant="secondary" 
+                        @click="submit(true)"
+                        :disabled="!selectedInvoiceItem || maxQuantity === 0"
+                    >
+                        Create & create another
+                    </Button>
                     <Link :href="route('refunds.index')">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>
