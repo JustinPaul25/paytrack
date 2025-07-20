@@ -47,26 +47,36 @@ class InvoiceSeeder extends Seeder
             [
                 'customer_id' => $customers->first()->id,
                 'user_id' => $users->first()->id,
-                'status' => 'draft',
+                'status' => 'cancelled',
                 'payment_method' => 'e-wallet',
-                'notes' => 'Sample draft invoice',
+                'notes' => 'Sample cancelled invoice',
             ],
         ];
 
         foreach ($invoices as $invoiceData) {
             // Add 1-3 random products to calculate total first
             $randomProducts = $products->random(rand(1, 3));
-            $totalAmount = 0;
+            $subtotalAmount = 0;
 
             foreach ($randomProducts as $product) {
                 $quantity = rand(1, 5);
                 $price = $product->selling_price;
                 $total = $quantity * $price;
-                $totalAmount += $total;
+                $subtotalAmount += $total;
             }
 
-            // Create invoice with total_amount
-            $invoice = Invoice::create(array_merge($invoiceData, ['total_amount' => $totalAmount]));
+            // Calculate VAT (12%)
+            $vatRate = 12.00;
+            $vatAmount = $subtotalAmount * ($vatRate / 100);
+            $totalAmount = $subtotalAmount + $vatAmount;
+
+            // Create invoice with VAT calculations
+            $invoice = Invoice::create(array_merge($invoiceData, [
+                'subtotal_amount' => $subtotalAmount,
+                'vat_amount' => $vatAmount,
+                'vat_rate' => $vatRate,
+                'total_amount' => $totalAmount,
+            ]));
 
             // Create invoice items
             foreach ($randomProducts as $product) {

@@ -13,6 +13,7 @@ import { type BreadcrumbItem } from '@/types';
 
 interface Invoice {
     id: number;
+    reference_number: string;
     customer: { id: number; name: string; company_name?: string };
     user: { id: number; name: string };
     total_amount: number;
@@ -219,7 +220,7 @@ function formatCurrency(amount: number) {
                 <table class="min-w-full divide-y divide-border">
                     <thead>
                         <tr>
-                            <th class="px-4 py-2 text-left">Invoice #</th>
+                            <th class="px-4 py-2 text-left">Reference #</th>
                             <th class="px-4 py-2 text-left">Customer</th>
                             <th class="px-4 py-2 text-left">Total Amount</th>
                             <th class="px-4 py-2 text-left">Status</th>
@@ -230,7 +231,7 @@ function formatCurrency(amount: number) {
                     </thead>
                     <tbody>
                         <tr v-for="invoice in (page.props.invoices as Paginated<Invoice>).data" :key="invoice.id" class="hover:bg-muted">
-                            <td class="px-4 py-2 font-medium">#{{ invoice.id }}</td>
+                            <td class="px-4 py-2 font-medium">{{ invoice.reference_number }}</td>
                             <td class="px-4 py-2">
                                 <div>
                                     <div class="font-medium">{{ invoice.customer.name }}</div>

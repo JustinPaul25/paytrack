@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Models\Invoice;
+use App\Models\Customer;
 
 class SalesTransactionController extends Controller
 {
@@ -11,12 +13,12 @@ class SalesTransactionController extends Controller
     {
         $period = $request->get('period', 'month'); // week, month, year
         $customer = $request->get('customer', 'all');
-        $sortBy = $request->get('sort_by', 'transaction_date');
+        $sortBy = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
 
-        // Generate dummy data
-        $transactions = $this->generateDummyTransactions($period, $customer, $sortBy, $sortOrder);
-        $customers = $this->getDummyCustomers();
+        // Get real invoice data
+        $transactions = $this->getRealTransactions($period, $customer, $sortBy, $sortOrder);
+        $customers = $this->getRealCustomers();
         $summary = $this->calculateSummary($transactions);
 
         return inertia('sales/Transactions', [
@@ -32,118 +34,135 @@ class SalesTransactionController extends Controller
         ]);
     }
 
-    private function generateDummyTransactions($period, $customer, $sortBy, $sortOrder)
+    private function getRealTransactions($period, $customer, $sortBy, $sortOrder)
     {
-        $customers = [
-            'Maria Santos Cruz' => 'Cruz Trading Company',
-            'Juan Dela Cruz' => 'Dela Cruz Enterprises',
-            'Ana Reyes Mendoza' => null,
-            'Pedro Villanueva' => 'Villanueva Construction',
-            'Carmen Rodriguez' => null,
-            'Roberto Aquino' => 'Aquino Farm Supply',
-            'Luzviminda Santos' => null,
-            'Antonio Reyes' => 'Reyes Hardware Store',
-            'Elena Martinez' => null,
-            'Fernando Torres' => 'Torres Auto Parts',
-        ];
+        $query = Invoice::with(['customer', 'user', 'invoiceItems.product'])
+            ->where('created_at', '>=', $this->getStartDate($period));
 
-        $products = [
-            'Laptop Computer',
-            'Office Chair',
-            'Printer Paper',
-            'Coffee Maker',
-            'Desk Lamp',
-            'Whiteboard',
-            'Projector',
-            'Wireless Mouse',
-            'USB Cable',
-            'Notebook',
-        ];
-
-        $paymentMethods = ['Cash', 'Credit Card', 'Bank Transfer', 'Digital Wallet'];
-        $statuses = ['Completed', 'Pending', 'Cancelled', 'Refunded'];
-
-        $transactions = [];
-        $startDate = $this->getStartDate($period);
-
-        for ($i = 1; $i <= 50; $i++) {
-            $customerName = array_rand($customers);
-            
-            // Filter by customer if specified
-            if ($customer !== 'all' && $customerName !== $customer) {
-                continue;
-            }
-
-            $date = $startDate->copy()->addDays(rand(0, $startDate->diffInDays(now())));
-            
-            $transaction = [
-                'id' => 'TXN-' . str_pad($i, 6, '0', STR_PAD_LEFT),
-                'customer_name' => $customerName,
-                'company_name' => $customers[$customerName],
-                'product_name' => $products[array_rand($products)],
-                'quantity' => rand(1, 10),
-                'unit_price' => rand(100, 5000),
-                'total_amount' => 0, // Will be calculated
-                'payment_method' => $paymentMethods[array_rand($paymentMethods)],
-                'status' => $statuses[array_rand($statuses)],
-                'transaction_date' => $date->format('Y-m-d H:i:s'),
-                'invoice_number' => 'INV-' . str_pad(rand(1, 999), 6, '0', STR_PAD_LEFT),
-                'notes' => rand(0, 1) ? 'Sample transaction note' : null,
-            ];
-
-            $transaction['total_amount'] = $transaction['quantity'] * $transaction['unit_price'];
-            $transactions[] = $transaction;
+        // Filter by customer if specified
+        if ($customer !== 'all') {
+            $query->whereHas('customer', function ($q) use ($customer) {
+                $q->where('id', $customer);
+            });
         }
 
-        // Sort transactions
-        usort($transactions, function ($a, $b) use ($sortBy, $sortOrder) {
-            $aValue = $a[$sortBy];
-            $bValue = $b[$sortBy];
+        // Apply sorting
+        $query->orderBy($sortBy, $sortOrder);
 
-            if ($sortBy === 'transaction_date') {
-                $aValue = strtotime($aValue);
-                $bValue = strtotime($bValue);
+        $invoices = $query->get();
+
+        // Calculate running balance (cumulative total of sales with VAT, excluding cancelled invoices)
+        $runningBalance = 0;
+        $transactions = [];
+
+        foreach ($invoices as $invoice) {
+            // Calculate tax amounts
+            $saleNonVatTotal = $invoice->subtotal_amount;
+            $vatAmount = $invoice->vat_amount;
+            $withholdingTax = $saleNonVatTotal * 0.01; // 1% of non-vat total
+            $tax5Percent = $saleNonVatTotal * 0.05; // 5% of non-vat total
+            $cashAmount = $invoice->total_amount - $withholdingTax - $tax5Percent; // Total with tax - (W/holding TAX 1% + TAX 5%)
+            
+            // Add to running balance only if not cancelled
+            $isCompleted = $this->formatStatus($invoice->status) === 'Completed';
+            if ($isCompleted) {
+                $runningBalance += $invoice->total_amount; // Sale with VAT
             }
 
-            if ($sortOrder === 'asc') {
-                return $aValue <=> $bValue;
-            } else {
-                return $bValue <=> $aValue;
-            }
-        });
+            $transactions[] = [
+                'id' => $invoice->id,
+                'customer_name' => $invoice->customer->name,
+                'company_name' => $invoice->customer->company_name,
+                'product_name' => $this->getProductInfo($invoice)['name'],
+                'quantity' => $this->getProductInfo($invoice)['quantity'],
+                'unit_price' => $invoice->total_amount / $this->getProductInfo($invoice)['quantity'], // Average unit price
+                'total_amount' => $invoice->total_amount,
+                'status' => $this->formatStatus($invoice->status),
+                'transaction_date' => $invoice->created_at->format('Y-m-d H:i:s'),
+                'invoice_number' => $invoice->reference_number,
+                'notes' => $invoice->notes,
+                'cash_amount' => $cashAmount,
+                'withholding_tax' => $withholdingTax,
+                'tax_5_percent' => $tax5Percent,
+                'sale_non_vat_total' => $saleNonVatTotal,
+                'vat_amount' => $vatAmount,
+                'running_balance' => $runningBalance,
+            ];
+        }
 
         return $transactions;
     }
 
-    private function getStartDate($period)
+    private function getProductInfo($invoice)
     {
-        switch ($period) {
-            case 'week':
-                return Carbon::now()->subWeek();
-            case 'month':
-                return Carbon::now()->subMonth();
-            case 'year':
-                return Carbon::now()->subYear();
-            default:
-                return Carbon::now()->subMonth();
+        $items = $invoice->invoiceItems;
+        
+        if ($items->count() === 0) {
+            return ['name' => 'No items', 'quantity' => 0];
         }
+        
+        if ($items->count() === 1) {
+            $item = $items->first();
+            return [
+                'name' => $item->product->name ?? 'Unknown Product',
+                'quantity' => $item->quantity
+            ];
+        }
+        
+        // Multiple items - show summary
+        $totalQuantity = $items->sum('quantity');
+        $firstProduct = $items->first()->product->name ?? 'Unknown Product';
+        
+        return [
+            'name' => $firstProduct . ' +' . ($items->count() - 1) . ' more',
+            'quantity' => $totalQuantity
+        ];
     }
 
-    private function getDummyCustomers()
+
+
+    private function formatStatus($status)
     {
-        return [
-            ['value' => 'all', 'label' => 'All Customers'],
-            ['value' => 'Maria Santos Cruz', 'label' => 'Maria Santos Cruz - Cruz Trading Company'],
-            ['value' => 'Juan Dela Cruz', 'label' => 'Juan Dela Cruz - Dela Cruz Enterprises'],
-            ['value' => 'Ana Reyes Mendoza', 'label' => 'Ana Reyes Mendoza'],
-            ['value' => 'Pedro Villanueva', 'label' => 'Pedro Villanueva - Villanueva Construction'],
-            ['value' => 'Carmen Rodriguez', 'label' => 'Carmen Rodriguez'],
-            ['value' => 'Roberto Aquino', 'label' => 'Roberto Aquino - Aquino Farm Supply'],
-            ['value' => 'Luzviminda Santos', 'label' => 'Luzviminda Santos'],
-            ['value' => 'Antonio Reyes', 'label' => 'Antonio Reyes - Reyes Hardware Store'],
-            ['value' => 'Elena Martinez', 'label' => 'Elena Martinez'],
-            ['value' => 'Fernando Torres', 'label' => 'Fernando Torres - Torres Auto Parts'],
+        return match($status) {
+            'completed' => 'Completed',
+            'cancelled' => 'Canceled',
+            'draft' => 'Canceled',
+            'pending' => 'Canceled',
+            default => ucfirst($status)
+        };
+    }
+
+    private function getStartDate($period)
+    {
+        return match($period) {
+            'week' => Carbon::now()->subWeek(),
+            'month' => Carbon::now()->subMonth(),
+            'year' => Carbon::now()->subYear(),
+            default => Carbon::now()->subMonth(),
+        };
+    }
+
+    private function getRealCustomers()
+    {
+        $customers = Customer::orderBy('name')->get();
+        
+        $customerOptions = [
+            ['value' => 'all', 'label' => 'All Customers']
         ];
+        
+        foreach ($customers as $customer) {
+            $label = $customer->name;
+            if ($customer->company_name) {
+                $label .= ' - ' . $customer->company_name;
+            }
+            
+            $customerOptions[] = [
+                'value' => $customer->id,
+                'label' => $label
+            ];
+        }
+        
+        return $customerOptions;
     }
 
     private function calculateSummary($transactions)
@@ -151,14 +170,14 @@ class SalesTransactionController extends Controller
         $totalRevenue = collect($transactions)->sum('total_amount');
         $totalTransactions = count($transactions);
         $completedTransactions = collect($transactions)->where('status', 'Completed')->count();
-        $pendingTransactions = collect($transactions)->where('status', 'Pending')->count();
+        $canceledTransactions = collect($transactions)->where('status', 'Canceled')->count();
         $averageOrderValue = $totalTransactions > 0 ? $totalRevenue / $totalTransactions : 0;
 
         return [
             'total_revenue' => $totalRevenue,
             'total_transactions' => $totalTransactions,
             'completed_transactions' => $completedTransactions,
-            'pending_transactions' => $pendingTransactions,
+            'pending_transactions' => $canceledTransactions,
             'average_order_value' => $averageOrderValue,
         ];
     }

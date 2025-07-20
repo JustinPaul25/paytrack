@@ -57,7 +57,6 @@ const form = useForm({
     customer_id: props.invoice.customer_id,
     status: props.invoice.status,
     payment_method: props.invoice.payment_method,
-    payment_reference: props.invoice.payment_reference || '',
     notes: props.invoice.notes || '',
     invoice_items: props.invoice.invoice_items.map(item => ({
         id: item.id,
@@ -82,6 +81,16 @@ const breadcrumbs: BreadcrumbItem[] = [
 // Computed total
 const totalAmount = computed(() => {
     return form.invoice_items.reduce((sum: number, item: any) => sum + item.total, 0);
+});
+
+// Computed VAT amount (12%)
+const vatAmount = computed(() => {
+    return totalAmount.value * 0.12;
+});
+
+// Computed grand total (subtotal + VAT)
+const grandTotal = computed(() => {
+    return totalAmount.value + vatAmount.value;
 });
 
 // Add new invoice item
@@ -247,17 +256,7 @@ function getProductOptions() {
                             <InputError :message="form.errors.payment_method" />
                         </div>
                         
-                        <div>
-                            <Label for="payment_reference">Payment Reference</Label>
-                            <input
-                                v-model="form.payment_reference"
-                                type="text"
-                                id="payment_reference"
-                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="Enter payment reference"
-                            />
-                            <InputError :message="form.errors.payment_reference" />
-                        </div>
+
                     </div>
                     
                     <div>
@@ -358,8 +357,10 @@ function getProductOptions() {
                     <!-- Total Amount -->
                     <div class="mt-4 pt-3 border-t">
                         <div class="flex justify-end">
-                            <div class="text-right">
-                                <div class="text-base font-medium">Total Amount: ₱{{ totalAmount.toFixed(2) }}</div>
+                            <div class="text-right space-y-1">
+                                <div class="text-sm text-muted-foreground">Subtotal: ₱{{ totalAmount.toFixed(2) }}</div>
+                                <div class="text-sm text-muted-foreground">VAT (12%): ₱{{ vatAmount.toFixed(2) }}</div>
+                                <div class="text-base font-medium">Total Amount: ₱{{ grandTotal.toFixed(2) }}</div>
                             </div>
                         </div>
                     </div>

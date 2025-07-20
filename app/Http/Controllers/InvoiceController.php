@@ -59,7 +59,6 @@ class InvoiceController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
-            'payment_reference' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'invoice_items' => 'required|array|min:1',
             'invoice_items.*.product_id' => 'required|exists:products,id',
@@ -69,20 +68,29 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
         try {
-            // Calculate total amount
-            $totalAmount = 0;
+            // Calculate subtotal amount
+            $subtotalAmount = 0;
             foreach ($validated['invoice_items'] as $item) {
-                $totalAmount += $item['quantity'] * $item['price'];
+                $subtotalAmount += $item['quantity'] * $item['price'];
             }
+
+            // Calculate VAT (12%)
+            $vatRate = 12.00;
+            $vatAmount = $subtotalAmount * ($vatRate / 100);
+            
+            // Calculate total amount (subtotal + VAT)
+            $totalAmount = $subtotalAmount + $vatAmount;
 
             // Create invoice
             $invoice = Invoice::create([
                 'customer_id' => $validated['customer_id'],
                 'user_id' => auth()->id(),
+                'subtotal_amount' => $subtotalAmount,
+                'vat_amount' => $vatAmount,
+                'vat_rate' => $vatRate,
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
-                'payment_reference' => $validated['payment_reference'],
                 'notes' => $validated['notes'],
             ]);
 
@@ -132,7 +140,6 @@ class InvoiceController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
-            'payment_reference' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'invoice_items' => 'required|array|min:1',
             'invoice_items.*.product_id' => 'required|exists:products,id',
@@ -142,19 +149,28 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
         try {
-            // Calculate total amount
-            $totalAmount = 0;
+            // Calculate subtotal amount
+            $subtotalAmount = 0;
             foreach ($validated['invoice_items'] as $item) {
-                $totalAmount += $item['quantity'] * $item['price'];
+                $subtotalAmount += $item['quantity'] * $item['price'];
             }
+
+            // Calculate VAT (12%)
+            $vatRate = 12.00;
+            $vatAmount = $subtotalAmount * ($vatRate / 100);
+            
+            // Calculate total amount (subtotal + VAT)
+            $totalAmount = $subtotalAmount + $vatAmount;
 
             // Update invoice
             $invoice->update([
                 'customer_id' => $validated['customer_id'],
+                'subtotal_amount' => $subtotalAmount,
+                'vat_amount' => $vatAmount,
+                'vat_rate' => $vatRate,
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
-                'payment_reference' => $validated['payment_reference'],
                 'notes' => $validated['notes'],
             ]);
 

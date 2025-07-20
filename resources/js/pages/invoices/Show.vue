@@ -52,9 +52,13 @@ interface User {
 
 interface Invoice {
     id: number;
+    reference_number: string;
     customer: Customer;
     user: User;
     total_amount: number;
+    subtotal_amount: number;
+    vat_amount: number;
+    vat_rate: number;
     status: string;
     payment_method: string;
     payment_reference?: string;
@@ -74,7 +78,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: '/invoices',
     },
     {
-        title: `Invoice #${props.invoice.id}`,
+        title: props.invoice.reference_number,
         href: `/invoices/${props.invoice.id}`,
     }
 ];
@@ -132,10 +136,10 @@ function getCustomerInitials(customer: Customer) {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head :title="`Invoice #${props.invoice.id}`" />
+        <Head :title="props.invoice.reference_number" />
         
         <div class="flex items-center justify-between my-6">
-            <h1 class="text-2xl font-bold">Invoice #{{ props.invoice.id }}</h1>
+            <h1 class="text-2xl font-bold">{{ props.invoice.reference_number }}</h1>
             <div class="flex gap-2">
                 <Link :href="route('invoices.edit', props.invoice.id)">
                     <Button variant="default">Edit Invoice</Button>
@@ -157,8 +161,8 @@ function getCustomerInitials(customer: Customer) {
                     <CardContent>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="text-sm font-medium text-gray-500">Invoice Number</label>
-                                <p class="text-lg font-semibold">#{{ props.invoice.id }}</p>
+                                <label class="text-sm font-medium text-gray-500">Reference Number</label>
+                                <p class="text-lg font-semibold">{{ props.invoice.reference_number }}</p>
                             </div>
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Date Created</label>
@@ -217,7 +221,15 @@ function getCustomerInitials(customer: Customer) {
                                 </tbody>
                                 <tfoot>
                                     <tr class="border-t">
-                                        <td colspan="3" class="px-4 py-2 text-right font-medium">Total Amount:</td>
+                                        <td colspan="3" class="px-4 py-2 text-right font-medium">Subtotal:</td>
+                                        <td class="px-4 py-2 font-medium">{{ formatCurrency(props.invoice.subtotal_amount) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-2 text-right font-medium">VAT ({{ props.invoice.vat_rate }}%):</td>
+                                        <td class="px-4 py-2 font-medium">{{ formatCurrency(props.invoice.vat_amount) }}</td>
+                                    </tr>
+                                    <tr class="border-t">
+                                        <td colspan="3" class="px-4 py-2 text-right font-bold text-lg">Total Amount:</td>
                                         <td class="px-4 py-2 font-bold text-lg">{{ formatCurrency(props.invoice.total_amount) }}</td>
                                     </tr>
                                 </tfoot>

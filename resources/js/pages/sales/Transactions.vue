@@ -19,11 +19,16 @@ interface Transaction {
   quantity: number
   unit_price: number
   total_amount: number
-  payment_method: string
   status: string
   transaction_date: string
   invoice_number: string
   notes: string | null
+  cash_amount: number
+  withholding_tax: number
+  tax_5_percent: number
+  sale_non_vat_total: number
+  vat_amount: number
+  running_balance: number
 }
 
 interface Customer {
@@ -73,10 +78,9 @@ const periodOptions = [
 ];
 
 const sortByOptions = [
-  { value: 'transaction_date', label: 'Date' },
-  { value: 'customer_name', label: 'Customer' },
+  { value: 'created_at', label: 'Date' },
   { value: 'total_amount', label: 'Amount' },
-  { value: 'status', label: 'Status' },
+  { value: 'payment_status', label: 'Status' },
 ];
 
 const sortOrderOptions = [
@@ -113,9 +117,7 @@ const getStatusClass = (status: string) => {
   switch (status) {
     case 'Completed':
       return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-    case 'Pending':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-    case 'Cancelled':
+    case 'Canceled':
       return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
     case 'Refunded':
       return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
@@ -163,7 +165,7 @@ const printTransactions = () => {
           .filters h3 { margin: 0 0 10px 0; font-size: 14px; }
           .filters p { margin: 5px 0; font-size: 12px; }
           .status-completed { background-color: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-          .status-pending { background-color: #fff3cd; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+          .status-canceled { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
           .status-cancelled { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
           .status-refunded { background-color: #e2e3e5; color: #383d41; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
           .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
@@ -184,7 +186,7 @@ const printTransactions = () => {
           .filters h3 { margin: 0 0 10px 0; font-size: 14px; }
           .filters p { margin: 5px 0; font-size: 12px; }
           .status-completed { background-color: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-          .status-pending { background-color: #fff3cd; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+          .status-canceled { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
           .status-cancelled { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
           .status-refunded { background-color: #e2e3e5; color: #383d41; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
           .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
@@ -227,7 +229,7 @@ const printTransactions = () => {
             <div class="summary-value">${props.summary.completed_transactions}</div>
           </div>
           <div class="summary-item">
-            <div class="summary-label">Pending</div>
+            <div class="summary-label">Canceled</div>
             <div class="summary-value">${props.summary.pending_transactions}</div>
           </div>
           <div class="summary-item">
@@ -248,32 +250,34 @@ const printTransactions = () => {
       <table>
         <thead>
           <tr>
-            <th>Transaction ID</th>
-            <th>Customer</th>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Amount</th>
-            <th>Payment Method</th>
-            <th>Status</th>
             <th>Date</th>
-            <th>Invoice</th>
+            <th>Invoice # - Reference</th>
+            <th>Customer</th>
+            <th>Cash</th>
+            <th>W/holding TAX 1%</th>
+            <th>TAX 5%</th>
+            <th>Sale - Non vat total</th>
+            <th>VAT</th>
+            <th>Running Balance</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
           ${props.transactions.map((transaction: Transaction) => `
             <tr>
-              <td>${transaction.id}</td>
+              <td>${formatDate(transaction.transaction_date)}</td>
+              <td>${transaction.invoice_number}</td>
               <td>
                 ${transaction.customer_name}
                 ${transaction.company_name ? `<br><small>${transaction.company_name}</small>` : ''}
               </td>
-              <td>${transaction.product_name}</td>
-              <td>${transaction.quantity}</td>
-              <td>${formatCurrency(transaction.total_amount)}</td>
-              <td>${transaction.payment_method}</td>
+              <td>${formatCurrency(transaction.cash_amount)}</td>
+              <td>${formatCurrency(transaction.withholding_tax)}</td>
+              <td>${formatCurrency(transaction.tax_5_percent)}</td>
+              <td>${formatCurrency(transaction.sale_non_vat_total)}</td>
+              <td>${formatCurrency(transaction.vat_amount)}</td>
+              <td>${formatCurrency(transaction.running_balance)}</td>
               <td><span class="status-${transaction.status.toLowerCase()}">${transaction.status}</span></td>
-              <td>${formatDate(transaction.transaction_date)}</td>
-              <td>${transaction.invoice_number}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -300,7 +304,7 @@ const printTransactions = () => {
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-2xl font-bold">Sales Transactions</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400">View and manage all sales transactions</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">View and manage all invoice transactions</p>
       </div>
       <Button @click="printTransactions" class="flex items-center gap-2">
         <Printer class="w-4 h-4" />
@@ -308,22 +312,7 @@ const printTransactions = () => {
       </Button>
     </div>
 
-    <!-- UI Only Notice -->
-    <Card class="mb-6">
-      <CardContent class="p-4">
-        <div class="flex items-start">
-          <div class="flex-shrink-0">
-            <AlertCircle class="h-5 w-5 text-blue-500" />
-          </div>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-blue-800 dark:text-blue-200">UI Only - Dummy Data</h3>
-            <div class="mt-1 text-sm text-blue-700 dark:text-blue-300">
-              <p>This page is currently displaying dummy data for demonstration purposes. Real data integration will be implemented in the next phase.</p>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+
 
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -379,13 +368,13 @@ const printTransactions = () => {
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
+              <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Canceled</p>
               <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {{ summary.pending_transactions }}
               </p>
             </div>
-            <div class="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-full">
-              <Clock class="w-6 h-6 text-yellow-600" />
+            <div class="p-3 bg-red-100 dark:bg-red-900/20 rounded-full">
+              <AlertCircle class="w-6 h-6 text-red-600" />
             </div>
           </div>
         </CardContent>
@@ -461,59 +450,64 @@ const printTransactions = () => {
     <!-- Transactions Table -->
     <Card>
       <CardHeader>
-        <CardTitle>Transactions</CardTitle>
+        <CardTitle>Invoice Transactions</CardTitle>
       </CardHeader>
       <CardContent>
         <div class="overflow-x-auto">
           <table class="w-full">
-            <thead>
-              <tr class="border-b dark:border-gray-700">
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Transaction ID</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Customer</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Product</th>
-                <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Amount</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Payment Method</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Status</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Date</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Invoice</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="transaction in transactions" :key="transaction.id" class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-gray-100">
-                  {{ transaction.id }}
-                </td>
-                <td class="py-3 px-4">
-                  <div>
-                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ transaction.customer_name }}</div>
-                    <div v-if="transaction.company_name" class="text-sm text-gray-500 dark:text-gray-400">{{ transaction.company_name }}</div>
-                  </div>
-                </td>
-                <td class="py-3 px-4">
-                  <div>
-                    <div class="text-sm text-gray-900 dark:text-gray-100">{{ transaction.product_name }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">Qty: {{ transaction.quantity }}</div>
-                  </div>
-                </td>
-                <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
-                  {{ formatCurrency(transaction.total_amount) }}
-                </td>
-                <td class="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
-                  {{ transaction.payment_method }}
-                </td>
-                <td class="py-3 px-4">
-                  <span :class="getStatusClass(transaction.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                    {{ transaction.status }}
-                  </span>
-                </td>
-                <td class="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
-                  {{ formatDate(transaction.transaction_date) }}
-                </td>
-                <td class="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
-                  {{ transaction.invoice_number }}
-                </td>
-              </tr>
-            </tbody>
+                          <thead>
+                <tr class="border-b dark:border-gray-700">
+                  <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Date</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Invoice # - Reference</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Customer</th>
+                  <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Cash</th>
+                  <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">W/holding TAX 1%</th>
+                  <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">TAX 5%</th>
+                  <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Sale - Non vat total</th>
+                  <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">VAT</th>
+                  <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Running Balance</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Status</th>
+                </tr>
+              </thead>
+                                        <tbody>
+                <tr v-for="transaction in transactions" :key="transaction.id" class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td class="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatDate(transaction.transaction_date) }}
+                  </td>
+                  <td class="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
+                    {{ transaction.invoice_number }}
+                  </td>
+                  <td class="py-3 px-4">
+                    <div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ transaction.customer_name }}</div>
+                      <div v-if="transaction.company_name" class="text-sm text-gray-500 dark:text-gray-400">{{ transaction.company_name }}</div>
+                    </div>
+                  </td>
+                  <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.cash_amount) }}
+                  </td>
+                  <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.withholding_tax) }}
+                  </td>
+                  <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.tax_5_percent) }}
+                  </td>
+                  <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.sale_non_vat_total) }}
+                  </td>
+                  <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.vat_amount) }}
+                  </td>
+                  <td class="py-3 px-4 text-right text-sm text-gray-900 dark:text-gray-100">
+                    {{ formatCurrency(transaction.running_balance) }}
+                  </td>
+                  <td class="py-3 px-4">
+                    <span :class="getStatusClass(transaction.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                      {{ transaction.status }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
           </table>
 
           <!-- Empty State -->
@@ -521,7 +515,7 @@ const printTransactions = () => {
             <div class="mx-auto h-12 w-12 text-gray-400">
               <Receipt class="h-12 w-12" />
             </div>
-            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No transactions found</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No invoice transactions found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Try adjusting your filters to see more results.</p>
           </div>
         </div>
