@@ -258,7 +258,6 @@ const printTransactions = () => {
             <th>TAX 5%</th>
             <th>Sale - Non vat total</th>
             <th>VAT</th>
-            <th>Running Balance</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -276,7 +275,6 @@ const printTransactions = () => {
               <td>${formatCurrency(transaction.tax_5_percent)}</td>
               <td>${formatCurrency(transaction.sale_non_vat_total)}</td>
               <td>${formatCurrency(transaction.vat_amount)}</td>
-              <td>${formatCurrency(transaction.running_balance)}</td>
               <td><span class="status-${transaction.status.toLowerCase()}">${transaction.status}</span></td>
             </tr>
           `).join('')}
@@ -470,7 +468,12 @@ const printTransactions = () => {
                 </tr>
               </thead>
                                         <tbody>
-                <tr v-for="transaction in transactions" :key="transaction.id" class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr v-for="transaction in transactions" :key="transaction.id" :class="[
+                  'border-b dark:border-gray-700',
+                  transaction.status === 'Canceled' 
+                    ? 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30' 
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                ]">
                   <td class="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">
                     {{ formatDate(transaction.transaction_date) }}
                   </td>
