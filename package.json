@@ -27,6 +27,8 @@
         "@inertiajs/inertia": "^0.11.1",
         "@inertiajs/vue3": "^2.0.0",
         "@tailwindcss/vite": "^4.1.1",
+        "@tensorflow/tfjs": "^4.22.0",
+        "@tensorflow/tfjs-vis": "^1.5.1",
         "@vitejs/plugin-vue": "^5.2.1",
         "@vue-leaflet/vue-leaflet": "^0.10.1",
         "@vueuse/core": "^12.8.2",

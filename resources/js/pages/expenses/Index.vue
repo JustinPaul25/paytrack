@@ -30,6 +30,7 @@ interface ExpenseStats {
 const page = usePage();
 const filters = ref<{ search?: string }>((page.props as any).filters || {});
 const search = ref(filters.value.search || '');
+const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Expenses', href: '/expenses' },
@@ -113,110 +114,110 @@ function formatDate(date: string) {
             </div>
         </div>
         
-        <!-- Search and Actions Bar -->
-        <Card class="my-6">
-            <CardContent class="p-4">
-                <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                    <div class="flex-1 max-w-md">
-                        <div class="relative">
-                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                            <input 
-                                v-model="search" 
-                                type="text" 
-                                placeholder="Search expenses by type or description..." 
-                                class="w-full pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
-                            />
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <Link :href="route('expenses.create')">
-                            <Button variant="default" class="flex items-center gap-2">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Create Expense
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-
         <!-- Enhanced Expense Stats Widget -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-            <Card class="relative overflow-hidden">
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-muted-foreground">Total Expenses</p>
-                            <p class="text-xl font-bold text-red-600">{{ formatCurrency((page.props as any).stats?.totalExpenses || 0) }}</p>
+        <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="opacity-0 transform -translate-y-4"
+            enter-to-class="opacity-100 transform translate-y-0"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="opacity-100 transform translate-y-0"
+            leave-to-class="opacity-0 transform -translate-y-4"
+        >
+            <div v-show="showStats" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8 mb-6">
+                <!-- Total Expenses -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                                <p class="text-xl font-bold text-red-600">{{ formatCurrency((page.props as any).stats?.totalExpenses || 0) }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <Card class="relative overflow-hidden">
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-muted-foreground">Total Count</p>
-                            <p class="text-xl font-bold text-blue-600">{{ (page.props as any).stats?.totalCount || 0 }}</p>
+                <!-- Total Count -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Total Count</p>
+                                <p class="text-xl font-bold text-blue-600">{{ (page.props as any).stats?.totalCount || 0 }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <Card>
-                <CardContent class="p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Highest Type</p>
-                            <p class="text-lg font-bold text-gray-900">
-                                {{ Object.keys((page.props as any).stats?.expensesByType || {}).length > 0 
-                                    ? Object.entries((page.props as any).stats?.expensesByType || {}).reduce((a, b) => a[1] > b[1] ? a : b)[0] 
-                                    : 'N/A' }}
-                            </p>
+                <!-- Highest Type -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Highest Type</p>
+                                <p class="text-xl font-bold text-green-600">
+                                    {{ Object.keys((page.props as any).stats?.expensesByType || {}).length > 0 
+                                        ? Object.entries((page.props as any).stats?.expensesByType || {}).reduce((a: [string, any], b: [string, any]) => (a[1] as number) > (b[1] as number) ? a : b)[0] 
+                                        : 'N/A' }}
+                                </p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="p-2 bg-green-100 rounded-lg">
-                            <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <Card>
-                <CardContent class="p-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600">Average</p>
-                            <p class="text-lg font-bold text-gray-900">
-                                {{ page.props.stats?.totalCount > 0 
-                                    ? formatCurrency((page.props.stats?.totalExpenses || 0) / page.props.stats?.totalCount) 
-                                    : '₱0.00' }}
-                            </p>
+                <!-- Average -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Average</p>
+                                <p class="text-xl font-bold text-purple-600">
+                                    {{ (page.props as any).stats?.totalCount > 0 
+                                        ? formatCurrency(((page.props as any).stats?.totalExpenses || 0) / (page.props as any).stats?.totalCount) 
+                                        : '₱0.00' }}
+                                </p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="p-2 bg-purple-100 rounded-lg">
-                            <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
+        </Transition>
+
+        <!-- Search and Actions -->
+        <div class="flex items-center justify-between mt-4 mb-2">
+            <div class="flex gap-2 items-center">
+                <input 
+                    v-model="search" 
+                    type="text" 
+                    placeholder="Search expenses by type or description..." 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                />
+            </div>
+            <Link :href="route('expenses.create')">
+                <Button variant="default">
+                    <span class="mr-2">+</span>
+                    Add New Expense
+                </Button>
+            </Link>
         </div>
 
         <Card>
@@ -240,7 +241,7 @@ function formatDate(date: string) {
                                     {{ expense.expense_type }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2">{{ expense.description }}</td>
+                            <td class="px-4 py-2 text-sm text-gray-500">{{ expense.description }}</td>
                             <td class="px-4 py-2 font-medium">{{ formatCurrency(expense.amount) }}</td>
                             <td class="px-4 py-2 text-sm text-gray-500">{{ formatDate(expense.date) }}</td>
                             <td class="px-4 py-2">
@@ -260,5 +261,21 @@ function formatDate(date: string) {
                 </table>
             </CardContent>
         </Card>
+
+        <!-- Floating Toggle Button -->
+        <div class="fixed bottom-6 right-6 z-50">
+            <button 
+                @click="showStats = !showStats" 
+                class="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+                :class="showStats ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'"
+            >
+                <svg v-if="!showStats" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
     </AppLayout>
 </template> 

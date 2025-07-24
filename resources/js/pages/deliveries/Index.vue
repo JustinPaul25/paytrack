@@ -49,6 +49,7 @@ interface DeliveryStats {
 const page = usePage();
 const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Deliveries', href: '/deliveries' },
@@ -117,84 +118,93 @@ async function deleteDelivery(id: number) {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Deliveries" />
         
-        <!-- Delivery Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <!-- Total Deliveries -->
-            <Card class="relative overflow-hidden">
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-muted-foreground">Total</p>
-                            <p class="text-xl font-bold text-blue-600">{{ (page.props.stats as DeliveryStats).totalDeliveries }}</p>
+        <!-- Enhanced Delivery Stats Widget -->
+        <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="opacity-0 transform -translate-y-4"
+            enter-to-class="opacity-100 transform translate-y-0"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="opacity-100 transform translate-y-0"
+            leave-to-class="opacity-0 transform -translate-y-4"
+        >
+            <div v-show="showStats" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8 mb-6">
+                <!-- Total Deliveries -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Total Deliveries</p>
+                                <p class="text-xl font-bold text-blue-600">{{ (page.props.stats as DeliveryStats).totalDeliveries }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <!-- Pending Deliveries -->
-            <Card class="relative overflow-hidden">
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-muted-foreground">Pending</p>
-                            <p class="text-xl font-bold text-yellow-600">{{ (page.props.stats as DeliveryStats).pendingDeliveries }}</p>
+                <!-- Pending Deliveries -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Pending</p>
+                                <p class="text-xl font-bold text-yellow-600">{{ (page.props.stats as DeliveryStats).pendingDeliveries }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <!-- Completed Deliveries -->
-            <Card class="relative overflow-hidden">
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-muted-foreground">Completed</p>
-                            <p class="text-xl font-bold text-green-600">{{ (page.props.stats as DeliveryStats).completedDeliveries }}</p>
+                <!-- Completed Deliveries -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Completed</p>
+                                <p class="text-xl font-bold text-green-600">{{ (page.props.stats as DeliveryStats).completedDeliveries }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
-            <!-- Cancelled Deliveries -->
-            <Card class="relative overflow-hidden">
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-muted-foreground">Cancelled</p>
-                            <p class="text-xl font-bold text-red-600">{{ (page.props.stats as DeliveryStats).cancelledDeliveries }}</p>
+                <!-- Cancelled Deliveries -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Cancelled</p>
+                                <p class="text-xl font-bold text-red-600">{{ (page.props.stats as DeliveryStats).cancelledDeliveries }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </Transition>
 
         <!-- Search and Actions -->
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mt-4 mb-2">
             <div class="flex gap-2 items-center">
                 <input 
                     v-model="search" 
                     type="text" 
-                    placeholder="Search deliveries..." 
+                    placeholder="Search deliveries by customer name..." 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
             </div>
@@ -267,7 +277,7 @@ async function deleteDelivery(id: number) {
                 </table>
 
                 <!-- Pagination -->
-                <div v-if="(page.props.deliveries as Paginated<Delivery>).last_page > 1" class="mt-4 flex items-center justify-between">
+                <div v-if="(page.props.deliveries as Paginated<Delivery>).last_page > 1" class="flex items-center justify-between mt-6">
                     <div class="text-sm text-gray-700">
                         Showing {{ (page.props.deliveries as Paginated<Delivery>).from }} to {{ (page.props.deliveries as Paginated<Delivery>).to }} of {{ (page.props.deliveries as Paginated<Delivery>).total }} results
                     </div>
@@ -292,5 +302,21 @@ async function deleteDelivery(id: number) {
                 </div>
             </CardContent>
         </Card>
+
+        <!-- Floating Toggle Button -->
+        <div class="fixed bottom-6 right-6 z-50">
+            <button 
+                @click="showStats = !showStats" 
+                class="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+                :class="showStats ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'"
+            >
+                <svg v-if="!showStats" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
     </AppLayout>
 </template> 

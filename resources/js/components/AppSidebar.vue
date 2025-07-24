@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, DollarSign, BarChart3, CreditCard, RotateCcw, TrendingDown } from 'lucide-vue-next';
+import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, DollarSign, BarChart3, CreditCard, RotateCcw, TrendingDown, Building2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -20,6 +20,11 @@ const mainNavItems: NavItem[] = [
         title: 'Customers',
         href: '/customers',
         icon: Folder,
+    },
+    {
+        title: 'Branches',
+        href: '/branches',
+        icon: Building2,
     },
 ];
 
@@ -104,14 +109,7 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link href="/sales/analytics">
-                                            <BarChart3 />
-                                            <span>Analytics</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
+
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link href="/sales/transactions">
@@ -198,6 +196,33 @@ const isSalesOpen = ref(true);
         </SidebarContent>
 
         <SidebarFooter>
+            <!-- Quick Create Invoice Button -->
+            <SidebarMenu class="px-2">
+                <SidebarMenuItem>
+                    <SidebarMenuButton as-child class="bg-green-50 hover:bg-green-100 text-green-700 border border-green-200">
+                        <Link :href="route('invoices.create')">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            <span>New Invoice</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+
+            <!-- Quick Deliveries Shortcut -->
+            <SidebarMenu class="px-2">
+                <SidebarMenuItem>
+                    <SidebarMenuButton as-child class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200">
+                        <Link href="/deliveries/shortcut">
+                            <Truck class="h-4 w-4" />
+                            <span>Deliveries Hub</span>
+                            <span class="ml-auto text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Demo</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+            
             <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>

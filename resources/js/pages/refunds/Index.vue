@@ -50,6 +50,7 @@ interface RefundStats {
 const page = usePage();
 const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Refunds', href: '/refunds' },
@@ -116,39 +117,16 @@ function formatCurrency(amount: number) {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Refunds" />
         
-        <!-- Search and Actions Bar -->
-        <Card class="my-6">
-            <CardContent class="p-4">
-                <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                    <div class="flex-1 max-w-md">
-                        <div class="relative">
-                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                            <input 
-                                v-model="search" 
-                                type="text" 
-                                placeholder="Search refunds by refund number, customer name..." 
-                                class="w-full pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
-                            />
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <Link :href="route('refunds.create')">
-                            <Button variant="default" class="flex items-center gap-2">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                </svg>
-                                Create Refund
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-
+        <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="opacity-0 transform -translate-y-4"
+            enter-to-class="opacity-100 transform translate-y-0"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="opacity-100 transform translate-y-0"
+            leave-to-class="opacity-0 transform -translate-y-4"
+        >
         <!-- Enhanced Refund Stats Widget -->
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div v-show="showStats" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
             <!-- Total Refunds -->
             <Card class="relative overflow-hidden">
                 <CardContent class="p-6">
@@ -216,6 +194,25 @@ function formatCurrency(amount: number) {
                     </div>
                 </CardContent>
             </Card>
+        </div>
+        </Transition>
+
+        <!-- Search and Actions -->
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex gap-2 items-center">
+                <input 
+                    v-model="search" 
+                    type="text" 
+                    placeholder="Search refunds by refund number, customer name..." 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                />
+            </div>
+            <Link :href="route('refunds.create')">
+                <Button variant="default">
+                    <span class="mr-2">+</span>
+                    Add New Refund
+                </Button>
+            </Link>
         </div>
 
         <Card>
@@ -300,5 +297,21 @@ function formatCurrency(amount: number) {
                 </div>
             </CardContent>
         </Card>
+
+        <!-- Floating Toggle Button -->
+        <div class="fixed bottom-6 right-6 z-50">
+            <button 
+                @click="showStats = !showStats" 
+                class="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+                :class="showStats ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'"
+            >
+                <svg v-if="!showStats" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
     </AppLayout>
 </template> 

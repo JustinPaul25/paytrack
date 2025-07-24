@@ -12,12 +12,10 @@ use App\Http\Controllers\SalesTransactionController;
 use App\Http\Controllers\RefundController;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome');
+    return redirect()->route('dashboard');
 })->name('home');
 
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('dashboard', [SalesAnalyticsController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('roles', [RolesController::class, 'index'])->name('roles.index');
@@ -69,6 +67,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('refunds/invoice-items', [RefundController::class, 'getInvoiceItems'])->name('refunds.invoice-items');
     Route::get('refunds/stats', [RefundController::class, 'getStats'])->name('refunds.stats');
 
+    // Delivery Shortcut Demo Route (must come before resource routes)
+    Route::get('deliveries/shortcut', function () {
+        return Inertia::render('deliveries/Shortcut');
+    })->name('deliveries.shortcut');
+    
     // Delivery CRUD routes
     Route::resource('deliveries', DeliveryController::class)->except(['update']);
     Route::post('deliveries/{delivery}', [DeliveryController::class, 'update'])->name('deliveries.update');
@@ -76,10 +79,17 @@ Route::middleware(['auth'])->group(function () {
     // Sales Analytics routes
     Route::get('sales/analytics', [SalesAnalyticsController::class, 'index'])->name('sales.analytics');
     Route::get('sales/transactions', [SalesTransactionController::class, 'index'])->name('sales.transactions');
+    
+    // Sales Prediction routes
+    Route::get('sales/predictions', [\App\Http\Controllers\SalesPredictionController::class, 'getPredictions'])->name('sales.predictions');
 
     // Demo Expenses routes
     Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->except(['update']);
     Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
+
+    // Branch CRUD routes
+    Route::resource('branches', \App\Http\Controllers\BranchController::class)->except(['update']);
+    Route::post('branches/{branch}', [\App\Http\Controllers\BranchController::class, 'update'])->name('branches.update');
 });
 
 require __DIR__.'/settings.php';

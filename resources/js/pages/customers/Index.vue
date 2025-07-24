@@ -34,9 +34,17 @@ interface Customer {
     updated_at?: string;
 }
 
+interface CustomerStats {
+    totalCustomers: number;
+    customersWithCompany: number;
+    customersWithPhone: number;
+    recentlyAdded: number;
+}
+
 const page = usePage();
 const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Customers', href: '/customers' },
@@ -55,6 +63,10 @@ watch(search, (val) => {
         router.get('/customers', { search: val }, { preserveState: true, replace: true });
     }, 400);
 });
+
+function goToPage(pageNum: number) {
+    router.get('/customers', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
+}
 
 async function deleteCustomer(id: number) {
     const result = await Swal.fire({
@@ -79,15 +91,105 @@ async function deleteCustomer(id: number) {
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Customers" />
-        <div class="flex items-center justify-between my-6">
-            <h1 class="text-2xl font-bold">Customers</h1>
-            <div class="flex gap-2 items-center">
-                <input v-model="search" type="text" placeholder="Search customers..." class="rounded border px-3 py-2" />
-                <Link :href="route('customers.create')">
-                    <Button variant="default">New Customer</Button>
-                </Link>
+        
+        <!-- Enhanced Customer Stats Widget -->
+        <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="opacity-0 transform -translate-y-4"
+            enter-to-class="opacity-100 transform translate-y-0"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="opacity-100 transform translate-y-0"
+            leave-to-class="opacity-0 transform -translate-y-4"
+        >
+            <div v-show="showStats" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8 mb-6">
+                <!-- Total Customers -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Total Customers</p>
+                                <p class="text-xl font-bold text-blue-600">{{ (page.props.stats as CustomerStats)?.totalCustomers || 0 }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- With Company -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">With Company</p>
+                                <p class="text-xl font-bold text-green-600">{{ (page.props.stats as CustomerStats)?.customersWithCompany || 0 }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- With Phone -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">With Phone</p>
+                                <p class="text-xl font-bold text-yellow-600">{{ (page.props.stats as CustomerStats)?.customersWithPhone || 0 }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Recently Added -->
+                <Card class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Recently Added</p>
+                                <p class="text-xl font-bold text-emerald-600">{{ (page.props.stats as CustomerStats)?.recentlyAdded || 0 }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
+        </Transition>
+
+        <!-- Search and Actions -->
+        <div class="flex items-center justify-between mt-4 mb-2">
+            <div class="flex gap-2 items-center">
+                <input 
+                    v-model="search" 
+                    type="text" 
+                    placeholder="Search customers by name, company, or email..." 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                />
+            </div>
+            <Link :href="route('customers.create')">
+                <Button variant="default">
+                    <span class="mr-2">+</span>
+                    Add New Customer
+                </Button>
+            </Link>
         </div>
+
         <Card>
             <CardContent>
                 <table class="min-w-full divide-y divide-border">
@@ -103,21 +205,66 @@ async function deleteCustomer(id: number) {
                     <tbody>
                         <tr v-for="customer in (page.props.customers as Paginated<Customer>).data" :key="customer.id" class="hover:bg-muted">
                             <td class="px-4 py-2 font-medium">{{ customer.name }}</td>
-                            <td class="px-4 py-2">{{ customer.company_name }}</td>
+                            <td class="px-4 py-2">{{ customer.company_name || '-' }}</td>
                             <td class="px-4 py-2">{{ customer.email }}</td>
-                            <td class="px-4 py-2">{{ customer.phone }}</td>
-                            <td class="px-4 py-2 space-x-2">
-                                <Link :href="route('customers.edit', customer.id)" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8">
-                                    <Icon name="edit" class="h-4 w-4" />
-                                </Link>
-                                <button class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 w-8 text-destructive hover:text-destructive" @click.prevent="deleteCustomer(customer.id)">
-                                    <Icon name="trash2" class="h-4 w-4" />
-                                </button>
+                            <td class="px-4 py-2">{{ customer.phone || '-' }}</td>
+                            <td class="px-4 py-2">
+                                <div class="flex gap-2">
+                                    <Link :href="route('customers.edit', customer.id)">
+                                        <Button variant="ghost" size="sm">
+                                            <Icon name="edit" class="h-4 w-4" />
+                                        </Button>
+                                    </Link>
+                                    <Button variant="ghost" size="sm" @click="deleteCustomer(customer.id)">
+                                        <Icon name="trash" class="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
                 </table>
+
+                <!-- Pagination -->
+                <div v-if="(page.props.customers as Paginated<Customer>).last_page > 1" class="flex items-center justify-between mt-6">
+                    <div class="text-sm text-gray-700">
+                        Showing {{ (page.props.customers as Paginated<Customer>).from }} to {{ (page.props.customers as Paginated<Customer>).to }} of {{ (page.props.customers as Paginated<Customer>).total }} results
+                    </div>
+                    <div class="flex gap-2">
+                        <Button 
+                            v-if="(page.props.customers as Paginated<Customer>).prev_page_url" 
+                            variant="outline" 
+                            size="sm"
+                            @click="goToPage((page.props.customers as Paginated<Customer>).current_page - 1)"
+                        >
+                            Previous
+                        </Button>
+                        <Button 
+                            v-if="(page.props.customers as Paginated<Customer>).next_page_url" 
+                            variant="outline" 
+                            size="sm"
+                            @click="goToPage((page.props.customers as Paginated<Customer>).current_page + 1)"
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
             </CardContent>
         </Card>
+
+        <!-- Floating Toggle Button -->
+        <div class="fixed bottom-6 right-6 z-50">
+            <button 
+                @click="showStats = !showStats" 
+                class="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+                :class="showStats ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'"
+            >
+                <svg v-if="!showStats" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <svg v-else class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
     </AppLayout>
 </template> 

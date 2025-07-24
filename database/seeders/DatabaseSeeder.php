@@ -20,13 +20,14 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // Seed categories first, then products, then customers, then invoices, then refunds
+        // Seed categories first, then products, then customers, then invoices, then refunds, then branches
         $this->call([
             CategorySeeder::class,
             ProductSeeder::class,
             CustomerSeeder::class,
             InvoiceSeeder::class,
             RefundSeeder::class,
+            BranchSeeder::class,
         ]);
     }
 }

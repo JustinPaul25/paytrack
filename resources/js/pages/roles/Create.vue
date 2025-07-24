@@ -96,7 +96,7 @@ function submit(createAnother = false) {
                         </div>
                         <div class="flex-1">
                             <Label for="guard_name">Guard Name</Label>
-                            <input id="guard_name" v-model="form.guard_name" class="w-full rounded border px-3 py-2 mt-1" required />
+                            <input id="guard_name" disabled v-model="form.guard_name" class="w-full rounded border px-3 py-2 mt-1" required />
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

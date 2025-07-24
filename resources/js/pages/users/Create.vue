@@ -72,6 +72,14 @@ function submit(createAnother = false) {
                 form.reset();
                 profileImage.value = null;
                 profileImageUrl.value = null;
+                // Clear the file input
+                const fileInput = document.getElementById('profile_image') as HTMLInputElement;
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+            } else {
+                // Redirect to users index page
+                window.location.href = route('users.index');
             }
         },
     });
