@@ -1,14 +1,13 @@
-# TensorFlow Sales Prediction for PayTrack
+# TensorFlow.js Sales Prediction for PayTrack
 
-This document explains how to use TensorFlow for sales prediction in your PayTrack Vue application.
+This document explains how to use TensorFlow.js for sales prediction in your PayTrack Vue application.
 
 ## Overview
 
 The sales prediction feature uses machine learning to forecast future sales based on historical data. It includes:
 
-1. **Frontend TensorFlow.js** - Real-time predictions in the browser
+1. **Frontend TensorFlow.js** - Real-time neural network predictions in the browser
 2. **Backend PHP Predictions** - Server-side predictions with seasonality detection
-3. **Python TensorFlow Service** - Advanced LSTM models (optional)
 
 ## Features
 
@@ -32,23 +31,13 @@ The sales prediction feature uses machine learning to forecast future sales base
 
 ## Installation
 
-### 1. Install TensorFlow.js Dependencies
+### Install TensorFlow.js Dependencies
 
 ```bash
 npm install @tensorflow/tfjs @tensorflow/tfjs-vis
 ```
 
-### 2. Optional: Python TensorFlow Service
-
-For advanced predictions, you can run the Python service:
-
-```bash
-# Install Python dependencies
-pip install tensorflow numpy pandas scikit-learn flask
-
-# Run the service
-python python_tensorflow_example.py
-```
+The dependencies are already included in your `package.json`.
 
 ## Usage
 
@@ -99,34 +88,6 @@ Response:
 }
 ```
 
-### Python Service Integration
-
-To use the advanced Python TensorFlow service:
-
-1. **Start the service:**
-   ```bash
-   python python_tensorflow_example.py
-   ```
-
-2. **Configure Laravel to call the service:**
-   Add to your `.env` file:
-   ```
-   TENSORFLOW_SERVICE_URL=http://localhost:5000
-   ```
-
-3. **Update the controller** to use the Python service:
-   ```php
-   // In SalesPredictionController.php
-   private function callTensorFlowAPI($salesData)
-   {
-       $response = Http::post(config('services.tensorflow.url') . '/predict', [
-           'sales_data' => $salesData,
-           'prediction_days' => 30,
-       ]);
-       
-       return $response->json();
-   }
-   ```
 
 ## How It Works
 
@@ -155,20 +116,14 @@ To use the advanced Python TensorFlow service:
 ### 1. **TensorFlow.js (Frontend)**
 - **Type**: Dense Neural Network
 - **Features**: Day of week, month, holidays, previous sales
-- **Advantages**: Real-time, no server needed
-- **Best for**: Quick predictions, demonstrations
+- **Advantages**: Real-time, no server needed, runs entirely in browser
+- **Best for**: Interactive predictions, real-time forecasting
 
 ### 2. **PHP Backend**
 - **Type**: Statistical Analysis + Seasonality Detection
 - **Features**: Trend analysis, seasonal factors, confidence scoring
-- **Advantages**: Server-side, consistent results
-- **Best for**: Production use, reliable predictions
-
-### 3. **Python TensorFlow (Advanced)**
-- **Type**: LSTM Neural Network
-- **Features**: Time series analysis, sequence learning
-- **Advantages**: Most accurate, handles complex patterns
-- **Best for**: Advanced analytics, high accuracy requirements
+- **Advantages**: Server-side, consistent results, no JavaScript required
+- **Best for**: API endpoints, server-side reporting, reliable predictions
 
 ## Configuration
 
@@ -186,13 +141,7 @@ const modelConfig = {
 
 ### Backend Configuration
 
-```php
-// In config/services.php
-'tensorflow' => [
-    'url' => env('TENSORFLOW_SERVICE_URL', 'http://localhost:5000'),
-    'timeout' => 30,
-],
-```
+No additional backend configuration needed. The PHP controller provides statistical predictions while TensorFlow.js handles neural network predictions in the browser.
 
 ## Performance Tips
 

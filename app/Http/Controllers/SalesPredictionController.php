@@ -20,8 +20,8 @@ class SalesPredictionController extends Controller
         // Get historical sales data
         $salesData = $this->getHistoricalSalesData($period);
         
-        // For now, return enhanced dummy predictions
-        // In production, you would call a Python TensorFlow API here
+        // Generate predictions using statistical analysis
+        // Frontend uses TensorFlow.js for neural network predictions
         $predictions = $this->generateAdvancedPredictions($salesData, $daysAhead);
         
         return response()->json($predictions);
@@ -320,24 +320,4 @@ class SalesPredictionController extends Controller
         ];
     }
 
-    /**
-     * Call external Python TensorFlow API (for production use)
-     */
-    private function callTensorFlowAPI($salesData)
-    {
-        // This would be implemented to call a Python TensorFlow service
-        // For example, using FastAPI or Flask with TensorFlow
-        
-        try {
-            $response = Http::post(config('services.tensorflow.url') . '/predict', [
-                'sales_data' => $salesData,
-                'prediction_days' => 30,
-            ]);
-            
-            return $response->json();
-        } catch (\Exception $e) {
-            // Fallback to PHP-based predictions
-            return null;
-        }
-    }
 } 

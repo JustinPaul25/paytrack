@@ -105,7 +105,6 @@ const isSalesOpen = ref(true);
                                         <Link href="/expenses">
                                             <TrendingDown />
                                             <span>Expenses</span>
-                                            <span class="ml-auto text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Demo</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

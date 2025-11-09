@@ -23,7 +23,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Endpoints</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ deliveryEndpoints.length }}</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ totalEndpoints }}</p>
                         </div>
                         <div class="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
                             <Truck class="w-6 h-6 text-blue-600" />
@@ -123,23 +123,39 @@
                             />
                             
                             <!-- Delivery Endpoint Markers -->
-                            <l-marker 
-                                v-for="endpoint in deliveryEndpoints" 
-                                :key="endpoint.id"
-                                :lat-lng="endpoint.coordinates || [0, 0]"
-                                @click="selectEndpoint(endpoint)"
-                            >
-                                <l-popup>
-                                    <div class="p-2">
-                                        <h3 class="font-semibold text-gray-900">{{ endpoint.name }}</h3>
-                                        <p class="text-sm text-gray-600">{{ endpoint.customer.name }}</p>
-                                        <p class="text-sm text-gray-600">{{ formatCurrency(endpoint.invoice.total_amount) }}</p>
-                                        <span :class="['px-2 py-1 rounded-full text-xs font-medium mt-2 inline-block', getStatusBadgeClass(endpoint.status)]">
-                                            {{ endpoint.status }}
-                                        </span>
-                                    </div>
-                                </l-popup>
-                            </l-marker>
+                            <template v-for="endpoint in deliveryEndpoints" :key="endpoint.id">
+                                <l-marker
+                                    v-if="endpoint.coordinates"
+                                    :lat-lng="endpoint.coordinates"
+                                    @click="selectEndpoint(endpoint)"
+                                >
+                                    <l-tooltip
+                                        :options="{
+                                            permanent: true,
+                                            direction: 'top',
+                                            offset: [0, -32],
+                                            className: 'delivery-tag-tooltip'
+                                        }"
+                                    >
+                                        <div class="map-tag" :style="getTagStyle(endpoint)">
+                                            <span class="map-tag__dot"></span>
+                                            <span class="map-tag__label">{{ endpoint.tag }}</span>
+                                        </div>
+                                    </l-tooltip>
+                                    <l-popup>
+                                        <div class="p-2">
+                                            <h3 class="font-semibold text-gray-900">{{ endpoint.name }}</h3>
+                                            <p class="text-sm text-gray-600">{{ endpoint.customer?.name ?? '—' }}</p>
+                                            <p class="text-sm text-gray-600">
+                                                {{ formatCurrency(endpoint.invoice?.total_amount ?? 0) }}
+                                            </p>
+                                            <span :class="['px-2 py-1 rounded-full text-xs font-medium mt-2 inline-block', getStatusBadgeClass(endpoint.status)]">
+                                                {{ endpoint.status }}
+                                            </span>
+                                        </div>
+                                    </l-popup>
+                                </l-marker>
+                            </template>
                         </l-map>
                     </div>
                 </CardContent>
@@ -178,16 +194,16 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Invoice #:</span>
-                                <span class="font-medium">{{ endpoint.invoice.id }}</span>
+                                <span class="font-medium">{{ endpoint.invoice?.id ?? '—' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Amount:</span>
-                                <span class="font-medium text-green-600">{{ formatCurrency(endpoint.invoice.total_amount) }}</span>
+                                <span class="font-medium text-green-600">{{ formatCurrency(endpoint.invoice?.total_amount ?? 0) }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Status:</span>
                                 <span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
-                                    {{ endpoint.invoice.status }}
+                                    {{ endpoint.invoice?.status ?? 'N/A' }}
                                 </span>
                             </div>
                         </div>
@@ -202,15 +218,15 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Name:</span>
-                                <span class="font-medium">{{ endpoint.customer.name }}</span>
+                                <span class="font-medium">{{ endpoint.customer?.name ?? '—' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Company:</span>
-                                <span class="font-medium">{{ endpoint.customer.company_name || 'N/A' }}</span>
+                                <span class="font-medium">{{ endpoint.customer?.company_name ?? 'N/A' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Phone:</span>
-                                <span class="font-medium">{{ endpoint.customer.phone }}</span>
+                                <span class="font-medium">{{ endpoint.customer?.phone ?? '—' }}</span>
                             </div>
                         </div>
                     </div>
@@ -224,7 +240,7 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Address:</span>
-                                <span class="font-medium text-right max-w-[150px] truncate">{{ endpoint.delivery_address }}</span>
+                                <span class="font-medium text-right max-w-[150px] truncate">{{ endpoint.delivery_address ?? '—' }}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600 dark:text-gray-400">Date:</span>
@@ -268,7 +284,7 @@
         <Dialog v-model:open="showEndpointModal" :modal="true" class="z-[9999]">
             <DialogContent class="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>{{ selectedEndpoint?.name }} - Detailed View</DialogTitle>
+                    <DialogTitle>{{ selectedEndpoint?.name ?? 'Delivery Details' }} - Detailed View</DialogTitle>
                     <DialogDescription>
                         Complete information for this delivery endpoint
                     </DialogDescription>
@@ -281,24 +297,24 @@
                             <Receipt class="w-5 h-5" />
                             Invoice Information
                         </h3>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <span class="text-blue-700 dark:text-blue-300">Invoice Number:</span>
-                                <p class="font-medium">#{{ selectedEndpoint.invoice.id }}</p>
+                                    <p class="font-medium">#{{ selectedEndpoint?.invoice?.id ?? '—' }}</p>
                             </div>
                             <div>
                                 <span class="text-blue-700 dark:text-blue-300">Total Amount:</span>
-                                <p class="font-medium text-green-600">{{ formatCurrency(selectedEndpoint.invoice.total_amount) }}</p>
+                                    <p class="font-medium text-green-600">{{ formatCurrency(selectedEndpoint?.invoice?.total_amount ?? 0) }}</p>
                             </div>
                             <div>
                                 <span class="text-blue-700 dark:text-blue-300">Status:</span>
-                                <span :class="['px-2 py-1 rounded-full text-xs font-medium', selectedEndpoint.invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400']">
-                                    {{ selectedEndpoint.invoice.status }}
+                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', selectedEndpoint?.invoice?.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400']">
+                                    {{ selectedEndpoint?.invoice?.status ?? 'N/A' }}
                                 </span>
                             </div>
                             <div>
                                 <span class="text-blue-700 dark:text-blue-300">Created:</span>
-                                <p class="font-medium">{{ formatDate(selectedEndpoint.invoice.created_at) }}</p>
+                                    <p class="font-medium">{{ formatDate(selectedEndpoint?.invoice?.created_at) }}</p>
                             </div>
                         </div>
                     </div>
@@ -312,19 +328,19 @@
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <span class="text-green-700 dark:text-green-300">Name:</span>
-                                <p class="font-medium">{{ selectedEndpoint.customer.name }}</p>
+                                <p class="font-medium">{{ selectedEndpoint?.customer?.name ?? '—' }}</p>
                             </div>
                             <div>
                                 <span class="text-green-700 dark:text-green-300">Company:</span>
-                                <p class="font-medium">{{ selectedEndpoint.customer.company_name || 'N/A' }}</p>
+                                <p class="font-medium">{{ selectedEndpoint?.customer?.company_name ?? 'N/A' }}</p>
                             </div>
                             <div>
                                 <span class="text-green-700 dark:text-green-300">Phone:</span>
-                                <p class="font-medium">{{ selectedEndpoint.customer.phone }}</p>
+                                <p class="font-medium">{{ selectedEndpoint?.customer?.phone ?? '—' }}</p>
                             </div>
                             <div>
                                 <span class="text-green-700 dark:text-green-300">Email:</span>
-                                <p class="font-medium">{{ selectedEndpoint.customer.email }}</p>
+                                <p class="font-medium">{{ selectedEndpoint?.customer?.email ?? '—' }}</p>
                             </div>
                         </div>
                     </div>
@@ -338,25 +354,25 @@
                         <div class="space-y-3 text-sm">
                             <div>
                                 <span class="text-orange-700 dark:text-orange-300">Delivery Address:</span>
-                                <p class="font-medium mt-1">{{ selectedEndpoint.delivery_address }}</p>
+                                <p class="font-medium mt-1">{{ selectedEndpoint?.delivery_address ?? '—' }}</p>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <span class="text-orange-700 dark:text-orange-300">Delivery Date:</span>
-                                    <p class="font-medium">{{ formatDate(selectedEndpoint.delivery_date) }}</p>
+                                    <p class="font-medium">{{ formatDate(selectedEndpoint?.delivery_date) }}</p>
                                 </div>
                                 <div>
                                     <span class="text-orange-700 dark:text-orange-300">Delivery Time:</span>
-                                    <p class="font-medium">{{ selectedEndpoint.delivery_time }}</p>
+                                    <p class="font-medium">{{ selectedEndpoint?.delivery_time ?? '—' }}</p>
                                 </div>
                                 <div>
                                     <span class="text-orange-700 dark:text-orange-300">Delivery Fee:</span>
-                                    <p class="font-medium text-blue-600">{{ formatCurrency(selectedEndpoint.delivery_fee) }}</p>
+                                    <p class="font-medium text-blue-600">{{ formatCurrency(selectedEndpoint?.delivery_fee) }}</p>
                                 </div>
                                 <div>
                                     <span class="text-orange-700 dark:text-orange-300">Status:</span>
-                                                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(selectedEndpoint.status)]">
-                                    {{ selectedEndpoint.status }}
+                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(selectedEndpoint?.status ?? '')]">
+                                    {{ selectedEndpoint?.status ?? '—' }}
                                 </span>
                                 </div>
                             </div>
@@ -386,11 +402,45 @@
 :deep([data-radix-dialog-content]) {
     z-index: 9999 !important;
 }
+
+.delivery-tag-tooltip {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.map-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--tag-color, #2563eb);
+    color: #ffffff;
+    font-size: 12px;
+    line-height: 1;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    white-space: nowrap;
+}
+
+.map-tag__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.map-tag__label {
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
 </style>
 
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -413,221 +463,217 @@ import {
     Ship,
     Grid
 } from 'lucide-vue-next';
-import { LMap, LTileLayer, LMarker, LPopup } from '@vue-leaflet/vue-leaflet';
+import { LMap, LTileLayer, LMarker, LPopup, LTooltip } from '@vue-leaflet/vue-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { type BreadcrumbItem } from '@/types';
+
+interface DeliveryInvoice {
+    id: number;
+    total_amount: number;
+    status: string;
+    created_at: string | null;
+}
+
+interface DeliveryCustomer {
+    name: string | null;
+    company_name: string | null;
+    phone: string | null;
+    email: string | null;
+}
+
+interface DeliveryEndpoint {
+    id: number;
+    name: string;
+    status: string;
+    tag: string;
+    tagColor: string;
+    coordinates: [number, number] | null;
+    delivery_address: string | null;
+    delivery_date: string | null;
+    delivery_time: string | null;
+    delivery_fee: number | null;
+    contact_person: string | null;
+    contact_phone: string | null;
+    invoice: DeliveryInvoice | null;
+    customer: DeliveryCustomer | null;
+    icon?: any;
+    iconColor?: string;
+}
+
+interface ShortcutStats {
+    totalDeliveries: number;
+    inProgressDeliveries: number;
+    pendingDeliveries: number;
+    completedDeliveries: number;
+    cancelledDeliveries: number;
+    totalRevenue: number;
+}
+
+const props = withDefaults(defineProps<{
+    deliveryEndpoints: DeliveryEndpoint[];
+    stats: ShortcutStats;
+    mapCenter: [number, number];
+}>(), {
+    deliveryEndpoints: () => [],
+    stats: () => ({
+        totalDeliveries: 0,
+        inProgressDeliveries: 0,
+        pendingDeliveries: 0,
+        completedDeliveries: 0,
+        cancelledDeliveries: 0,
+        totalRevenue: 0,
+    }),
+    mapCenter: () => [14.5995, 120.9842] as [number, number],
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Deliveries', href: '/deliveries' },
     { title: 'Deliveries Hub', href: '/deliveries/shortcut' },
 ];
 
-// Demo data for delivery endpoints
-const deliveryEndpoints = ref([
-    {
-        id: 1,
-        name: 'Metro Manila Express',
-        status: 'active',
-        icon: Car,
-        iconColor: 'text-blue-600',
-        coordinates: [14.5547, 121.0244] as [number, number], // Makati
-        invoice: {
-            id: 1001,
-            total_amount: 25000,
-            status: 'paid',
-            created_at: '2024-12-20'
-        },
-        customer: {
-            name: 'ABC Corporation',
-            company_name: 'ABC Corp',
-            phone: '+63 912 345 6789',
-            email: 'contact@abccorp.com'
-        },
-        delivery_address: '123 Business Ave, Makati City, Metro Manila',
-        delivery_date: '2024-12-25',
-        delivery_time: '09:00 AM - 12:00 PM',
-        delivery_fee: 500
-    },
-    {
-        id: 2,
-        name: 'Provincial Delivery',
-        status: 'active',
-        icon: Truck,
-        iconColor: 'text-green-600',
-        coordinates: [10.3157, 123.8854] as [number, number], // Cebu
-        invoice: {
-            id: 1002,
-            total_amount: 45000,
-            status: 'pending',
-            created_at: '2024-12-21'
-        },
-        customer: {
-            name: 'XYZ Industries',
-            company_name: 'XYZ Industries Ltd',
-            phone: '+63 923 456 7890',
-            email: 'info@xyzindustries.com'
-        },
-        delivery_address: '456 Industrial Park, Cebu City, Cebu',
-        delivery_date: '2024-12-28',
-        delivery_time: '02:00 PM - 05:00 PM',
-        delivery_fee: 1200
-    },
-    {
-        id: 3,
-        name: 'Air Freight Express',
-        status: 'active',
-        icon: Plane,
-        iconColor: 'text-purple-600',
-        coordinates: [7.1907, 125.4553] as [number, number], // Davao
-        invoice: {
-            id: 1003,
-            total_amount: 75000,
-            status: 'paid',
-            created_at: '2024-12-22'
-        },
-        customer: {
-            name: 'Tech Solutions Inc',
-            company_name: 'Tech Solutions',
-            phone: '+63 934 567 8901',
-            email: 'delivery@techsolutions.com'
-        },
-        delivery_address: '789 Tech Hub, Davao City, Davao del Sur',
-        delivery_date: '2024-12-26',
-        delivery_time: '10:00 AM - 11:00 AM',
-        delivery_fee: 2500
-    },
-    {
-        id: 4,
-        name: 'Sea Cargo Delivery',
-        status: 'pending',
-        icon: Ship,
-        iconColor: 'text-orange-600',
-        coordinates: [14.5995, 120.9842] as [number, number], // Manila
-        invoice: {
-            id: 1004,
-            total_amount: 120000,
-            status: 'paid',
-            created_at: '2024-12-23'
-        },
-        customer: {
-            name: 'Maritime Trading Co',
-            company_name: 'Maritime Trading',
-            phone: '+63 945 678 9012',
-            email: 'logistics@maritimetrading.com'
-        },
-        delivery_address: '321 Port Area, Manila Bay, Manila',
-        delivery_date: '2024-12-30',
-        delivery_time: '08:00 AM - 12:00 PM',
-        delivery_fee: 3500
-    },
-    {
-        id: 5,
-        name: 'Local Package Delivery',
-        status: 'active',
-        icon: Package,
-        iconColor: 'text-indigo-600',
-        coordinates: [14.6760, 121.0437] as [number, number], // Quezon City
-        invoice: {
-            id: 1005,
-            total_amount: 15000,
-            status: 'paid',
-            created_at: '2024-12-24'
-        },
-        customer: {
-            name: 'Local Business Hub',
-            company_name: 'LBH Enterprises',
-            phone: '+63 956 789 0123',
-            email: 'orders@lbhenterprises.com'
-        },
-        delivery_address: '654 Local St, Quezon City, Metro Manila',
-        delivery_date: '2024-12-27',
-        delivery_time: '01:00 PM - 04:00 PM',
-        delivery_fee: 300
-    },
-    {
-        id: 6,
-        name: 'Corporate Express',
-        status: 'active',
-        icon: Building2,
-        iconColor: 'text-red-600',
-        coordinates: [14.5547, 121.0244] as [number, number], // BGC, Taguig
-        invoice: {
-            id: 1006,
-            total_amount: 85000,
-            status: 'pending',
-            created_at: '2024-12-25'
-        },
-        customer: {
-            name: 'Global Enterprises',
-            company_name: 'Global Corp',
-            phone: '+63 967 890 1234',
-            email: 'logistics@globalcorp.com'
-        },
-        delivery_address: '987 Corporate Plaza, Bonifacio Global City, Taguig',
-        delivery_date: '2024-12-29',
-        delivery_time: '11:00 AM - 02:00 PM',
-        delivery_fee: 800
-    }
-]);
+const iconPalette = [Car, Truck, Plane, Ship, Package, Building2];
+const iconColorPalette = [
+    'text-blue-600',
+    'text-green-600',
+    'text-purple-600',
+    'text-orange-600',
+    'text-indigo-600',
+    'text-red-600',
+];
 
-// Reactive state
-const hoveredEndpoint = ref<any>(null);
-const selectedEndpoint = ref<any>(null);
+const deliveryEndpoints = computed(() =>
+    props.deliveryEndpoints.map((endpoint, index) => {
+        const iconIndex = index % iconPalette.length;
+        return {
+            ...endpoint,
+            icon: iconPalette[iconIndex],
+            iconColor: iconColorPalette[iconIndex],
+        };
+    }),
+);
+
+const hoveredEndpoint = ref<DeliveryEndpoint | null>(null);
+const selectedEndpoint = ref<DeliveryEndpoint | null>(null);
 const showEndpointModal = ref(false);
 const showMap = ref(false);
 const mapZoom = ref(10);
-const mapCenter = ref<[number, number]>([14.5995, 120.9842]); // Manila coordinates
+const mapCenter = ref<[number, number]>(props.mapCenter);
 
-// Computed properties
-const activeDeliveries = computed(() => deliveryEndpoints.value.filter(e => e.status === 'active').length);
-const pendingDeliveries = computed(() => deliveryEndpoints.value.filter(e => e.status === 'pending').length);
-const totalRevenue = computed(() => deliveryEndpoints.value.reduce((sum, endpoint) => sum + endpoint.invoice.total_amount, 0));
+watch(
+    () => props.mapCenter,
+    (center) => {
+        if (Array.isArray(center) && center.length === 2) {
+            mapCenter.value = [Number(center[0]), Number(center[1])];
+        }
+    },
+    { immediate: true },
+);
 
-// Methods
-function selectEndpoint(endpoint: any) {
+watch(
+    deliveryEndpoints,
+    (endpoints) => {
+        const firstWithCoordinates = endpoints.find((endpoint) => Array.isArray(endpoint.coordinates));
+        if (firstWithCoordinates && firstWithCoordinates.coordinates) {
+            mapCenter.value = [
+                Number(firstWithCoordinates.coordinates[0]),
+                Number(firstWithCoordinates.coordinates[1]),
+            ];
+        }
+    },
+    { immediate: true },
+);
+
+const totalEndpoints = computed(() => props.stats?.totalDeliveries ?? deliveryEndpoints.value.length);
+const activeDeliveries = computed(
+    () =>
+        props.stats?.inProgressDeliveries ??
+        deliveryEndpoints.value.filter((endpoint) => endpoint.status !== 'completed' && endpoint.status !== 'cancelled')
+            .length,
+);
+const pendingDeliveries = computed(
+    () =>
+        props.stats?.pendingDeliveries ??
+        deliveryEndpoints.value.filter((endpoint) => endpoint.status === 'pending').length,
+);
+const totalRevenue = computed(() => {
+    if (props.stats?.totalRevenue) {
+        return props.stats.totalRevenue;
+    }
+    return deliveryEndpoints.value.reduce(
+        (sum, endpoint) => sum + (endpoint.invoice?.total_amount ?? 0),
+        0,
+    );
+});
+
+function selectEndpoint(endpoint: DeliveryEndpoint) {
     selectedEndpoint.value = endpoint;
     showEndpointModal.value = true;
 }
 
-function formatCurrency(amount: number) {
+function formatCurrency(amount: number | null | undefined) {
+    const numericAmount = typeof amount === 'number' && !Number.isNaN(amount) ? amount : 0;
     return new Intl.NumberFormat('en-PH', {
         style: 'currency',
         currency: 'PHP',
-        minimumFractionDigits: 0
-    }).format(amount);
+        minimumFractionDigits: 0,
+    }).format(numericAmount);
 }
 
-function formatDate(dateString: string) {
+function formatDate(dateString: string | null | undefined) {
+    if (!dateString) {
+        return '—';
+    }
     return new Date(dateString).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
     });
 }
 
 function getStatusBadgeClass(status: string) {
     switch (status) {
-        case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
-        case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-        case 'completed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
-        case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
-        default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+        case 'active':
+        case 'in_progress':
+        case 'in-transit':
+            return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+        case 'pending':
+            return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
+        case 'completed':
+            return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
+        case 'cancelled':
+            return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
+        default:
+            return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
     }
+}
+
+function getTagStyle(endpoint: DeliveryEndpoint) {
+    return {
+        '--tag-color': endpoint.tagColor || '#2563eb',
+    };
 }
 
 function getStatusVariant(status: string) {
     switch (status) {
-        case 'active': return 'default';
-        case 'pending': return 'secondary';
-        case 'completed': return 'default';
-        case 'cancelled': return 'destructive';
-        default: return 'outline';
+        case 'active':
+        case 'in_progress':
+            return 'default';
+        case 'pending':
+            return 'secondary';
+        case 'completed':
+            return 'default';
+        case 'cancelled':
+            return 'destructive';
+        default:
+            return 'outline';
     }
 }
 
-function trackDelivery(endpoint: any) {
-    // Demo tracking function
-    alert(`Tracking delivery for ${endpoint.name} - Invoice #${endpoint.invoice.id}`);
+function trackDelivery(endpoint: DeliveryEndpoint | null) {
+    if (!endpoint) {
+        return;
+    }
+    alert(`Tracking delivery for ${endpoint.name} ${endpoint.invoice ? `- Invoice #${endpoint.invoice.id}` : ''}`.trim());
     showEndpointModal.value = false;
 }
-</script> 
+</script>

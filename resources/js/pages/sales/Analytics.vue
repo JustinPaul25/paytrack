@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -10,7 +10,9 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import BaseChart from '@/components/charts/BaseChart.vue';
 import { type BreadcrumbItem } from '@/types';
-import { TrendingUp, TrendingDown, DollarSign, FileText, Clock, Package } from 'lucide-vue-next';
+import type { ChartDataset } from 'chart.js';
+import { TrendingUp, DollarSign, FileText, Clock } from 'lucide-vue-next';
+import { generateSalesForecast, type SalesForecastPoint } from '@/lib/analytics/salesForecast';
 
 interface SalesData {
     total_sales: number;
@@ -65,6 +67,11 @@ const props = defineProps<{
 const period = ref(props.filters.period);
 const startDate = ref(props.filters.start_date);
 const endDate = ref(props.filters.end_date);
+const forecastedSales = ref<SalesForecastPoint[]>([]);
+const forecastLoss = ref<number | null>(null);
+const forecastError = ref<string | null>(null);
+const isForecastLoading = ref(false);
+let forecastRequestId = 0;
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -100,32 +107,167 @@ watch([period, startDate, endDate], () => {
     updateFilters();
 });
 
-// Chart data computations
-const salesChartData = computed(() => ({
-    labels: props.salesByDate.map(item => {
-        const date = new Date(item.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }),
-    datasets: [
+async function buildForecast() {
+    const requestId = ++forecastRequestId;
+
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (!props.salesByDate.length) {
+        forecastedSales.value = [];
+        forecastLoss.value = null;
+        forecastError.value = null;
+        return;
+    }
+
+    isForecastLoading.value = true;
+    forecastError.value = null;
+
+    try {
+        const history = props.salesByDate.map((item) => ({
+            date: item.date,
+            sales: item.sales,
+        }));
+
+        const result = await generateSalesForecast(history);
+
+        if (requestId !== forecastRequestId) {
+            return;
+        }
+
+        forecastedSales.value = result.points;
+        forecastLoss.value = Number.isFinite(result.trainingLoss) ? Number(result.trainingLoss.toFixed(4)) : null;
+    } catch (error) {
+        forecastedSales.value = [];
+        forecastLoss.value = null;
+        forecastError.value = error instanceof Error ? error.message : 'Unable to generate forecast';
+    } finally {
+        isForecastLoading.value = false;
+    }
+}
+
+onMounted(() => {
+    buildForecast();
+});
+
+watch(
+    () => props.salesByDate,
+    () => {
+        buildForecast();
+    },
+    { deep: true }
+);
+
+function toChartLabel(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDisplayDate(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+    });
+}
+
+const hasForecast = computed(() => forecastedSales.value.length > 0);
+
+const combinedSalesLabels = computed(() => {
+    const historicalLabels = props.salesByDate.map((item) => toChartLabel(item.date));
+    const futureLabels = forecastedSales.value.map((item) => toChartLabel(item.date));
+    return [...historicalLabels, ...futureLabels];
+});
+
+const historicalSalesSeries = computed(() => [
+    ...props.salesByDate.map((item) => item.sales),
+    ...forecastedSales.value.map(() => null),
+]);
+
+const historicalInvoiceSeries = computed(() => [
+    ...props.salesByDate.map((item) => item.invoices),
+    ...forecastedSales.value.map(() => null),
+]);
+
+const forecastSalesSeries = computed(() => {
+    if (!hasForecast.value || !props.salesByDate.length) {
+        return [];
+    }
+
+    const lastHistoricalIndex = props.salesByDate.length - 1;
+    const totalLength = combinedSalesLabels.value.length;
+    const historicalSales = props.salesByDate.map((item) => item.sales);
+    const series: Array<number | null> = [];
+
+    for (let index = 0; index < totalLength; index += 1) {
+        if (index < lastHistoricalIndex) {
+            series.push(null);
+        } else if (index === lastHistoricalIndex) {
+            series.push(historicalSales[historicalSales.length - 1]);
+        } else {
+            const forecastIndex = index - props.salesByDate.length;
+            series.push(forecastedSales.value[forecastIndex]?.sales ?? null);
+        }
+    }
+
+    return series;
+});
+
+const nextDayForecast = computed(() => forecastedSales.value[0] ?? null);
+const sevenDayForecastTotal = computed(() => forecastedSales.value.reduce((total, item) => total + item.sales, 0));
+const averageForecastSales = computed(() => {
+    if (!forecastedSales.value.length) {
+        return null;
+    }
+
+    return sevenDayForecastTotal.value / forecastedSales.value.length;
+});
+
+const salesChartData = computed(() => {
+    const labels = combinedSalesLabels.value;
+
+    const datasets: ChartDataset<'line', (number | null)[]>[] = [
         {
             label: 'Daily Sales',
-            data: props.salesByDate.map(item => item.sales),
+            data: historicalSalesSeries.value,
             borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
             tension: 0.4,
+            spanGaps: true,
         },
         {
             label: 'Invoices',
-            data: props.salesByDate.map(item => item.invoices),
+            data: historicalInvoiceSeries.value,
             borderColor: 'rgb(16, 185, 129)',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
             fill: false,
             tension: 0.4,
             yAxisID: 'y1',
+            spanGaps: true,
         },
-    ],
-}));
+    ];
+
+    if (hasForecast.value) {
+        datasets.push({
+            label: 'Forecasted Sales',
+            data: forecastSalesSeries.value,
+            borderColor: 'rgb(234, 179, 8)',
+            backgroundColor: 'rgba(234, 179, 8, 0.15)',
+            borderDash: [6, 6],
+            fill: false,
+            tension: 0.3,
+            spanGaps: true,
+        });
+    }
+
+    return {
+        labels,
+        datasets,
+    };
+});
 
 const salesChartOptions = computed(() => ({
     plugins: {
@@ -137,7 +279,21 @@ const salesChartOptions = computed(() => ({
             position: 'top' as const,
         },
     },
+    interaction: {
+        mode: 'index' as const,
+        intersect: false,
+    },
     scales: {
+        x: {
+            title: {
+                display: true,
+                text: 'Date',
+            },
+            ticks: {
+                maxRotation: 0,
+                autoSkip: true,
+            },
+        },
         y: {
             type: 'linear' as const,
             display: true,
@@ -368,6 +524,73 @@ function formatCurrency(amount: number) {
                     />
                 </CardContent>
             </Card>
+
+            <!-- Forecast Insights -->
+            <div class="lg:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Forecast Outlook</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div v-if="forecastError" class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ forecastError }}
+                        </div>
+                        <div v-else>
+                            <div v-if="isForecastLoading" class="text-sm text-gray-500">Training TensorFlow.js model...</div>
+                            <div v-else>
+                                <div v-if="forecastedSales.length" class="space-y-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div class="rounded-lg border border-gray-200 p-4 shadow-sm">
+                                            <p class="text-xs uppercase tracking-wide text-gray-500">Next Day Projection</p>
+                                            <p class="text-2xl font-semibold text-gray-900">
+                                                {{ nextDayForecast ? formatCurrency(nextDayForecast.sales) : '—' }}
+                                            </p>
+                                            <p v-if="nextDayForecast" class="text-xs text-gray-500">{{ formatDisplayDate(nextDayForecast.date) }}</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 p-4 shadow-sm">
+                                            <p class="text-xs uppercase tracking-wide text-gray-500">7-Day Projected Total</p>
+                                            <p class="text-2xl font-semibold text-gray-900">
+                                                {{ formatCurrency(sevenDayForecastTotal) }}
+                                            </p>
+                                            <p class="text-xs text-gray-500">Based on live sales trend</p>
+                                        </div>
+                                        <div class="rounded-lg border border-gray-200 p-4 shadow-sm">
+                                            <p class="text-xs uppercase tracking-wide text-gray-500">Average Daily Projection</p>
+                                            <p class="text-2xl font-semibold text-gray-900">
+                                                {{ averageForecastSales ? formatCurrency(averageForecastSales) : '—' }}
+                                            </p>
+                                            <p v-if="forecastLoss !== null" class="text-xs text-gray-500">
+                                                Model loss: {{ forecastLoss }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-600 mb-2">Upcoming Daily Forecast</h4>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-sm">
+                                                <thead>
+                                                    <tr class="border-b text-left">
+                                                        <th class="py-2 pr-4 font-medium text-gray-500">Date</th>
+                                                        <th class="py-2 pr-4 font-medium text-gray-500">Projected Sales</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="point in forecastedSales" :key="point.date" class="border-b last:border-transparent">
+                                                        <td class="py-2 pr-4 text-gray-700">{{ formatDisplayDate(point.date) }}</td>
+                                                        <td class="py-2 pr-4 font-medium text-gray-900">{{ formatCurrency(point.sales) }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="text-sm text-gray-500">Not enough historical data to generate a forecast yet.</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
 
         <!-- Tables Section -->

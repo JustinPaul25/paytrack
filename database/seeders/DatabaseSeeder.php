@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             CustomerSeeder::class,
             InvoiceSeeder::class,
+            DeliverySeeder::class,
             RefundSeeder::class,
             BranchSeeder::class,
         ]);

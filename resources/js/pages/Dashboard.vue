@@ -333,21 +333,6 @@ const closeNotifications = () => {
             
             <!-- Filters -->
             <div class="flex gap-4 items-center">
-                <!-- Branch Selection -->
-                <div class="w-56">
-                    <Select
-                        v-model="selectedBranch"
-                        :options="[
-                            { value: 'all', label: 'All Branches' },
-                            ...props.branches.map(branch => ({
-                                value: branch.id.toString(),
-                                label: `${branch.name} (${branch.code})`
-                            }))
-                        ]"
-                        placeholder="Select branch"
-                    />
-                </div>
-                
                 <!-- Period Selection -->
                 <div class="w-48">
                     <Select

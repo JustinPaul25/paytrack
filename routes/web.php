@@ -67,10 +67,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('refunds/invoice-items', [RefundController::class, 'getInvoiceItems'])->name('refunds.invoice-items');
     Route::get('refunds/stats', [RefundController::class, 'getStats'])->name('refunds.stats');
 
-    // Delivery Shortcut Demo Route (must come before resource routes)
-    Route::get('deliveries/shortcut', function () {
-        return Inertia::render('deliveries/Shortcut');
-    })->name('deliveries.shortcut');
+    // Delivery Shortcut Route
+    Route::get('deliveries/shortcut', [DeliveryController::class, 'shortcut'])->name('deliveries.shortcut');
     
     // Delivery CRUD routes
     Route::resource('deliveries', DeliveryController::class)->except(['update']);
@@ -83,7 +81,7 @@ Route::middleware(['auth'])->group(function () {
     // Sales Prediction routes
     Route::get('sales/predictions', [\App\Http\Controllers\SalesPredictionController::class, 'getPredictions'])->name('sales.predictions');
 
-    // Demo Expenses routes
+    // Expenses routes
     Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->except(['update']);
     Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
 

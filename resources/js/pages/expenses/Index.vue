@@ -63,7 +63,7 @@ async function deleteExpense(id: number) {
     if (result.isConfirmed) {
         router.delete(`/expenses/${id}`, {
             onSuccess: () => {
-                Swal.fire('Expense deleted', 'Expense deleted successfully (Demo - no data saved).', 'success');
+                Swal.fire('Expense deleted', 'Expense deleted successfully.', 'success');
             },
         });
     }
@@ -100,19 +100,6 @@ function formatDate(date: string) {
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Expenses" />
-        
-        <!-- Demo Notice -->
-        <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div class="flex items-center">
-                <Icon name="alert-triangle" class="h-5 w-5 text-yellow-600 mr-2" />
-                <div>
-                    <h3 class="text-sm font-medium text-yellow-800">Demo Mode</h3>
-                    <p class="text-sm text-yellow-700 mt-1">
-                        This is a demo page with dummy data. No actual data will be saved to the database.
-                    </p>
-                </div>
-            </div>
-        </div>
         
         <!-- Enhanced Expense Stats Widget -->
         <Transition
