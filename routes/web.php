@@ -85,9 +85,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->except(['update']);
     Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
 
-    // Branch CRUD routes
-    Route::resource('branches', \App\Http\Controllers\BranchController::class)->except(['update']);
-    Route::post('branches/{branch}', [\App\Http\Controllers\BranchController::class, 'update'])->name('branches.update');
 });
 
 require __DIR__.'/settings.php';

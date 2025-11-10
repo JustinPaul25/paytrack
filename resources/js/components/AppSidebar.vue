@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, DollarSign, BarChart3, CreditCard, RotateCcw, TrendingDown, Building2 } from 'lucide-vue-next';
+import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, DollarSign, BarChart3, CreditCard, RotateCcw, TrendingDown } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -20,11 +20,6 @@ const mainNavItems: NavItem[] = [
         title: 'Customers',
         href: '/customers',
         icon: Folder,
-    },
-    {
-        title: 'Branches',
-        href: '/branches',
-        icon: Building2,
     },
 ];
 
@@ -216,7 +211,6 @@ const isSalesOpen = ref(true);
                         <Link href="/deliveries/shortcut">
                             <Truck class="h-4 w-4" />
                             <span>Deliveries Hub</span>
-                            <span class="ml-auto text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Demo</span>
                         </Link>
                     </SidebarMenuButton>
                 </SidebarMenuItem>

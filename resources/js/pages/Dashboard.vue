@@ -50,18 +50,10 @@ interface RecentInvoice {
     items_count: number;
 }
 
-interface Branch {
-    id: number;
-    name: string;
-    code: string;
-    status: string;
-}
-
 interface Filters {
     period: string;
     start_date: string;
     end_date: string;
-    branch_id?: string;
 }
 
 const props = defineProps<{
@@ -71,13 +63,11 @@ const props = defineProps<{
     salesByCategory: SalesByCategory[];
     recentInvoices: RecentInvoice[];
     filters: Filters;
-    branches: Branch[];
 }>();
 
 const period = ref(props.filters.period);
 const startDate = ref(props.filters.start_date);
 const endDate = ref(props.filters.end_date);
-const selectedBranch = ref(props.filters.branch_id || 'all');
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -99,14 +89,13 @@ function updateFilters() {
         period: period.value,
         start_date: startDate.value,
         end_date: endDate.value,
-        branch_id: selectedBranch.value,
     }, {
         preserveState: true,
         replace: true,
     });
 }
 
-watch([period, startDate, endDate, selectedBranch], () => {
+watch([period, startDate, endDate], () => {
     updateFilters();
 });
 

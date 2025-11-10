@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
-use App\Models\Branch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -17,7 +16,6 @@ class SalesAnalyticsController extends Controller
         $period = $request->get('period', 'month'); // month, quarter, year
         $startDate = $request->get('start_date');
         $endDate = $request->get('end_date');
-        $branchId = $request->get('branch_id', 'all');
         $useDummyData = $request->get('dummy', false); // Force dummy data for testing
 
         // Set default date range if not provided
@@ -50,15 +48,12 @@ class SalesAnalyticsController extends Controller
             $salesByCategory = $this->getDummySalesByCategory();
             $recentInvoices = $this->getDummyRecentInvoices();
         } else {
-            $salesData = $this->getSalesData($startDate, $endDate, $branchId);
-            $topProducts = $this->getTopProducts($startDate, $endDate, $branchId);
-            $salesByDate = $this->getSalesByDate($startDate, $endDate, $branchId);
-            $salesByCategory = $this->getSalesByCategory($startDate, $endDate, $branchId);
-            $recentInvoices = $this->getRecentInvoices($startDate, $endDate, $branchId);
+            $salesData = $this->getSalesData($startDate, $endDate);
+            $topProducts = $this->getTopProducts($startDate, $endDate);
+            $salesByDate = $this->getSalesByDate($startDate, $endDate);
+            $salesByCategory = $this->getSalesByCategory($startDate, $endDate);
+            $recentInvoices = $this->getRecentInvoices($startDate, $endDate);
         }
-
-        // Get branches for dropdown
-        $branches = Branch::active()->get(['id', 'name', 'code', 'status']);
 
         return inertia('Dashboard', [
             'salesData' => $salesData,
@@ -66,52 +61,29 @@ class SalesAnalyticsController extends Controller
             'salesByDate' => $salesByDate,
             'salesByCategory' => $salesByCategory,
             'recentInvoices' => $recentInvoices,
-            'branches' => $branches,
             'filters' => [
                 'period' => $period,
                 'start_date' => $startDate->format('Y-m-d'),
                 'end_date' => $endDate->format('Y-m-d'),
-                'branch_id' => $branchId,
             ],
         ]);
     }
 
-    private function getSalesData($startDate, $endDate, $branchId = 'all')
+    private function getSalesData($startDate, $endDate)
     {
-        // For demo purposes, we'll use dummy data when branch is selected
-        if ($branchId !== 'all') {
-            // Return scaled down data for specific branch
-            $scaleFactor = 0.6; // 60% of total data for specific branch
-            
-            $totalSales = Invoice::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', 'paid')
-                ->sum('total_amount') * $scaleFactor;
+        $totalSales = Invoice::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'paid')
+            ->sum('total_amount');
 
-            $totalInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', 'paid')
-                ->count() * $scaleFactor;
+        $totalInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'paid')
+            ->count();
 
-            $averageOrderValue = $totalInvoices > 0 ? $totalSales / $totalInvoices : 0;
+        $averageOrderValue = $totalInvoices > 0 ? $totalSales / $totalInvoices : 0;
 
-            $pendingInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', 'pending')
-                ->count() * $scaleFactor;
-        } else {
-            // Use all data for "All Branches"
-            $totalSales = Invoice::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', 'paid')
-                ->sum('total_amount');
-
-            $totalInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', 'paid')
-                ->count();
-
-            $averageOrderValue = $totalInvoices > 0 ? $totalSales / $totalInvoices : 0;
-
-            $pendingInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
-                ->where('status', 'pending')
-                ->count();
-        }
+        $pendingInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'pending')
+            ->count();
 
         // If no real data, return dummy data
         if ($totalSales == 0 && $totalInvoices == 0) {
@@ -126,7 +98,7 @@ class SalesAnalyticsController extends Controller
         ];
     }
 
-    private function getTopProducts($startDate, $endDate, $branchId = 'all')
+    private function getTopProducts($startDate, $endDate)
     {
         $products = InvoiceItem::select(
                 'products.name',
@@ -151,7 +123,7 @@ class SalesAnalyticsController extends Controller
         return $products;
     }
 
-    private function getSalesByDate($startDate, $endDate, $branchId = 'all')
+    private function getSalesByDate($startDate, $endDate)
     {
         $salesByDate = Invoice::select(
                 DB::raw('DATE(created_at) as date'),
@@ -179,7 +151,7 @@ class SalesAnalyticsController extends Controller
         return $salesByDate;
     }
 
-    private function getSalesByCategory($startDate, $endDate, $branchId = 'all')
+    private function getSalesByCategory($startDate, $endDate)
     {
         $salesByCategory = InvoiceItem::select(
                 'categories.name as category_name',
@@ -203,7 +175,7 @@ class SalesAnalyticsController extends Controller
         return $salesByCategory;
     }
 
-    private function getRecentInvoices($startDate, $endDate, $branchId = 'all')
+    private function getRecentInvoices($startDate, $endDate)
     {
         $recentInvoices = Invoice::with(['customer', 'invoice_items.product'])
             ->whereBetween('created_at', [$startDate, $endDate])
