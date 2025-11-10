@@ -1,6 +1,6 @@
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Deliveries Hub - Demo" />
+        <Head title="Deliveries Hub" />
         
         <!-- Header Section -->
         <div class="mb-8">
@@ -8,10 +8,6 @@
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Deliveries Hub</h1>
                     <p class="text-gray-600 dark:text-gray-400 mt-2">Quick access to delivery endpoints with invoice and customer data</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-500">Demo Mode</span>
-                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                 </div>
             </div>
         </div>

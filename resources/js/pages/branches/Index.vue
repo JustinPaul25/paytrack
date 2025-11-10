@@ -233,26 +233,6 @@ function formatTime(timeString: string) {
             </div>
         </Transition>
 
-        <!-- Demo Notice -->
-        <div class="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
-            <div class="flex items-start space-x-3">
-                <div class="flex-shrink-0">
-                    <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <h3 class="text-sm font-semibold text-blue-900 mb-1">Demo Mode Notice</h3>
-                    <p class="text-sm text-blue-700 leading-relaxed">
-                        This branch management system is currently running in <strong>demo mode</strong>. 
-                        Branch data is not linked to other tables (invoices, products, customers, etc.) for demonstration purposes. 
-                        In a production environment, branches would be fully integrated with sales transactions, inventory management, 
-                        and customer relationships to provide comprehensive business insights and operational control.
-                    </p>
-                </div>
-            </div>
-        </div>
-
         <!-- Search and Actions -->
         <div class="flex items-center justify-between mt-4 mb-2">
             <div class="flex gap-2 items-center">

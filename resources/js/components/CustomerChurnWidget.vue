@@ -5,9 +5,6 @@
                 <CardTitle class="flex items-center gap-2">
                     <Users class="w-5 h-5 text-red-600" />
                     Customer Churn Analysis
-                    <span class="text-sm font-normal text-gray-500">
-                        (Demo Mode)
-                    </span>
                 </CardTitle>
                 <button
                     @click="toggleCollapse"
@@ -207,7 +204,7 @@
                     <!-- Status -->
                     <div class="border-t pt-4">
                         <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                            <span>Demo Mode - Using sample data</span>
+                            <span>Using sample data</span>
                             <div class="flex items-center gap-2">
                                 <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                                 <span>Ready</span>
