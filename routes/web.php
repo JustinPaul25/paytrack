@@ -6,6 +6,8 @@ use App\Http\Controllers\RolesController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CashFlowController;
+use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\SalesAnalyticsController;
 use App\Http\Controllers\SalesTransactionController;
@@ -84,6 +86,11 @@ Route::middleware(['auth'])->group(function () {
     // Expenses routes
     Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->except(['update']);
     Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
+
+    // Cash Flow
+    Route::get('finance/cash-flow', [CashFlowController::class, 'index'])->name('finance.cash-flow');
+    Route::get('finance/reports', [FinancialReportController::class, 'index'])->name('finance.reports');
+    Route::get('finance/reports/export', [FinancialReportController::class, 'export'])->name('finance.reports.export');
 
 });
 

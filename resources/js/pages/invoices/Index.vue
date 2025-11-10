@@ -45,8 +45,11 @@ interface InvoiceStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
+const filters = ref<{ search?: string; status?: string }>(
+    page.props.filters ? (page.props.filters as { search?: string; status?: string }) : {}
+);
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const status = ref(typeof filters.value.status === 'string' ? filters.value.status : '');
 const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -57,18 +60,28 @@ watchEffect(() => {
     search.value = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
         ? (page.props.filters as { search?: string }).search!
         : '';
+    status.value = (page.props.filters && typeof (page.props.filters as { status?: string }).status === 'string')
+        ? (page.props.filters as { status?: string }).status!
+        : '';
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/invoices', { search: val }, { preserveState: true, replace: true });
+        router.get('/invoices', {
+            search: val || undefined,
+            status: status.value || undefined,
+        }, { preserveState: true, replace: true });
     }, 400);
 });
 
 function goToPage(pageNum: number) {
-    router.get('/invoices', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
+    router.get('/invoices', {
+        search: search.value || undefined,
+        status: status.value || undefined,
+        page: pageNum,
+    }, { preserveState: true, replace: true });
 }
 
 async function deleteInvoice(id: number) {
@@ -106,6 +119,17 @@ function formatCurrency(amount: number) {
         currency: 'PHP',
         minimumFractionDigits: 2
     }).format(amount);
+}
+
+function togglePendingFilter() {
+    status.value = status.value === 'pending' ? '' : 'pending';
+    router.get('/invoices', {
+        search: search.value || undefined,
+        status: status.value || undefined,
+    }, {
+        preserveState: true,
+        replace: true,
+    });
 }
 </script>
 
@@ -203,12 +227,21 @@ function formatCurrency(amount: number) {
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
             </div>
+            <div class="flex items-center gap-2">
+                <Button
+                    variant="outline"
+                    :class="status === 'pending' ? 'border-yellow-400 text-yellow-600 bg-yellow-50' : ''"
+                    @click="togglePendingFilter"
+                >
+                    Collectibles
+                </Button>
             <Link :href="route('invoices.create')">
                 <Button variant="default">
                     <span class="mr-2">+</span>
                     Add New Invoice
                 </Button>
             </Link>
+            </div>
         </div>
 
 

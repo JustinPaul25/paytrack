@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, DollarSign, BarChart3, CreditCard, RotateCcw, TrendingDown } from 'lucide-vue-next';
+import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, DollarSign, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -109,6 +109,22 @@ const isSalesOpen = ref(true);
                                         <Link href="/sales/transactions">
                                             <CreditCard />
                                             <span>Transactions</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('finance.cash-flow')">
+                                            <BarChart3 />
+                                            <span>Cash Flow</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('finance.reports')">
+                                            <FileSpreadsheet />
+                                            <span>Financial Reports</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

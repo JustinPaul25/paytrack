@@ -15,11 +15,18 @@ class InvoiceController extends Controller
     {
         $query = Invoice::with(['customer', 'user']);
         $search = $request->input('search');
+        $status = $request->input('status');
+
         if ($search) {
             $query->whereHas('customer', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%");
             });
         }
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
         $invoices = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
 
         // Calculate statistics
@@ -32,6 +39,7 @@ class InvoiceController extends Controller
             'invoices' => $invoices,
             'filters' => [
                 'search' => $search,
+                'status' => $status,
             ],
             'stats' => [
                 'totalInvoices' => $totalInvoices,
