@@ -96,6 +96,14 @@ function handleExport() {
         <Head title="Financial Reports" />
 
         <div class="flex flex-col gap-6 print:gap-4">
+            <!-- Print Header with Meraki Logo (visible only on print) -->
+            <div class="hidden print:flex items-center justify-between mb-2">
+                <img src="/img/merakilogo.jpg" alt="Meraki" class="h-10 object-contain" />
+                <div class="text-right text-xs text-gray-600">
+                    <div>Financial Reports</div>
+                    <div>Generated: {{ new Date().toLocaleDateString() }}</div>
+                </div>
+            </div>
             <div class="flex items-start justify-between flex-wrap gap-4 print:hidden">
                 <div>
                     <h1 class="text-2xl font-bold">Financial Reports</h1>

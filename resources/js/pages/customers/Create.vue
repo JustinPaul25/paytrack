@@ -27,13 +27,14 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <CardTitle>Create Customer</CardTitle>
             </CardHeader>
             <CardContent>
-                <CustomerForm />
+				<CustomerForm>
+					<template #footer>
+						<Link :href="route('customers.index')">
+							<Button type="button" variant="ghost">Cancel</Button>
+						</Link>
+					</template>
+				</CustomerForm>
             </CardContent>
-            <CardFooter class="flex gap-2 justify-end">
-                <Link :href="route('customers.index')">
-                    <Button type="button" variant="ghost">Cancel</Button>
-                </Link>
-            </CardFooter>
         </Card>
     </AppLayout>
 </template> 

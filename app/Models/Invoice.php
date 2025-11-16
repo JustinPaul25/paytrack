@@ -66,6 +66,10 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
+    public function refunds()
+    {
+        return $this->hasMany(Refund::class);
+    }
 
     // Money accessors (get in dollars, set in cents)
     public function getTotalAmountAttribute($value)

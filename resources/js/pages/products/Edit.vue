@@ -85,14 +85,14 @@ function submit() {
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="name">Name</Label>
-                            <input id="name" v-model="form.name" class="w-full rounded border px-3 py-2 mt-1" required />
+							<input id="name" v-model="form.name" class="w-full rounded border px-3 py-2 mt-1" required placeholder="Product name" />
                             <InputError :message="form.errors.name" />
                         </div>
                     </div>
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="description">Description</Label>
-                            <textarea id="description" v-model="form.description" class="w-full rounded border px-3 py-2 mt-1" rows="3" />
+							<textarea id="description" v-model="form.description" class="w-full rounded border px-3 py-2 mt-1" rows="3" placeholder="Optional details to help identify the product" />
                             <InputError :message="form.errors.description" />
                         </div>
                     </div>
@@ -109,24 +109,24 @@ function submit() {
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="purchase_price">Purchase Price</Label>
-                            <input id="purchase_price" v-model="form.purchase_price" type="number" min="0" step="0.01" class="w-full rounded border px-3 py-2 mt-1" required />
+							<input id="purchase_price" v-model="form.purchase_price" type="number" min="0" step="0.01" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 120.00" />
                             <InputError :message="form.errors.purchase_price" />
                         </div>
                         <div class="flex-1">
                             <Label for="selling_price">Selling Price</Label>
-                            <input id="selling_price" v-model="form.selling_price" type="number" min="0" step="0.01" class="w-full rounded border px-3 py-2 mt-1" required />
+							<input id="selling_price" v-model="form.selling_price" type="number" min="0" step="0.01" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 150.00" />
                             <InputError :message="form.errors.selling_price" />
                         </div>
                     </div>
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="stock">Stock</Label>
-                            <input id="stock" v-model="form.stock" type="number" min="0" class="w-full rounded border px-3 py-2 mt-1" required />
+							<input id="stock" v-model="form.stock" type="number" min="0" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 100" />
                             <InputError :message="form.errors.stock" />
                         </div>
                         <div class="flex-1">
                             <Label for="SKU">SKU</Label>
-                            <input id="SKU" v-model="form.SKU" class="w-full rounded border px-3 py-2 mt-1" required />
+							<input id="SKU" v-model="form.SKU" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., BP-A4-80G-500" />
                             <InputError :message="form.errors.SKU" />
                         </div>
                     </div>

@@ -43,6 +43,14 @@ class RefundRequestController extends Controller
         if ($invoice->status !== 'completed') {
             abort(403);
         }
+        // Prevent creating when there is already a pending request for this invoice
+        $hasPending = \App\Models\RefundRequest::where('invoice_id', $invoice->id)
+            ->where('status', 'pending')
+            ->exists();
+        if ($hasPending) {
+            return redirect()->route('invoices.show', $invoice->id)
+                ->with('error', 'You already have a pending refund request for this invoice.');
+        }
         // Only the owning customer can access the form
         if ($request->user()?->hasRole('Customer')) {
             $customerId = Customer::where('email', $request->user()->email)->value('id');
@@ -86,6 +94,14 @@ class RefundRequestController extends Controller
         // Only allow refund for completed invoices
         if ($invoice->status !== 'completed') {
             abort(403);
+        }
+        // Prevent duplicate pending request
+        $hasPending = \App\Models\RefundRequest::where('invoice_id', $invoice->id)
+            ->where('status', 'pending')
+            ->exists();
+        if ($hasPending) {
+            return redirect()->route('invoices.show', $invoice->id)
+                ->with('error', 'You already have a pending refund request for this invoice.');
         }
         // Customer can submit for own invoice only
         if ($request->user()?->hasRole('Customer')) {
@@ -161,7 +177,8 @@ class RefundRequestController extends Controller
         // Create actual refund record in refunds table
         $invoiceItem = InvoiceItem::findOrFail($refundRequest->invoice_item_id);
         $qty = min($refundRequest->quantity, $invoiceItem->quantity);
-        $amount = $qty * $invoiceItem->price;
+        // Convert amount to cents (invoiceItem->price accessor returns currency)
+        $amount = (int) round(($qty * $invoiceItem->price) * 100);
         $type = $qty >= $invoiceItem->quantity ? 'full' : 'partial';
 
         $refund = Refund::create([
@@ -171,7 +188,7 @@ class RefundRequestController extends Controller
             'user_id' => $request->user()->id, // processor
             'refund_number' => 'RF-' . strtoupper(Str::random(8)),
             'quantity_refunded' => $qty,
-            'refund_amount' => $amount,
+            'refund_amount' => $amount, // cents
             'refund_type' => $type,
             'refund_method' => 'credit_note', // default method for system-approved refunds
             'status' => 'approved',
@@ -187,6 +204,46 @@ class RefundRequestController extends Controller
             'review_notes' => $request->get('review_notes'),
             'converted_refund_id' => $refund->id,
         ]);
+
+        // Email customer (if available)
+        if (!empty($refundRequest->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($refundRequest->email)->queue(
+                    new \App\Mail\RefundRequestDecision($refundRequest->fresh(), 'approved')
+                );
+            } catch (\Throwable $e) {
+                // ignore mail errors; still proceed
+            }
+        }
+
+        return redirect()->back();
+    }
+
+    public function reject(RefundRequest $refundRequest, Request $request)
+    {
+        // Admin only
+        if (!($request->user()?->hasRole('Admin'))) {
+            abort(403);
+        }
+        if ($refundRequest->status !== 'pending') {
+            return redirect()->back();
+        }
+
+        $refundRequest->update([
+            'status' => 'rejected',
+            'review_notes' => $request->get('review_notes'),
+        ]);
+
+        // Email customer (if available)
+        if (!empty($refundRequest->email)) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($refundRequest->email)->queue(
+                    new \App\Mail\RefundRequestDecision($refundRequest->fresh(), 'rejected')
+                );
+            } catch (\Throwable $e) {
+                // ignore mail errors
+            }
+        }
 
         return redirect()->back();
     }

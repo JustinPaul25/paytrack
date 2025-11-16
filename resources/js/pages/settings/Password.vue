@@ -84,6 +84,7 @@ const updatePassword = () => {
                             autocomplete="new-password"
                             placeholder="New password"
                         />
+                        <p class="text-[11px] text-gray-500">Use at least 8 characters with a mix of letters and numbers.</p>
                         <InputError :message="form.errors.password" />
                     </div>
 
@@ -97,6 +98,7 @@ const updatePassword = () => {
                             autocomplete="new-password"
                             placeholder="Confirm password"
                         />
+                        <p class="text-[11px] text-gray-500">Must match the new password exactly.</p>
                         <InputError :message="form.errors.password_confirmation" />
                     </div>
 

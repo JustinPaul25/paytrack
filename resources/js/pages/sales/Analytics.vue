@@ -11,7 +11,7 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import BaseChart from '@/components/charts/BaseChart.vue';
 import { type BreadcrumbItem } from '@/types';
 import type { ChartDataset } from 'chart.js';
-import { TrendingUp, DollarSign, FileText, Clock } from 'lucide-vue-next';
+import { TrendingUp, FileText, Clock } from 'lucide-vue-next';
 import { generateSalesForecast, type SalesForecastPoint } from '@/lib/analytics/salesForecast';
 
 interface SalesData {
@@ -438,7 +438,9 @@ function formatCurrency(amount: number) {
                             </p>
                         </div>
                         <div class="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
-                            <DollarSign class="w-6 h-6 text-blue-600" />
+                            <svg class="w-6 h-6 text-blue-600 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 119.43 122.88" aria-hidden="true">
+                                <path d="M118.45,51l1,1-.74,9.11H99A40.52,40.52,0,0,1,81.88,78.43q-11.44,6.28-27.71,7h-15l.5,37.43H21.42l.74-36.94-.24-24.87H1L0,59.84.74,51H21.92l-.25-15.26H1l-1-1,.74-9.11H21.67L21.42.25,63.29,0Q78.8,0,88.65,6.53T102,25.61h16.5l1,1.23-.74,8.87h-15v3.94A53.17,53.17,0,0,1,102.44,51ZM39.65,25.61H81.26Q74.85,14,58.61,13.3L39.89,14l-.24,11.57ZM39.4,51H83.23a39.51,39.51,0,0,0,1.23-9.6,46.17,46.17,0,0,0-.24-5.66H39.65L39.4,51ZM58.61,71.91q12.56-2.72,19.21-10.84H39.4l-.25,10.1,19.46.74Z"/>
+                            </svg>
                         </div>
                     </div>
                 </CardContent>
@@ -516,7 +518,9 @@ function formatCurrency(amount: number) {
                     <CardTitle>Sales by Category</CardTitle>
                 </CardHeader>
                 <CardContent>
+                    <div v-if="!salesByCategory.length" class="text-sm text-gray-500">No category data for the selected period.</div>
                     <BaseChart
+                        v-else
                         type="doughnut"
                         :data="categoryChartData"
                         :options="categoryChartOptions"
@@ -602,7 +606,7 @@ function formatCurrency(amount: number) {
                 </CardHeader>
                 <CardContent>
                     <div class="overflow-x-auto">
-                        <table class="w-full">
+                        <table class="w-full" v-if="topProducts.length">
                             <thead>
                                 <tr class="border-b">
                                     <th class="text-left py-3 px-4 font-medium">Product</th>
@@ -618,6 +622,7 @@ function formatCurrency(amount: number) {
                                 </tr>
                             </tbody>
                         </table>
+                        <div v-else class="text-sm text-gray-500">No product performance data for this period.</div>
                     </div>
                 </CardContent>
             </Card>
@@ -629,7 +634,7 @@ function formatCurrency(amount: number) {
                 </CardHeader>
                 <CardContent>
                     <div class="overflow-x-auto">
-                        <table class="w-full">
+                        <table class="w-full" v-if="recentInvoices.length">
                             <thead>
                                 <tr class="border-b">
                                     <th class="text-left py-3 px-4 font-medium">Invoice #</th>
@@ -660,6 +665,7 @@ function formatCurrency(amount: number) {
                                 </tr>
                             </tbody>
                         </table>
+                        <div v-else class="text-sm text-gray-500">No recent invoices for this period.</div>
                     </div>
                 </CardContent>
             </Card>

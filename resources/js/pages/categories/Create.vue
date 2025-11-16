@@ -86,14 +86,14 @@ function submit(createAnother = false) {
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="name">Name</Label>
-                            <input id="name" v-model="form.name" class="w-full rounded border px-3 py-2 mt-1" required />
+							<input id="name" v-model="form.name" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., Paper, Ink, Accessories" />
                             <InputError :message="form.errors.name" />
                         </div>
                     </div>
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="description">Description</Label>
-                            <textarea id="description" v-model="form.description" class="w-full rounded border px-3 py-2 mt-1" rows="3" />
+							<textarea id="description" v-model="form.description" class="w-full rounded border px-3 py-2 mt-1" rows="3" placeholder="Optional. Short summary of this category" />
                             <InputError :message="form.errors.description" />
                         </div>
                     </div>
@@ -112,7 +112,6 @@ function submit(createAnother = false) {
                     </div>
                     <CardFooter class="flex gap-2 justify-end">
                         <Button type="submit" variant="default">Create</Button>
-                        <Button type="button" variant="secondary" @click="submit(true)">Create & create another</Button>
                         <Link :href="route('categories.index')">
                             <Button type="button" variant="ghost">Cancel</Button>
                         </Link>

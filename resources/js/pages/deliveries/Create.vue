@@ -27,6 +27,7 @@ interface Invoice {
     id: number;
     customer_id: number;
     total_amount: number;
+    reference_number: string;
     customer: Customer;
 }
 
@@ -61,6 +62,19 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 function submit(createAnother = false) {
+    // Require invoice selection on the client-side
+    if (!form.invoice_id) {
+        form.setError('invoice_id', 'Invoice is required.');
+        return;
+    }
+
+    // Validate Philippine mobile format on the client-side
+    const phMobileRegex = /^(?:\+?63|0)9\d{9}$/;
+    if (!phMobileRegex.test(form.contact_phone || '')) {
+        form.setError('contact_phone', 'Enter a valid PH mobile number (09XXXXXXXXX or +639XXXXXXXXX).');
+        return;
+    }
+
     if (createAnother) {
         form.create_another = 1;
     } else {
@@ -104,10 +118,10 @@ const invoiceOptions = computed(() => {
     const customerInvoices = props.invoices.filter(invoice => invoice.customer_id === form.customer_id);
     
     return [
-        { value: null, label: 'Select invoice (optional)' },
+        { value: null, label: 'Select invoice' },
         ...customerInvoices.map(invoice => ({
             value: invoice.id,
-            label: `Invoice #${invoice.id} - ${formatCurrency(invoice.total_amount)}`
+            label: `${invoice.reference_number}`
         }))
     ];
 });
@@ -275,12 +289,13 @@ async function getCurrentLocationAddress() {
                         </div>
                         
                         <div>
-                            <Label for="invoice_id">Invoice (Optional)</Label>
+                            <Label for="invoice_id">Invoice</Label>
                             <Select
                                 v-model="form.invoice_id"
                                 :options="invoiceOptions"
                                 placeholder="Select invoice"
                                 class="mt-1"
+                                required
                             />
                             <InputError :message="form.errors.invoice_id" />
                         </div>
@@ -329,8 +344,11 @@ async function getCurrentLocationAddress() {
                                 v-model="form.contact_phone"
                                 type="tel"
                                 id="contact_phone"
+                                inputmode="numeric"
+                                pattern="^(?:\+?63|0)9\d{9}$"
+                                maxlength="13"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="Enter contact phone number"
+                                placeholder="09XXXXXXXXX or +639XXXXXXXXX"
                                 required
                             />
                             <InputError :message="form.errors.contact_phone" />

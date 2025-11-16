@@ -85,6 +85,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('refund-requests/{refundRequest}/approve', [\App\Http\Controllers\RefundRequestController::class, 'approve'])
         ->middleware('role:Admin')
         ->name('refundRequests.approve');
+    Route::post('refund-requests/{refundRequest}/reject', [\App\Http\Controllers\RefundRequestController::class, 'reject'])
+        ->middleware('role:Admin')
+        ->name('refundRequests.reject');
+
+    // Refunds (Admin)
+    Route::middleware('role:Admin')->group(function () {
+        Route::get('refunds', [\App\Http\Controllers\RefundController::class, 'index'])->name('refunds.index');
+        Route::post('refunds/{refund}/process', [\App\Http\Controllers\RefundController::class, 'process'])->name('refunds.process');
+        Route::post('refunds/{refund}/complete', [\App\Http\Controllers\RefundController::class, 'complete'])->name('refunds.complete');
+        Route::post('refunds/{refund}/cancel', [\App\Http\Controllers\RefundController::class, 'cancel'])->name('refunds.cancel');
+    });
     // (refund routes removed)
 
     // Deliveries (Admin|Staff)

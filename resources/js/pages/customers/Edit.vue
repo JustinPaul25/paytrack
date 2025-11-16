@@ -29,13 +29,14 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <CardTitle>Edit Customer</CardTitle>
             </CardHeader>
             <CardContent>
-                <CustomerForm :customer="customer" :profileImageUrl="profile_image_url" />
+				<CustomerForm :customer="customer" :profileImageUrl="profile_image_url">
+					<template #footer>
+						<Link :href="route('customers.index')">
+							<Button type="button" variant="ghost">Cancel</Button>
+						</Link>
+					</template>
+				</CustomerForm>
             </CardContent>
-            <CardFooter class="flex gap-2 justify-end">
-                <Link :href="route('customers.index')">
-                    <Button type="button" variant="ghost">Cancel</Button>
-                </Link>
-            </CardFooter>
         </Card>
     </AppLayout>
 </template> 

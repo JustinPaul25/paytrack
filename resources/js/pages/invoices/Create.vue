@@ -433,7 +433,6 @@ function getProductOptions() {
             <Card>
                 <CardFooter class="flex gap-2 justify-end">
                     <Button type="submit" :disabled="!canSubmit" variant="default">Create Invoice</Button>
-                    <Button type="button" :disabled="!canSubmit" variant="secondary" @click="submit(true)">Create and make another</Button>
                     <Link :href="route('invoices.index')">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>

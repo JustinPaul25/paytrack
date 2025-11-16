@@ -229,7 +229,7 @@ async function deleteDelivery(id: number) {
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody v-if="(page.props.deliveries as Paginated<Delivery>).data.length">
                         <tr v-for="delivery in (page.props.deliveries as Paginated<Delivery>).data" :key="delivery.id" class="hover:bg-muted">
                             <td class="px-4 py-2">
                                 <div>
@@ -257,20 +257,30 @@ async function deleteDelivery(id: number) {
                             <td class="px-4 py-2 font-medium">{{ formatCurrency(delivery.delivery_fee) }}</td>
                             <td class="px-4 py-2">
                                 <div class="flex gap-2">
-                                    <Link :href="route('deliveries.show', delivery.id)">
-                                        <Button variant="ghost" size="sm">
+                                    <Button variant="ghost" size="sm" as-child>
+                                        <Link :href="route('deliveries.show', delivery.id)">
                                             <Icon name="eye" class="h-4 w-4" />
-                                        </Button>
-                                    </Link>
-                                    <Link :href="route('deliveries.edit', delivery.id)">
-                                        <Button variant="ghost" size="sm">
+                                        </Link>
+                                    </Button>
+                                    <Button variant="ghost" size="sm" as-child>
+                                        <Link :href="route('deliveries.edit', delivery.id)">
                                             <Icon name="edit" class="h-4 w-4" />
-                                        </Button>
-                                    </Link>
+                                        </Link>
+                                    </Button>
                                     <Button variant="ghost" size="sm" @click="deleteDelivery(delivery.id)">
                                         <Icon name="trash" class="h-4 w-4" />
                                     </Button>
                                 </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody v-else>
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">
+                                No deliveries found.
+                                <button v-if="(search && search.toString().trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
+                                    Clear search
+                                </button>
                             </td>
                         </tr>
                     </tbody>

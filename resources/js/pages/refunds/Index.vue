@@ -7,6 +7,7 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
 import Swal from 'sweetalert2';
+import { ref } from 'vue';
 
 interface RefundRequest {
     id: number;
@@ -38,6 +39,8 @@ interface Paginated<T> {
 const page = usePage();
 const filters = (page.props.filters || {}) as { status?: string };
 
+const showDetails = ref<RefundRequest | null>(null);
+
 function approve(id: number) {
     Swal.fire({
         title: 'Approve this refund request?',
@@ -45,9 +48,38 @@ function approve(id: number) {
         showCancelButton: true,
         confirmButtonText: 'Approve',
         confirmButtonColor: '#10b981',
+        input: 'textarea',
+        inputLabel: 'Approval notes (optional)',
+        inputPlaceholder: 'Notes for this approval...',
+        inputAttributes: { 'aria-label': 'Approval notes (optional)' },
     }).then((res) => {
         if (res.isConfirmed) {
-            router.post(route('refundRequests.approve', id), {}, { preserveScroll: true });
+            router.post(route('refundRequests.approve', id), { review_notes: res.value || undefined }, { preserveScroll: true });
+        }
+    });
+}
+
+function reject(id: number) {
+    Swal.fire({
+        title: 'Decline this refund request?',
+        text: 'This will mark the request as rejected. You can’t undo this.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Decline',
+        confirmButtonColor: '#ef4444',
+        input: 'textarea',
+        inputLabel: 'Reason (required)',
+        inputPlaceholder: 'Provide a reason for declining...',
+        inputAttributes: { 'aria-label': 'Reason (required)' },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'Please provide a brief reason.';
+            }
+            return undefined as any;
+        },
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('refundRequests.reject', id), { review_notes: res.value }, { preserveScroll: true });
         }
     });
 }
@@ -79,7 +111,17 @@ function approve(id: number) {
             </CardHeader>
             <CardContent>
                 <div v-if="!(page.props.refundRequests as Paginated<RefundRequest>).data.length" class="py-8 text-center text-sm text-gray-500">
-                    No refund requests.
+                    <div v-if="(filters.status && filters.status !== '')">
+                        No refund requests for the selected filter.
+                        <div class="mt-3">
+                            <Button variant="outline" @click="router.get(route('refundRequests.index'), { status: 'pending' }, { preserveState: true, replace: true })">
+                                Clear filters
+                            </Button>
+                        </div>
+                    </div>
+                    <div v-else>
+                        No refund requests.
+                    </div>
                 </div>
                 <div v-else>
                     <table class="min-w-full divide-y divide-border">
@@ -125,12 +167,13 @@ function approve(id: number) {
                                         <Button v-if="r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
                                             Approve
                                         </Button>
+                                        <Button v-if="r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
+                                            Decline
+                                        </Button>
+                                        <Button size="sm" variant="outline" @click="showDetails = r">View details</Button>
                                         <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)">
                                             <Button size="sm" variant="ghost">View Invoice</Button>
                                         </Link>
-                                        <a v-if="r.media_link" :href="r.media_link" target="_blank">
-                                            <Button size="sm" variant="outline">Media</Button>
-                                        </a>
                                     </div>
                                 </td>
                             </tr>
@@ -139,6 +182,42 @@ function approve(id: number) {
                 </div>
             </CardContent>
         </Card>
+
+        <!-- Details Modal -->
+        <div v-if="showDetails" class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="showDetails = null"></div>
+            <div class="relative bg-background rounded-lg shadow-lg w-[90%] max-w-lg p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-semibold">Refund Request Details</h3>
+                    <button class="text-sm text-gray-500" @click="showDetails = null">Close</button>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <div class="text-xs text-gray-500">Tracking</div>
+                        <div class="font-medium">{{ showDetails.tracking_number }}</div>
+                    </div>
+                    <div v-if="showDetails.product_name">
+                        <div class="text-xs text-gray-500">Product</div>
+                        <div>{{ showDetails.product_name }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500">Quantity</div>
+                        <div>{{ showDetails.quantity }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500">Description</div>
+                        <div class="whitespace-pre-wrap">{{ (showDetails as any).reason || '—' }}</div>
+                    </div>
+                    <div v-if="showDetails.media_link">
+                        <div class="text-xs text-gray-500">Media Link</div>
+                        <a :href="showDetails.media_link" target="_blank" class="text-blue-500 underline break-all">{{ showDetails.media_link }}</a>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <Button variant="default" @click="showDetails = null">Done</Button>
+                </div>
+            </div>
+        </div>
     </AppLayout>
 </template>
 

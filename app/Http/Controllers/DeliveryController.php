@@ -50,7 +50,9 @@ class DeliveryController extends Controller
     public function create()
     {
         $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location']);
-        $invoices = Invoice::with('customer')->get(['id', 'customer_id', 'total_amount']);
+        $invoices = Invoice::with('customer')
+            ->where('status', 'pending')
+            ->get(['id', 'customer_id', 'total_amount', 'reference_number']);
         
         return inertia('deliveries/Create', [
             'customers' => $customers,
@@ -62,10 +64,11 @@ class DeliveryController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'invoice_id' => 'nullable|exists:invoices,id',
+            'invoice_id' => 'required|exists:invoices,id',
             'delivery_address' => 'required|string|max:500',
             'contact_person' => 'required|string|max:255',
-            'contact_phone' => 'required|string|max:20',
+            // Philippine mobile: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX
+            'contact_phone' => ['required','regex:/^(?:\\+?63|0)9\\d{9}$/'],
             'delivery_date' => 'required|date|after_or_equal:today',
             'delivery_time' => 'required|string|max:50',
             'status' => 'required|string|in:pending,completed,cancelled',
@@ -89,7 +92,7 @@ class DeliveryController extends Controller
     public function edit(Delivery $delivery)
     {
         $customers = Customer::all(['id', 'name', 'company_name']);
-        $invoices = Invoice::with('customer')->get(['id', 'customer_id', 'total_amount']);
+        $invoices = Invoice::with('customer')->get(['id', 'customer_id', 'total_amount', 'reference_number']);
         $delivery->load(['customer', 'invoice']);
         
         return inertia('deliveries/Edit', [
@@ -103,10 +106,11 @@ class DeliveryController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'invoice_id' => 'nullable|exists:invoices,id',
+            'invoice_id' => 'required|exists:invoices,id',
             'delivery_address' => 'required|string|max:500',
             'contact_person' => 'required|string|max:255',
-            'contact_phone' => 'required|string|max:20',
+            // Philippine mobile: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX
+            'contact_phone' => ['required','regex:/^(?:\\+?63|0)9\\d{9}$/'],
             'delivery_date' => 'required|date',
             'delivery_time' => 'required|string|max:50',
             'status' => 'required|string|in:pending,completed,cancelled',

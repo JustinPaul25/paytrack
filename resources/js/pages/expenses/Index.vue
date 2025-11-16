@@ -220,7 +220,7 @@ function formatDate(date: string) {
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody v-if="(page.props as any).expenses && (page.props as any).expenses.length">
                         <tr v-for="expense in (page.props as any).expenses" :key="expense.id" class="hover:bg-muted">
                             <td class="px-4 py-2 font-medium">#{{ expense.id }}</td>
                             <td class="px-4 py-2">
@@ -242,6 +242,16 @@ function formatDate(date: string) {
                                         <Icon name="trash" class="h-4 w-4" />
                                     </Button>
                                 </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tbody v-else>
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">
+                                No expenses found.
+                                <button v-if="(search && search.toString().trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
+                                    Clear search
+                                </button>
                             </td>
                         </tr>
                     </tbody>

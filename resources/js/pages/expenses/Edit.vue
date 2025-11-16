@@ -106,9 +106,10 @@ function submit() {
                                 min="0"
                                 step="0.01"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="Enter amount"
+                                placeholder="e.g., 1500.00"
                                 required
                             />
+                            <div class="text-[11px] text-gray-500 mt-1">Numbers only, minimum 0.01.</div>
                             <InputError :message="form.errors.amount" />
                         </div>
                     </div>
@@ -123,6 +124,7 @@ function submit() {
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                                 required
                             />
+                            <div class="text-[11px] text-gray-500 mt-1">Pick the date this expense occurred.</div>
                             <InputError :message="form.errors.date" />
                         </div>
                         
@@ -133,9 +135,10 @@ function submit() {
                                 type="text"
                                 id="description"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="Enter description"
+                                placeholder="e.g., Electricity bill for March"
                                 required
                             />
+                            <div class="text-[11px] text-gray-500 mt-1">Brief, clear note (e.g., vendor or bill name).</div>
                             <InputError :message="form.errors.description" />
                         </div>
                     </div>

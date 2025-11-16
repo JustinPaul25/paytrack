@@ -100,6 +100,7 @@ onMounted(() => {
                     <div class="grid gap-2">
                         <Label for="profile_image">Profile Image</Label>
                         <input id="profile_image" name="profile_image" type="file" accept="image/*" @change="onProfileImageChange" class="w-full rounded border px-3 py-2 mt-1" />
+                        <p class="text-[11px] text-gray-500">JPG or PNG, max 2MB. A square image works best.</p>
                         <div v-if="profileImageUrl" class="mt-2">
                             <img :src="profileImageUrl" alt="Profile Preview" class="h-20 w-20 object-cover rounded-full border" />
                         </div>

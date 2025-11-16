@@ -55,7 +55,8 @@
     <div class="flex gap-4">
       <div class="flex-1">
         <Label for="profile_image">Profile picture (optional)</Label>
-        <Input id="profile_image" type="file" accept="image/*" @change="onFileChange" />
+        <Input id="profile_image" type="file" accept="image/jpeg,image/png" @change="onFileChange" />
+        <p class="text-xs text-muted-foreground mt-1">Max 2MB, JPG or PNG.</p>
         <InputError :message="form.errors.profile_image" />
         <div v-if="profileImageUrl" class="mt-2">
           <img :src="profileImageUrl" alt="Profile Image" class="w-24 h-24 object-cover rounded-full" />
@@ -124,7 +125,17 @@ const form = useForm({
 function onFileChange(e: Event) {
   const target = e.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
-    form.profile_image = target.files[0];
+    const file = target.files[0];
+    const isValidType = ['image/jpeg', 'image/png'].includes(file.type);
+    const isValidSize = file.size <= 2 * 1024 * 1024; // 2MB
+    if (!isValidType || !isValidSize) {
+      form.profile_image = null;
+      target.value = '';
+      const reason = !isValidType ? 'Please select a JPG or PNG image.' : 'File is too large. Max size is 2MB.';
+      window.alert(reason);
+      return;
+    }
+    form.profile_image = file;
   } else {
     form.profile_image = null;
   }

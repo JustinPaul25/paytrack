@@ -42,43 +42,24 @@ class FinancialReportController extends Controller
         $reportRows = $this->buildReportRows($filters['start'], $filters['end']);
         $totals = $this->summarizeTotals($reportRows);
 
+        // Export as HTML table with Excel-compatible headers so we can include a logo.
         $filename = sprintf(
-            'financial-report-%s-to-%s.csv',
+            'financial-report-%s-to-%s.xls',
             $filters['start']->format('Y-m'),
             $filters['end']->format('Y-m')
         );
 
-        $headers = [
-            'Content-Type' => 'text/csv',
+        $html = view('exports.financial_report', [
+            'rows' => $reportRows,
+            'totals' => $totals,
+        ])->render();
+
+        return response($html, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = static function () use ($reportRows, $totals) {
-            $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, ['Month', 'Income (PHP)', 'Expenses (PHP)', 'Net (PHP)']);
-
-            foreach ($reportRows as $row) {
-                fputcsv($handle, [
-                    $row['label'],
-                    number_format($row['income'], 2, '.', ''),
-                    number_format($row['expenses'], 2, '.', ''),
-                    number_format($row['net'], 2, '.', ''),
-                ]);
-            }
-
-            fputcsv($handle, []);
-            fputcsv($handle, [
-                'Totals',
-                number_format($totals['income'], 2, '.', ''),
-                number_format($totals['expenses'], 2, '.', ''),
-                number_format($totals['net'], 2, '.', ''),
-            ]);
-
-            fclose($handle);
-        };
-
-        return Response::stream($callback, 200, $headers);
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 
     /**

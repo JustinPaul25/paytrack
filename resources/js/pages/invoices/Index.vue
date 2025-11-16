@@ -272,15 +272,34 @@ function formatDateFriendly(dateString: string) {
 
         <Card>
             <CardContent>
-                <div v-if="(page.props.invoices as Paginated<Invoice>).data.length === 0" class="py-12 text-center">
-                    <div class="text-xl font-semibold mb-2">No invoices yet</div>
-                    <p class="text-sm text-gray-600 mb-6" v-if="!isCustomer">Create your first invoice to get started.</p>
-                    <Link v-if="!isCustomer" :href="route('invoices.create')">
-                        <Button variant="default">
-                            <span class="mr-2">+</span>
-                            Create Invoice
-                        </Button>
-                    </Link>
+                <div v-if="(page.props.invoices as Paginated<Invoice>).data.length === 0">
+                    <!-- If filters are applied, show filtered empty state -->
+                    <div v-if="(search && search.trim().length) || (status && status.trim().length)" class="py-12 text-center">
+                        <div class="text-xl font-semibold mb-2">No results found</div>
+                        <p class="text-sm text-gray-600 mb-6">
+                            We couldn't find any invoices matching your search/filter.
+                        </p>
+                        <div class="flex items-center justify-center gap-2">
+                            <Button variant="outline" @click="search = ''; status = ''">Clear search</Button>
+                            <Link v-if="!isCustomer" :href="route('invoices.create')">
+                                <Button variant="default">
+                                    <span class="mr-2">+</span>
+                                    Create Invoice
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+                    <!-- Otherwise, show empty state for first use -->
+                    <div v-else class="py-12 text-center">
+                        <div class="text-xl font-semibold mb-2">No invoices yet</div>
+                        <p class="text-sm text-gray-600 mb-6" v-if="!isCustomer">Create your first invoice to get started.</p>
+                        <Link v-if="!isCustomer" :href="route('invoices.create')">
+                            <Button variant="default">
+                                <span class="mr-2">+</span>
+                                Create Invoice
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
                 <div v-else>
                     <table class="min-w-full divide-y divide-border">
@@ -297,7 +316,11 @@ function formatDateFriendly(dateString: string) {
                         </thead>
                         <tbody>
                             <tr v-for="invoice in (page.props.invoices as Paginated<Invoice>).data" :key="invoice.id" class="hover:bg-muted">
-                                <td class="px-4 py-2 font-medium">{{ invoice.reference_number }}</td>
+                                <td class="px-4 py-2 font-medium">
+                                    <Link :href="route('invoices.show', invoice.id)" class="underline underline-offset-4">
+                                        {{ invoice.reference_number }}
+                                    </Link>
+                                </td>
                                 <td class="px-4 py-2">
                                     <div>
                                         <div class="font-medium">{{ invoice.customer.name }}</div>

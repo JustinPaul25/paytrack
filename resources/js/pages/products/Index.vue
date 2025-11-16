@@ -218,7 +218,7 @@ async function deleteProduct(id: number) {
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+					<tbody v-if="(page.props.products as Paginated<Product>).data.length">
                         <tr v-for="product in (page.props.products as Paginated<Product>).data" :key="product.id" class="hover:bg-muted">
                             <td class="px-4 py-2 font-medium">{{ product.name }}</td>
                             <td class="px-4 py-2 text-sm text-gray-500">{{ product.category ? product.category.name : 'No category' }}</td>
@@ -229,7 +229,7 @@ async function deleteProduct(id: number) {
                                     product.stock <= 10 ? 'bg-red-100 text-red-800' : 
                                     product.stock <= 50 ? 'bg-yellow-100 text-yellow-800' : 
                                     'bg-green-100 text-green-800'
-                                ]">
+								]" :title="product.stock <= 10 ? 'Low stock — reorder soon' : (product.stock <= 50 ? 'Moderate stock' : 'In stock')">
                                     {{ product.stock }}
                                 </span>
                             </td>
@@ -247,7 +247,17 @@ async function deleteProduct(id: number) {
                                 </div>
                             </td>
                         </tr>
-                    </tbody>
+					</tbody>
+					<tbody v-else>
+						<tr>
+							<td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">
+								No products found.
+								<button type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
+									Clear search
+								</button>
+							</td>
+						</tr>
+					</tbody>
                 </table>
 
                 <!-- Pagination -->

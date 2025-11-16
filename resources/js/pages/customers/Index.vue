@@ -263,8 +263,8 @@ async function deleteCustomer(id: number) {
 
         <Card>
             <CardContent>
-                <!-- Empty State -->
-                <div v-if="(page.props.customers as Paginated<Customer>).total === 0" class="py-12 text-center">
+				<!-- Empty State: No customers at all -->
+				<div v-if="(page.props.customers as Paginated<Customer>).total === 0" class="py-12 text-center">
                     <div class="mx-auto max-w-md">
                         <h3 class="text-lg font-semibold mb-2">No customers yet</h3>
                         <p class="text-sm text-muted-foreground mb-6">
@@ -278,8 +278,24 @@ async function deleteCustomer(id: number) {
                     </div>
                 </div>
 
+				<!-- Empty State: No results due to search/filter -->
+				<div
+					v-else-if="(page.props.customers as Paginated<Customer>).data.length === 0 && (search && search.toString().trim().length)"
+					class="py-12 text-center"
+				>
+					<div class="mx-auto max-w-md">
+						<h3 class="text-lg font-semibold mb-2">No results found</h3>
+						<p class="text-sm text-muted-foreground mb-6">
+							We couldn't find any customers matching your search.
+						</p>
+						<Button variant="outline" @click="search = ''">
+							Clear search
+						</Button>
+					</div>
+				</div>
+
                 <!-- Table -->
-                <table v-else class="min-w-full divide-y divide-border">
+				<table v-else class="min-w-full divide-y divide-border">
                     <thead>
                         <tr>
                             <th class="px-4 py-2 text-left">Name</th>
@@ -291,7 +307,11 @@ async function deleteCustomer(id: number) {
                     </thead>
                     <tbody>
                         <tr v-for="customer in (page.props.customers as Paginated<Customer>).data" :key="customer.id" class="hover:bg-muted">
-                            <td class="px-4 py-2 font-medium">{{ customer.name }}</td>
+							<td class="px-4 py-2 font-medium">
+								<Link :href="route('customers.edit', customer.id)" class="underline underline-offset-4">
+									{{ customer.name }}
+								</Link>
+							</td>
                             <td class="px-4 py-2">{{ customer.company_name || '-' }}</td>
                             <td class="px-4 py-2">{{ customer.email }}</td>
                             <td class="px-4 py-2">{{ customer.phone || '-' }}</td>

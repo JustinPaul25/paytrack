@@ -32,6 +32,16 @@ class Refund extends Model
         'completed_at' => 'datetime',
     ];
 
+    // Money accessors (get as currency, set in cents)
+    public function getRefundAmountAttribute($value)
+    {
+        return $value / 100;
+    }
+    public function setRefundAmountAttribute($value)
+    {
+        $this->attributes['refund_amount'] = (int) round($value * 100);
+    }
+
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);

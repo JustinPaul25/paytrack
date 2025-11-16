@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -70,10 +71,15 @@ interface Invoice {
 
 const props = defineProps<{
     invoice: Invoice;
+    refunds?: { id:number; refund_number:string; product_name?:string; quantity_refunded:number; refund_amount:number; status:string; created_at:string }[];
+    refundRequests?: { id:number; tracking_number:string; product_name?:string; quantity:number; status:string; created_at:string; media_link?:string; review_notes?:string }[];
 }>();
 
 const page = usePage();
 const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
+const hasPendingRefundRequest = computed(() => {
+    return Array.isArray((props as any).refundRequests) && (props as any).refundRequests.some((r: any) => r.status === 'pending');
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -114,6 +120,12 @@ function formatDate(dateString: string) {
     });
 }
 
+function printPage() {
+    // Use global print safely
+    // eslint-disable-next-line no-restricted-globals
+    (window as any).print();
+}
+
 function getCustomerProfileImage(customer: Customer) {
     if (!customer.media || customer.media.length === 0) {
         return null;
@@ -144,11 +156,16 @@ function getCustomerInitials(customer: Customer) {
         <div class="flex items-center justify-between my-6">
             <h1 class="text-2xl font-bold">{{ props.invoice.reference_number }}</h1>
             <div class="flex gap-2">
-                <Button variant="outline" @click="window.print()">Download PDF</Button>
-                <Button variant="outline" @click="window.print()">Print</Button>
-                <Link v-if="isCustomer && props.invoice.status === 'completed'" :href="route('refundRequests.create', props.invoice.id)">
-                    <Button variant="default">Request Refund</Button>
-                </Link>
+                <Button variant="outline" @click="printPage">Download PDF</Button>
+                <Button variant="outline" @click="printPage">Print</Button>
+                <template v-if="isCustomer && props.invoice.status === 'completed'">
+                    <Link v-if="!hasPendingRefundRequest" :href="route('refundRequests.create', props.invoice.id)">
+                        <Button variant="default">Request Refund</Button>
+                    </Link>
+                    <Button v-else variant="outline" disabled title="You already have a pending refund request for this invoice.">
+                        Request Pending
+                    </Button>
+                </template>
                 <Link :href="route('invoices.index')">
                     <Button variant="ghost">Back</Button>
                 </Link>
@@ -246,6 +263,73 @@ function getCustomerInitials(customer: Customer) {
 
             <!-- Sidebar -->
             <div class="space-y-6">
+                <!-- Refund Requests Card -->
+                <Card v-if="props.refundRequests && props.refundRequests.length">
+                    <CardHeader>
+                        <CardTitle>Refund Requests</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div v-for="r in props.refundRequests" :key="r.id" class="border rounded-md p-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-medium">{{ r.tracking_number }}</div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                        :class="{
+                                            'bg-yellow-100 text-yellow-800': r.status === 'pending',
+                                            'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'converted',
+                                            'bg-red-100 text-red-800': r.status === 'rejected',
+                                        }"
+                                    >
+                                        {{ r.status }}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <div v-if="r.product_name">Product: {{ r.product_name }}</div>
+                                    <div>Qty: {{ r.quantity }}</div>
+                                    <div class="text-xs text-gray-500">Date: {{ r.created_at }}</div>
+                                    <div v-if="r.status === 'rejected' && r.review_notes" class="mt-1 text-xs text-red-500">
+                                        Reason: {{ r.review_notes }}
+                                    </div>
+                                    <div v-if="r.media_link" class="text-xs">
+                                        <a :href="r.media_link" target="_blank" class="text-blue-500 underline">Media</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Refunds Card -->
+                <Card v-if="props.refunds && props.refunds.length">
+                    <CardHeader>
+                        <CardTitle>Refunds</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div v-for="r in props.refunds" :key="r.id" class="border rounded-md p-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-medium">{{ r.refund_number }}</div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                        :class="{
+                                            'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'completed',
+                                            'bg-yellow-100 text-yellow-800': r.status === 'pending',
+                                            'bg-red-100 text-red-800': r.status === 'cancelled',
+                                        }"
+                                    >
+                                        {{ r.status }}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <div v-if="r.product_name">Product: {{ r.product_name }}</div>
+                                    <div>Qty: {{ r.quantity_refunded }}</div>
+                                    <div>Amount: {{ formatCurrency(r.refund_amount) }}</div>
+                                    <div class="text-xs text-gray-500">Date: {{ r.created_at }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Customer Information -->
                 <Card>
                     <CardHeader>

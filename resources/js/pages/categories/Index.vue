@@ -198,7 +198,7 @@ async function deleteCategory(id: number) {
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+					<tbody v-if="(page.props.categories as Paginated<Category>).data.length">
                         <tr v-for="category in (page.props.categories as Paginated<Category>).data" :key="category.id" class="hover:bg-muted">
                             <td class="px-4 py-2 font-medium">{{ category.name }}</td>
                             <td class="px-4 py-2 text-sm text-gray-500">{{ category.description || 'No description' }}</td>
@@ -216,7 +216,17 @@ async function deleteCategory(id: number) {
                                 </div>
                             </td>
                         </tr>
-                    </tbody>
+					</tbody>
+					<tbody v-else>
+						<tr>
+							<td colspan="4" class="px-4 py-10 text-center text-sm text-gray-500">
+								No categories found.
+								<button type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
+									Clear search
+								</button>
+							</td>
+						</tr>
+					</tbody>
                 </table>
 
                 <!-- Pagination -->

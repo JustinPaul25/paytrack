@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\RefundRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -157,9 +158,39 @@ class InvoiceController extends Controller
                 abort(403);
             }
         }
-        $invoice->load(['customer.media', 'user', 'invoiceItems.product']);
+        $invoice->load(['customer.media', 'user', 'invoiceItems.product', 'refunds.product']);
+        $refunds = $invoice->refunds()->with('product')->orderByDesc('created_at')->get()->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'refund_number' => $r->refund_number,
+                'product_name' => $r->product?->name,
+                'quantity_refunded' => $r->quantity_refunded,
+                'refund_amount' => $r->refund_amount, // accessor returns currency
+                'status' => $r->status,
+                'created_at' => $r->created_at?->format('M d, Y'),
+            ];
+        });
+        $refundRequests = RefundRequest::with('product')
+            ->where('invoice_id', $invoice->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($rq) {
+                return [
+                    'id' => $rq->id,
+                    'tracking_number' => $rq->tracking_number,
+                    'product_name' => $rq->product?->name,
+                    'quantity' => $rq->quantity,
+                    'reason' => $rq->reason,
+                    'review_notes' => $rq->review_notes,
+                    'status' => $rq->status,
+                    'created_at' => $rq->created_at?->format('M d, Y'),
+                    'media_link' => $rq->media_link,
+                ];
+            });
         return inertia('invoices/Show', [
             'invoice' => $invoice,
+            'refunds' => $refunds,
+            'refundRequests' => $refundRequests,
         ]);
     }
 
