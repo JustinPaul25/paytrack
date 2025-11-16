@@ -46,8 +46,17 @@ class SalesTransactionController extends Controller
             });
         }
 
-        // Apply sorting
-        $query->orderBy($sortBy, $sortOrder);
+        // Apply sorting (whitelist + mapping)
+        $sortMap = [
+            'created_at' => 'created_at',
+            'total_amount' => 'total_amount',
+            // UI sends "payment_status" – actual column is "status"
+            'payment_status' => 'status',
+            'status' => 'status',
+        ];
+        $column = $sortMap[$sortBy] ?? 'created_at';
+        $direction = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy($column, $direction);
 
         $invoices = $query->get();
 

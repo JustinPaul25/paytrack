@@ -153,56 +153,56 @@ function handleExport() {
                 </CardHeader>
                 <CardContent>
                     <div v-if="hasRows" class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 print:divide-gray-300">
-                            <thead class="bg-gray-50 print:bg-white">
+                        <table class="min-w-full divide-y divide-gray-200 print:divide-black">
+                            <thead class="bg-gray-50 print:bg-white print:text-black">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wide print:text-black">
                                         Month
                                     </th>
-                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide print:text-black">
                                         Income (₱)
                                     </th>
-                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide print:text-black">
                                         Expenses (₱)
                                     </th>
-                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 uppercase tracking-wide print:text-black">
                                         Net (₱)
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200 print:divide-gray-300">
+                            <tbody class="divide-y divide-gray-200 print:divide-black">
                                 <tr v-for="row in rows" :key="row.month" class="bg-white even:bg-gray-50 print:bg-white">
-                                    <td class="px-4 py-3 text-sm font-medium text-gray-800">
+                                    <td class="px-4 py-3 text-sm font-medium text-gray-800 print:text-black">
                                         {{ row.label }}
                                     </td>
-                                    <td class="px-4 py-3 text-right text-sm text-green-600 font-semibold">
+                                    <td class="px-4 py-3 text-right text-sm text-green-600 font-semibold print:text-black">
                                         {{ formatCurrency(row.income) }}
                                     </td>
-                                    <td class="px-4 py-3 text-right text-sm text-red-600 font-semibold">
+                                    <td class="px-4 py-3 text-right text-sm text-red-600 font-semibold print:text-black">
                                         {{ formatCurrency(row.expenses) }}
                                     </td>
                                     <td
-                                        class="px-4 py-3 text-right text-sm font-semibold"
-                                        :class="row.net >= 0 ? 'text-green-700' : 'text-red-700'"
+                                        class="px-4 py-3 text-right text-sm font-semibold print:text-black"
+                                        :class="[row.net >= 0 ? 'text-green-700' : 'text-red-700', 'print:text-black']"
                                     >
                                         {{ formatCurrency(row.net) }}
                                     </td>
                                 </tr>
                             </tbody>
                             <tfoot>
-                                <tr class="bg-gray-100 print:bg-gray-200">
-                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                                <tr class="bg-gray-100 print:bg-white">
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wide print:text-black">
                                         Totals
                                     </th>
-                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700 print:text-black">
                                         {{ formatCurrency(totals.income) }}
                                     </th>
-                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                                    <th class="px-4 py-3 text-right text-sm font-semibold text-gray-700 print:text-black">
                                         {{ formatCurrency(totals.expenses) }}
                                     </th>
                                     <th
-                                        class="px-4 py-3 text-right text-sm font-semibold"
-                                        :class="totals.net >= 0 ? 'text-green-700' : 'text-red-700'"
+                                        class="px-4 py-3 text-right text-sm font-semibold print:text-black"
+                                        :class="[totals.net >= 0 ? 'text-green-700' : 'text-red-700', 'print:text-black']"
                                     >
                                         {{ formatCurrency(totals.net) }}
                                     </th>

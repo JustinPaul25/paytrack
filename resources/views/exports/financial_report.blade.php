@@ -3,24 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <style>
+        /* Simple, print-friendly table (no colors) */
+        body { margin: 0; padding: 0; font-family: sans-serif; font-size: 12px; color: #000; }
+        h1 { margin: 0 0 10px 0; font-size: 16px; font-weight: 700; }
         table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #cccccc; padding: 8px; text-align: right; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: right; }
         th:first-child, td:first-child { text-align: left; }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .logo { height: 40px; }
-        .title { font-weight: bold; font-size: 14px; }
-        .muted { color: #666; font-size: 12px; }
-        .totals th { background: #f0f0f0; }
+        tfoot th { font-weight: 700; }
+        /* Remove decorative colors/backgrounds */
+        .header, .logo, .muted { display: none; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="{{ asset('img/merakilogo.jpg') }}" alt="Meraki" class="logo">
-        <div style="text-align:right">
-            <div class="title">Financial Report</div>
-            <div class="muted">Generated: {{ now()->format('Y-m-d H:i') }}</div>
-        </div>
-    </div>
+    <h1>Financial Report</h1>
+    <div>Generated: {{ now()->format('Y-m-d H:i') }}</div>
+    <div style="height:8px"></div>
 
     <table>
         <thead>

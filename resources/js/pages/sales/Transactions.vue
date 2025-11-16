@@ -150,25 +150,30 @@ const printTransactions = () => {
       <title>Sales Transactions Report - PayTrack</title>
       <style>
         @media print {
-          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; color: #000; }
           .no-print { display: none !important; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f8f9fa; font-weight: bold; }
+          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+          th { font-weight: bold; }
           .header { text-align: center; margin-bottom: 30px; }
           .summary { margin-bottom: 20px; }
           .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; }
-          .summary-item { border: 1px solid #ddd; padding: 10px; text-align: center; }
-          .summary-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+          .summary-item { border: 1px solid #000; padding: 10px; text-align: center; }
+          .summary-label { font-size: 12px; margin-bottom: 5px; }
           .summary-value { font-size: 16px; font-weight: bold; }
-          .filters { margin-bottom: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; }
+          .filters { margin-bottom: 20px; padding: 10px; border: 1px solid #000; border-radius: 0; }
           .filters h3 { margin: 0 0 10px 0; font-size: 14px; }
           .filters p { margin: 5px 0; font-size: 12px; }
-          .status-completed { background-color: #d4edda; color: #155724; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-          .status-canceled { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-          .status-cancelled { background-color: #f8d7da; color: #721c24; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-          .status-refunded { background-color: #e2e3e5; color: #383d41; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+          /* Plain status (no colors) */
+          .status-completed, .status-canceled, .status-cancelled, .status-refunded { 
+            color: #000; 
+            background: transparent; 
+            padding: 0; 
+            border-radius: 0; 
+            font-size: 12px; 
+            font-weight: 600;
+          }
+          .footer { margin-top: 30px; text-align: center; font-size: 12px; }
         }
         @media screen {
           body { font-family: Arial, sans-serif; padding: 20px; }
