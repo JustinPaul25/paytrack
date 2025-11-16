@@ -6,17 +6,6 @@
                     <Users class="w-5 h-5 text-red-600" />
                     Customer Churn Analysis
                 </CardTitle>
-                <button
-                    @click="toggleCollapse"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
-                    :aria-expanded="!isCollapsed"
-                    aria-label="Toggle customer churn details"
-                >
-                    <ChevronDown 
-                        class="w-5 h-5 text-gray-500 transition-transform duration-200"
-                        :class="{ 'rotate-180': !isCollapsed }"
-                    />
-                </button>
             </div>
         </CardHeader>
         
@@ -35,7 +24,7 @@
                                 <div>
                                     <p class="text-sm font-medium text-red-600 dark:text-red-400">Churn Rate</p>
                                     <p class="text-2xl font-bold text-red-700 dark:text-red-300">
-                                        {{ demoData.churnRate }}%
+                                        {{ metrics.churnRate }}%
                                     </p>
                                 </div>
                                 <div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
@@ -53,7 +42,7 @@
                                 <div>
                                     <p class="text-sm font-medium text-green-600 dark:text-green-400">Retention Rate</p>
                                     <p class="text-2xl font-bold text-green-700 dark:text-green-300">
-                                        {{ demoData.retentionRate }}%
+                                        {{ metrics.retentionRate }}%
                                     </p>
                                 </div>
                                 <div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
@@ -71,7 +60,7 @@
                                 <div>
                                     <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400">At Risk</p>
                                     <p class="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
-                                        {{ demoData.atRiskCustomers }}
+                                        {{ metrics.atRiskCustomers }}
                                     </p>
                                 </div>
                                 <div class="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
@@ -103,8 +92,8 @@
                             <!-- Segment Distribution -->
                             <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                                 <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Segment Distribution</h5>
-                                <div class="space-y-3">
-                                    <div v-for="segment in demoData.customerSegments" :key="segment.name" class="flex items-center justify-between">
+                                <div class="space-y-3" v-if="metrics.customerSegments && metrics.customerSegments.length">
+                                    <div v-for="segment in metrics.customerSegments" :key="segment.name" class="flex items-center justify-between">
                                         <div class="flex items-center gap-2">
                                             <div 
                                                 class="w-3 h-3 rounded-full"
@@ -133,8 +122,8 @@
                             <!-- Churn by Segment -->
                             <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                                 <h5 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Churn by Segment</h5>
-                                <div class="space-y-3">
-                                    <div v-for="segment in demoData.churnBySegment" :key="segment.name" class="flex items-center justify-between">
+                                <div class="space-y-3" v-if="metrics.churnBySegment && metrics.churnBySegment.length">
+                                    <div v-for="segment in metrics.churnBySegment" :key="segment.name" class="flex items-center justify-between">
                                         <span class="text-sm text-gray-700 dark:text-gray-300">{{ segment.name }}</span>
                                         <div class="flex items-center gap-2">
                                             <div class="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -159,7 +148,7 @@
                         <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                             <div class="space-y-3">
                                 <div 
-                                    v-for="customer in demoData.atRiskCustomerList" 
+                                    v-for="customer in metrics.atRiskCustomerList" 
                                     :key="customer.id"
                                     class="flex items-center justify-between p-3 bg-white dark:bg-gray-700 rounded-lg border border-yellow-200 dark:border-yellow-800"
                                 >
@@ -190,7 +179,7 @@
                         <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Recommendations</h4>
                         <div class="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                             <div class="space-y-3">
-                                <div v-for="recommendation in demoData.recommendations" :key="recommendation.id" class="flex items-start gap-3">
+                                <div v-for="recommendation in metrics.recommendations" :key="recommendation.id" class="flex items-start gap-3">
                                     <div class="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                                     <div>
                                         <p class="text-sm font-medium text-blue-900 dark:text-blue-100">{{ recommendation.title }}</p>
@@ -201,16 +190,7 @@
                         </div>
                     </div>
 
-                    <!-- Status -->
-                    <div class="border-t pt-4">
-                        <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                            <span>Using sample data</span>
-                            <div class="flex items-center gap-2">
-                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span>Ready</span>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Status removed: now using live data -->
                 </div>
             </CardContent>
         </div>
@@ -246,66 +226,33 @@ ChartJS.register(
     Filler
 );
 
-// Collapsible state
-const isCollapsed = ref(true);
+// Collapsible state (disabled: content always open)
+const isCollapsed = ref(false);
 
-// Demo data
-const demoData = ref({
-    churnRate: 5.2,
-    retentionRate: 94.8,
-    atRiskCustomers: 12,
-    churnTrend: [
-        { month: 'Jul', rate: 4.1 },
-        { month: 'Aug', rate: 3.8 },
-        { month: 'Sep', rate: 4.5 },
-        { month: 'Oct', rate: 5.2 },
-        { month: 'Nov', rate: 4.9 },
-        { month: 'Dec', rate: 5.2 }
-    ],
-    customerSegments: [
-        { name: 'High Value', percentage: 25, color: '#10B981' },
-        { name: 'Medium Value', percentage: 45, color: '#3B82F6' },
-        { name: 'Low Value', percentage: 20, color: '#F59E0B' },
-        { name: 'New Customers', percentage: 10, color: '#8B5CF6' }
-    ],
-    churnBySegment: [
-        { name: 'High Value', churnRate: 2.1 },
-        { name: 'Medium Value', churnRate: 4.8 },
-        { name: 'Low Value', churnRate: 8.5 },
-        { name: 'New Customers', churnRate: 12.3 }
-    ],
-    atRiskCustomerList: [
-        { id: 1, name: 'ABC Company', lastPurchase: 'Dec 15, 2024', riskLevel: 'High', daysSincePurchase: 45 },
-        { id: 2, name: 'XYZ Corporation', lastPurchase: 'Dec 20, 2024', riskLevel: 'Medium', daysSincePurchase: 40 },
-        { id: 3, name: 'Tech Solutions Inc', lastPurchase: 'Dec 18, 2024', riskLevel: 'High', daysSincePurchase: 42 },
-        { id: 4, name: 'Office Plus', lastPurchase: 'Dec 22, 2024', riskLevel: 'Low', daysSincePurchase: 38 }
-    ],
-    recommendations: [
-        {
-            id: 1,
-            title: 'Implement Customer Success Program',
-            description: 'Focus on high-value customers with personalized outreach and support.'
-        },
-        {
-            id: 2,
-            title: 'Launch Re-engagement Campaign',
-            description: 'Target at-risk customers with special offers and personalized content.'
-        },
-        {
-            id: 3,
-            title: 'Improve Onboarding Process',
-            description: 'Reduce new customer churn by enhancing the first 30-day experience.'
-        }
-    ]
-});
+interface ChurnMetrics {
+    churnRate: number;
+    retentionRate: number;
+    atRiskCustomers: number;
+    churnTrend: Array<{ month: string; rate: number }>;
+    customerSegments?: Array<{ name: string; percentage: number; color: string }>;
+    churnBySegment?: Array<{ name: string; churnRate: number }>;
+    atRiskCustomerList?: Array<{ id: number; name: string; lastPurchase: string; riskLevel: string; daysSincePurchase: number }>;
+    recommendations?: Array<{ id: number; title: string; description: string }>;
+}
+
+const props = defineProps<{
+    metrics: ChurnMetrics
+}>();
+
+const metrics = computed<ChurnMetrics>(() => props.metrics);
 
 // Churn Chart.js data and options
 const churnChartData = computed(() => ({
-    labels: demoData.value.churnTrend.map(item => item.month),
+    labels: (metrics.value.churnTrend || []).map(item => item.month),
     datasets: [
         {
             label: 'Churn Rate',
-            data: demoData.value.churnTrend.map(item => item.rate),
+            data: (metrics.value.churnTrend || []).map(item => item.rate),
             borderColor: 'rgb(239, 68, 68)',
             backgroundColor: 'rgba(239, 68, 68, 0.1)',
             fill: true,
@@ -317,7 +264,7 @@ const churnChartData = computed(() => ({
         },
         {
             label: 'Retention Rate',
-            data: demoData.value.churnTrend.map(item => 100 - item.rate),
+            data: (metrics.value.churnTrend || []).map(item => 100 - item.rate),
             borderColor: 'rgb(34, 197, 94)',
             backgroundColor: 'rgba(34, 197, 94, 0.1)',
             fill: false,
@@ -390,7 +337,7 @@ const churnChartOptions = computed(() => ({
 }));
 
 const churnChartPoints = computed(() => {
-    const points = demoData.value.churnTrend.map((item, index) => {
+    const points = (metrics.value.churnTrend || []).map((item, index) => {
         const x = (index / 5) * 100;
         const y = 100 - ((item.rate / 8) * 100); // Scale to 8% max
         return `${x},${y}`;
@@ -399,7 +346,7 @@ const churnChartPoints = computed(() => {
 });
 
 const churnChartPointsArray = computed(() => {
-    return demoData.value.churnTrend.map((item, index) => {
+    return (metrics.value.churnTrend || []).map((item, index) => {
         const x = (index / 5) * 100;
         const y = 100 - ((item.rate / 8) * 100);
         return { x, y };

@@ -57,7 +57,7 @@ class ProductController extends Controller
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'SKU' => 'required|string|max:255|unique:products,SKU',
+            'SKU' => 'required|string|max:255|unique:products,SKU,NULL,id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);
         $product = Product::create($validated);
@@ -93,7 +93,7 @@ class ProductController extends Controller
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'SKU' => 'required|string|max:255|unique:products,SKU,' . $product->id,
+            'SKU' => 'required|string|max:255|unique:products,SKU,' . $product->id . ',id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);
         $product->update($validated);
@@ -106,6 +106,57 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        // Remove media if present
+        $product->clearMediaCollection('images');
+
         $product->delete();
+
+        return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+    }
+
+    /**
+     * Inertia page: list soft-deleted products.
+     */
+    public function trashedIndex(Request $request)
+    {
+        $search = $request->input('search');
+        $query = Product::onlyTrashed()->with('category');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('SKU', 'like', "%{$search}%");
+            });
+        }
+        $products = $query->orderBy('deleted_at', 'desc')->paginate(10)->withQueryString();
+
+        return inertia('products/Trashed', [
+            'products' => $products,
+            'filters' => ['search' => $search],
+        ]);
+    }
+
+    /**
+     * Return a paginated list of soft-deleted products.
+     */
+    public function trashed(Request $request)
+    {
+        $perPage = (int) ($request->input('per_page') ?? 10);
+        $products = Product::onlyTrashed()
+            ->with('category')
+            ->orderBy('deleted_at', 'desc')
+            ->paginate($perPage);
+
+        return response()->json($products);
+    }
+
+    /**
+     * Restore a soft-deleted product.
+     */
+    public function restore(int $id)
+    {
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $product->restore();
+
+        return redirect()->back()->with('success', 'Product restored successfully.');
     }
 } 

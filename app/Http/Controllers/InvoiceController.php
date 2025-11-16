@@ -14,6 +14,17 @@ class InvoiceController extends Controller
     public function index(Request $request)
     {
         $query = Invoice::with(['customer', 'user']);
+
+        // Customer role: restrict to own invoices only
+        if ($request->user() && method_exists($request->user(), 'hasRole') && $request->user()->hasRole('Customer')) {
+            $customerId = Customer::where('email', $request->user()->email)->value('id');
+            // If we can't match a customer record, show an empty list
+            if ($customerId) {
+                $query->where('customer_id', $customerId);
+            } else {
+                $query->whereRaw('1=0');
+            }
+        }
         $search = $request->input('search');
         $status = $request->input('status');
 
@@ -29,11 +40,20 @@ class InvoiceController extends Controller
 
         $invoices = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
 
-        // Calculate statistics
-        $totalInvoices = Invoice::count();
-        $totalAmount = Invoice::sum('total_amount') / 100; // Convert from cents to dollars
-        $pendingInvoices = Invoice::where('status', 'pending')->count();
-        $completedInvoices = Invoice::where('status', 'completed')->count();
+        // Calculate statistics (respect same visibility scope)
+        $statsBase = Invoice::query();
+        if ($request->user() && method_exists($request->user(), 'hasRole') && $request->user()->hasRole('Customer')) {
+            $customerId = Customer::where('email', $request->user()->email)->value('id');
+            if ($customerId) {
+                $statsBase->where('customer_id', $customerId);
+            } else {
+                $statsBase->whereRaw('1=0');
+            }
+        }
+        $totalInvoices = (clone $statsBase)->count();
+        $totalAmount = ((clone $statsBase)->sum('total_amount')) / 100;
+        $pendingInvoices = (clone $statsBase)->where('status', 'pending')->count();
+        $completedInvoices = (clone $statsBase)->where('status', 'completed')->count();
 
         return inertia('invoices/Index', [
             'invoices' => $invoices,
@@ -52,6 +72,10 @@ class InvoiceController extends Controller
 
     public function create()
     {
+        // Only Admin|Staff can create
+        if (auth()->user()?->hasRole('Customer')) {
+            abort(403);
+        }
         $customers = Customer::all(['id', 'name', 'company_name']);
         $products = Product::all(['id', 'name', 'selling_price', 'stock']);
         
@@ -63,6 +87,9 @@ class InvoiceController extends Controller
 
     public function store(Request $request)
     {
+        if (auth()->user()?->hasRole('Customer')) {
+            abort(403);
+        }
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
@@ -123,6 +150,13 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice)
     {
+        // Customers can only view their own invoices
+        if (auth()->user()?->hasRole('Customer')) {
+            $customerId = Customer::where('email', auth()->user()->email)->value('id');
+            if (!$customerId || $invoice->customer_id !== $customerId) {
+                abort(403);
+            }
+        }
         $invoice->load(['customer.media', 'user', 'invoiceItems.product']);
         return inertia('invoices/Show', [
             'invoice' => $invoice,
@@ -131,6 +165,9 @@ class InvoiceController extends Controller
 
     public function edit(Invoice $invoice)
     {
+        if (auth()->user()?->hasRole('Customer')) {
+            abort(403);
+        }
         $customers = Customer::all(['id', 'name', 'company_name']);
         $products = Product::all(['id', 'name', 'selling_price', 'stock']);
         $invoice->load(['invoiceItems.product']);
@@ -144,6 +181,9 @@ class InvoiceController extends Controller
 
     public function update(Request $request, Invoice $invoice)
     {
+        if (auth()->user()?->hasRole('Customer')) {
+            abort(403);
+        }
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
@@ -206,6 +246,9 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
+        if (auth()->user()?->hasRole('Customer')) {
+            abort(403);
+        }
         DB::beginTransaction();
         try {
             $invoice->invoiceItems()->delete();
@@ -215,5 +258,18 @@ class InvoiceController extends Controller
             DB::rollBack();
             throw $e;
         }
+    }
+
+    public function markPaid(Invoice $invoice)
+    {
+        if (auth()->user()?->hasRole('Customer')) {
+            abort(403);
+        }
+        // Allow quick status update without requiring full invoice payload
+        if ($invoice->status !== 'completed') {
+            $invoice->update(['status' => 'completed']);
+        }
+
+        return redirect()->back();
     }
 } 

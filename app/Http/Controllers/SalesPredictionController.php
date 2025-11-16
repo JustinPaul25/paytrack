@@ -55,7 +55,7 @@ class SalesPredictionController extends Controller
                 'status'
             )
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', 'paid')
+            ->where('status', 'completed')
             ->orderBy('created_at')
             ->get()
             ->groupBy(function ($invoice) {

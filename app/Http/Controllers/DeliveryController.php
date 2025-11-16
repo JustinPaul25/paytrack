@@ -15,10 +15,14 @@ class DeliveryController extends Controller
     {
         $query = Delivery::with(['customer', 'invoice']);
         $search = $request->input('search');
+        $customerId = $request->input('customer_id');
         if ($search) {
             $query->whereHas('customer', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%");
             });
+        }
+        if ($customerId) {
+            $query->where('customer_id', $customerId);
         }
         $deliveries = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
 
@@ -32,6 +36,7 @@ class DeliveryController extends Controller
             'deliveries' => $deliveries,
             'filters' => [
                 'search' => $search,
+                'customer_id' => $customerId,
             ],
             'stats' => [
                 'totalDeliveries' => $totalDeliveries,

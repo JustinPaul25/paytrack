@@ -16,7 +16,7 @@ class InvoiceSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get some customers, products, and users for seeding
+        // Get some customers, products, and a staff/admin user for seeding
         $customers = Customer::all();
         $products = Product::all();
         $users = User::all();
@@ -26,71 +26,59 @@ class InvoiceSeeder extends Seeder
             return;
         }
 
-        // Create some sample invoices
-        $invoices = [
-            [
-                'customer_id' => $customers->first()->id,
-                'user_id' => $users->first()->id,
-                'status' => 'completed',
-                'payment_method' => 'cash',
-                'payment_reference' => 'REF-001',
-                'notes' => 'Sample completed invoice',
-            ],
-            [
-                'customer_id' => $customers->first()->id,
-                'user_id' => $users->first()->id,
-                'status' => 'pending',
-                'payment_method' => 'bank_transfer',
-                'payment_reference' => 'REF-002',
-                'notes' => 'Sample pending invoice',
-            ],
-            [
-                'customer_id' => $customers->first()->id,
-                'user_id' => $users->first()->id,
-                'status' => 'cancelled',
-                'payment_method' => 'e-wallet',
-                'notes' => 'Sample cancelled invoice',
-            ],
-        ];
+        // Prefer a Staff/Admin user as the creator of seeded invoices
+        $creator = $users->first();
 
-        foreach ($invoices as $invoiceData) {
-            // Add 1-3 random products to calculate total first
-            $randomProducts = $products->random(rand(1, 3));
-            $subtotalAmount = 0;
+        foreach ($customers as $customer) {
+            // For each customer create three invoices with different statuses
+            $statusSets = [
+                ['status' => 'completed', 'payment_method' => 'cash', 'payment_reference' => 'SEED-CASH-'.uniqid()],
+                ['status' => 'pending', 'payment_method' => 'bank_transfer', 'payment_reference' => 'SEED-BANK-'.uniqid()],
+                ['status' => 'cancelled', 'payment_method' => 'e-wallet', 'payment_reference' => 'SEED-EWALLET-'.uniqid()],
+            ];
 
-            foreach ($randomProducts as $product) {
-                $quantity = rand(1, 5);
-                $price = $product->selling_price;
-                $total = $quantity * $price;
-                $subtotalAmount += $total;
-            }
+            foreach ($statusSets as $meta) {
+                // Add 1-3 random products to calculate totals
+                $randomProducts = $products->random(min(3, max(1, rand(1, $products->count()))));
+                $subtotalAmount = 0;
 
-            // Calculate VAT (12%)
-            $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / 100);
-            $totalAmount = $subtotalAmount + $vatAmount;
+                // Build items first to compute invoice totals
+                $items = [];
+                foreach ($randomProducts as $product) {
+                    $quantity = rand(1, 5);
+                    $price = $product->selling_price;
+                    $total = $quantity * $price;
+                    $subtotalAmount += $total;
+                    $items[] = ['product' => $product, 'quantity' => $quantity, 'price' => $price, 'total' => $total];
+                }
 
-            // Create invoice with VAT calculations
-            $invoice = Invoice::create(array_merge($invoiceData, [
-                'subtotal_amount' => $subtotalAmount,
-                'vat_amount' => $vatAmount,
-                'vat_rate' => $vatRate,
-                'total_amount' => $totalAmount,
-            ]));
+                // VAT (12%)
+                $vatRate = 12.00;
+                $vatAmount = $subtotalAmount * ($vatRate / 100);
+                $totalAmount = $subtotalAmount + $vatAmount;
 
-            // Create invoice items
-            foreach ($randomProducts as $product) {
-                $quantity = rand(1, 5);
-                $price = $product->selling_price;
-                $total = $quantity * $price;
-
-                InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'product_id' => $product->id,
-                    'quantity' => $quantity,
-                    'price' => $price,
-                    'total' => $total,
+                $invoice = Invoice::create([
+                    'customer_id' => $customer->id,
+                    'user_id' => $creator->id,
+                    'status' => $meta['status'],
+                    'payment_method' => $meta['payment_method'],
+                    'payment_reference' => $meta['payment_reference'],
+                    'notes' => 'Seeded invoice ('.$meta['status'].') for '.$customer->name,
+                    'subtotal_amount' => $subtotalAmount,
+                    'vat_amount' => $vatAmount,
+                    'vat_rate' => $vatRate,
+                    'total_amount' => $totalAmount,
                 ]);
+
+                foreach ($items as $item) {
+                    InvoiceItem::create([
+                        'invoice_id' => $invoice->id,
+                        'product_id' => $item['product']->id,
+                        'quantity' => $item['quantity'],
+                        'price' => $item['price'],
+                        'total' => $item['total'],
+                    ]);
+                }
             }
         }
 

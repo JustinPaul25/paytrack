@@ -8,12 +8,15 @@ import Card from '@/components/ui/card/Card.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
+import CardDescription from '@/components/ui/card/CardDescription.vue';
 import BaseChart from '@/components/charts/BaseChart.vue';
 import SalesPredictionWidget from '@/components/SalesPredictionWidget.vue';
 import CustomerChurnWidget from '@/components/CustomerChurnWidget.vue';
 import ProductSalesTrendWidget from '@/components/ProductSalesTrendWidget.vue';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { type BreadcrumbItem } from '@/types';
-import { TrendingUp, TrendingDown, DollarSign, FileText, Clock, Package } from 'lucide-vue-next';
+import { TrendingUp, TrendingDown, DollarSign, FileText, Clock, Package, HelpCircle, Calendar, Users, BarChart3 } from 'lucide-vue-next';
 
 interface SalesData {
     total_sales: number;
@@ -62,6 +65,7 @@ const props = defineProps<{
     salesByDate: SalesByDate[];
     salesByCategory: SalesByCategory[];
     recentInvoices: RecentInvoice[];
+    churnMetrics?: any;
     filters: Filters;
 }>();
 
@@ -77,11 +81,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const periodOptions = [
-    { value: 'week', label: 'Last Week' },
-    { value: 'month', label: 'Last Month' },
-    { value: 'quarter', label: 'Last Quarter' },
-    { value: 'year', label: 'Last Year' },
-    { value: 'custom', label: 'Custom Range' },
+    { value: 'week', label: 'Last 7 Days' },
+    { value: 'month', label: 'Last 30 Days' },
+    { value: 'quarter', label: 'Last 3 Months' },
+    { value: 'year', label: 'Last 12 Months' },
+    { value: 'custom', label: 'Choose Dates' },
 ];
 
 function updateFilters() {
@@ -316,235 +320,352 @@ const closeNotifications = () => {
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Dashboard" />
-        
-        <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-bold">Dashboard</h1>
-            
-            <!-- Filters -->
-            <div class="flex gap-4 items-center">
-                <!-- Period Selection -->
-                <div class="w-48">
-                    <Select
-                        v-model="period"
-                        :options="periodOptions"
-                        placeholder="Select period"
-                    />
+        <TooltipProvider>
+            <div class="dashboard-wrapper">
+                <!-- Welcome Header -->
+                <div class="dashboard-header">
+                    <div>
+                        <h1 class="dashboard-title">Dashboard</h1>
+                        <p class="dashboard-subtitle">View your business performance at a glance</p>
+                    </div>
+                    
+                    <!-- Filters -->
+                    <div class="dashboard-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <Calendar class="w-4 h-4" />
+                                View Period
+                            </label>
+                            <Select
+                                v-model="period"
+                                :options="periodOptions"
+                                placeholder="Choose time period"
+                                class="period-select"
+                            />
+                        </div>
+                        
+                        <!-- Custom Date Range -->
+                        <div v-if="period === 'custom'" class="date-range-group">
+                            <div class="date-input-group">
+                                <label class="date-label">Start Date</label>
+                                <input
+                                    v-model="startDate"
+                                    type="date"
+                                    class="date-input"
+                                />
+                            </div>
+                            <div class="date-input-group">
+                                <label class="date-label">End Date</label>
+                                <input
+                                    v-model="endDate"
+                                    type="date"
+                                    class="date-input"
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <!-- Custom Date Range -->
-                <div v-if="period === 'custom'" class="flex gap-2">
-                    <input
-                        v-model="startDate"
-                        type="date"
-                        class="px-3 py-2 border rounded-md"
-                    />
-                    <input
-                        v-model="endDate"
-                        type="date"
-                        class="px-3 py-2 border rounded-md"
-                    />
+
+                <!-- Key Metrics Overview -->
+                <div class="metrics-section">
+                    <h2 class="section-title">Your Business Overview</h2>
+                    <p class="section-description">Quick summary of your sales performance</p>
+                </div>
+
+                <!-- Sales Overview Cards -->
+                <div class="metrics-grid">
+                    <Card class="metric-card">
+                        <CardContent class="metric-card-content">
+                            <div class="metric-header">
+                                <div class="metric-info">
+                                    <div class="metric-label-group">
+                                        <span class="metric-label">Total Revenue</span>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <HelpCircle class="help-icon" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>The total amount of money you've earned from all sales</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <p class="metric-value">
+                                        {{ formatCurrency(salesData.total_sales) }}
+                                    </p>
+                                    <p class="metric-description">All sales combined</p>
+                                </div>
+                                <div class="metric-icon-wrapper metric-icon-blue">
+                                    <DollarSign class="metric-icon" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card class="metric-card">
+                        <CardContent class="metric-card-content">
+                            <div class="metric-header">
+                                <div class="metric-info">
+                                    <div class="metric-label-group">
+                                        <span class="metric-label">Total Invoices</span>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <HelpCircle class="help-icon" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>The number of sales transactions you've completed</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <p class="metric-value">
+                                        {{ salesData.total_invoices }}
+                                    </p>
+                                    <p class="metric-description">Sales transactions</p>
+                                </div>
+                                <div class="metric-icon-wrapper metric-icon-green">
+                                    <FileText class="metric-icon" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card class="metric-card">
+                        <CardContent class="metric-card-content">
+                            <div class="metric-header">
+                                <div class="metric-info">
+                                    <div class="metric-label-group">
+                                        <span class="metric-label">Average Sale Amount</span>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <HelpCircle class="help-icon" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>The average amount customers spend per transaction</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <p class="metric-value">
+                                        {{ formatCurrency(salesData.average_order_value) }}
+                                    </p>
+                                    <p class="metric-description">Per transaction</p>
+                                </div>
+                                <div class="metric-icon-wrapper metric-icon-yellow">
+                                    <TrendingUp class="metric-icon" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card class="metric-card">
+                        <CardContent class="metric-card-content">
+                            <div class="metric-header">
+                                <div class="metric-info">
+                                    <div class="metric-label-group">
+                                        <span class="metric-label">Awaiting Payment</span>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <HelpCircle class="help-icon" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Invoices that are still waiting to be paid</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <p class="metric-value">
+                                        {{ salesData.pending_invoices }}
+                                    </p>
+                                    <p class="metric-description">Need attention</p>
+                                </div>
+                                <div class="metric-icon-wrapper metric-icon-orange">
+                                    <Clock class="metric-icon" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Analytics Section -->
+                <div class="analytics-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Sales Trends & Insights</h2>
+                        <p class="section-description">Track how your sales are performing over time</p>
+                    </div>
+                </div>
+
+                <!-- Tabs Section -->
+                <div class="analytics-tabs-wrapper">
+                    <Tabs defaultValue="sales-trend" class="analytics-tabs-full">
+                        <TabsList class="tabs-list-full">
+                            <TabsTrigger value="sales-trend" class="tab-trigger-full">
+                                <TrendingUp class="tab-icon" />
+                                Your Sales Trend
+                            </TabsTrigger>
+                            <TabsTrigger value="sales-prediction" class="tab-trigger-full">
+                                <TrendingUp class="tab-icon" />
+                                Sales Prediction
+                            </TabsTrigger>
+                            <TabsTrigger value="customer-churn" class="tab-trigger-full">
+                                <Users class="tab-icon" />
+                                Customer Churn Analysis
+                            </TabsTrigger>
+                            <TabsTrigger value="product-trend" class="tab-trigger-full">
+                                <BarChart3 class="tab-icon" />
+                                Product Sales Trend
+                            </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="sales-trend" class="tab-content-full">
+                            <Card class="chart-card">
+                                <CardHeader>
+                                    <CardTitle class="chart-title">
+                                        <TrendingUp class="chart-title-icon" />
+                                        Your Sales Trend
+                                    </CardTitle>
+                                    <CardDescription>
+                                        See how your daily sales and number of transactions change over time
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <BaseChart
+                                        type="line"
+                                        :data="salesChartData"
+                                        :options="salesChartOptions"
+                                        height="350px"
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        
+                        <TabsContent value="sales-prediction" class="tab-content-full">
+                            <SalesPredictionWidget :sales-data="salesByDate" />
+                        </TabsContent>
+                        
+                        <TabsContent value="customer-churn" class="tab-content-full">
+                            <CustomerChurnWidget :metrics="churnMetrics" />
+                        </TabsContent>
+                        
+                        <TabsContent value="product-trend" class="tab-content-full">
+                            <ProductSalesTrendWidget :sales-by-date="salesByDate" :top-products="topProducts" />
+                        </TabsContent>
+                    </Tabs>
+                </div>
+
+                <!-- Sales by Category Chart -->
+                <div class="category-section">
+                    <Card class="chart-card">
+                        <CardHeader>
+                            <CardTitle class="chart-title">
+                                <Package class="chart-title-icon" />
+                                Sales by Product Category
+                            </CardTitle>
+                            <CardDescription>
+                                See which product categories bring in the most revenue
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div v-if="props.salesByCategory.length === 0" class="empty-state">
+                                <p class="empty-title">No category data for the selected period</p>
+                                <p class="empty-subtitle">Try expanding the date range or confirming there are paid invoices.</p>
+                            </div>
+                            <BaseChart
+                                v-else
+                                type="doughnut"
+                                :data="categoryChartData"
+                                :options="categoryChartOptions"
+                                height="300px"
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Business Intelligence Section -->
+                <div class="section-header">
+                    <h2 class="section-title">Product Performance & Recent Activity</h2>
+                    <p class="section-description">Your best-selling products and latest transactions</p>
+                </div>
+
+                <div class="tables-grid">
+                    <!-- Top Products Table -->
+                    <Card class="table-card">
+                        <CardHeader>
+                            <CardTitle class="table-title">
+                                <Package class="table-title-icon" />
+                                Best-Selling Products
+                            </CardTitle>
+                            <CardDescription>
+                                Products that have generated the most revenue
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr class="table-header-row">
+                                            <th class="table-header">Product Name</th>
+                                            <th class="table-header table-header-right">Units Sold</th>
+                                            <th class="table-header table-header-right">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="product in topProducts" :key="product.id" class="table-row">
+                                            <td class="table-cell table-cell-bold">{{ product.name }}</td>
+                                            <td class="table-cell table-cell-right">{{ product.total_quantity.toLocaleString() }}</td>
+                                            <td class="table-cell table-cell-right table-cell-highlight">{{ formatCurrency(product.total_revenue) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <!-- Recent Invoices Table -->
+                    <Card class="table-card">
+                        <CardHeader>
+                            <CardTitle class="table-title">
+                                <FileText class="table-title-icon" />
+                                Recent Transactions
+                            </CardTitle>
+                            <CardDescription>
+                                Your most recent sales and invoices
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr class="table-header-row">
+                                            <th class="table-header">Invoice #</th>
+                                            <th class="table-header">Customer</th>
+                                            <th class="table-header table-header-right">Amount</th>
+                                            <th class="table-header table-header-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="invoice in recentInvoices" :key="invoice.id" class="table-row">
+                                            <td class="table-cell">
+                                                <a :href="`/invoices/${invoice.id}`" class="invoice-link">
+                                                    #{{ invoice.id }}
+                                                </a>
+                                            </td>
+                                            <td class="table-cell">{{ invoice.customer_name }}</td>
+                                            <td class="table-cell table-cell-right table-cell-bold">{{ formatCurrency(invoice.total_amount) }}</td>
+                                            <td class="table-cell table-cell-center">
+                                                <span :class="{
+                                                    'status-badge': true,
+                                                    'status-paid': invoice.status === 'paid',
+                                                    'status-pending': invoice.status === 'pending',
+                                                    'status-cancelled': invoice.status === 'cancelled'
+                                                }">
+                                                    {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
-        </div>
-
-        <!-- Sales Overview Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Sales</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {{ formatCurrency(salesData.total_sales) }}
-                            </p>
-                        </div>
-                        <div class="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-full">
-                            <DollarSign class="w-6 h-6 text-blue-600" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Invoices</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {{ salesData.total_invoices }}
-                            </p>
-                        </div>
-                        <div class="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
-                            <FileText class="w-6 h-6 text-green-600" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Average Order Value</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {{ formatCurrency(salesData.average_order_value) }}
-                            </p>
-                        </div>
-                        <div class="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-full">
-                            <TrendingUp class="w-6 h-6 text-yellow-600" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Invoices</p>
-                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                                {{ salesData.pending_invoices }}
-                            </p>
-                        </div>
-                        <div class="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-full">
-                            <Clock class="w-6 h-6 text-orange-600" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-
-        <!-- Main Analytics Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <!-- Sales Trend Chart - Main Focus -->
-            <div class="lg:col-span-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <TrendingUp class="w-5 h-5 text-blue-600" />
-                            Sales Performance Overview
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <BaseChart
-                            type="line"
-                            :data="salesChartData"
-                            :options="salesChartOptions"
-                            height="350px"
-                        />
-                    </CardContent>
-                </Card>
-            </div>
-
-            <!-- Right Side Analytics Column -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Sales Prediction Widget -->
-                <SalesPredictionWidget :sales-data="salesByDate" />
-                
-                <!-- Customer Churn Analysis -->
-                <CustomerChurnWidget />
-                
-                <!-- Product Sales Trend Widget -->
-                <ProductSalesTrendWidget />
-            </div>
-        </div>
-
-        <!-- Sales by Category Chart -->
-        <div class="mb-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
-                        <Package class="w-5 h-5 text-green-600" />
-                        Revenue by Product Category
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <BaseChart
-                        type="doughnut"
-                        :data="categoryChartData"
-                        :options="categoryChartOptions"
-                        height="300px"
-                    />
-                </CardContent>
-            </Card>
-        </div>
-
-        <!-- Business Intelligence Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <!-- Top Products Table -->
-            <Card>
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
-                        <Package class="w-5 h-5 text-indigo-600" />
-                        Top Performing Products
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b">
-                                    <th class="text-left py-3 px-4 font-medium">Product</th>
-                                    <th class="text-right py-3 px-4 font-medium">Quantity Sold</th>
-                                    <th class="text-right py-3 px-4 font-medium">Revenue Generated</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="product in topProducts" :key="product.id" class="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <td class="py-3 px-4 font-medium">{{ product.name }}</td>
-                                    <td class="py-3 px-4 text-right">{{ product.total_quantity.toLocaleString() }}</td>
-                                    <td class="py-3 px-4 text-right font-semibold text-green-600">{{ formatCurrency(product.total_revenue) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <!-- Recent Invoices Table -->
-            <Card>
-                <CardHeader>
-                    <CardTitle class="flex items-center gap-2">
-                        <FileText class="w-5 h-5 text-purple-600" />
-                        Recent Transaction Activity
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b">
-                                    <th class="text-left py-3 px-4 font-medium">Invoice #</th>
-                                    <th class="text-left py-3 px-4 font-medium">Customer</th>
-                                    <th class="text-right py-3 px-4 font-medium">Amount</th>
-                                    <th class="text-center py-3 px-4 font-medium">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="invoice in recentInvoices" :key="invoice.id" class="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                                    <td class="py-3 px-4">
-                                        <a :href="`/invoices/${invoice.id}`" class="text-blue-600 hover:underline font-medium">
-                                            #{{ invoice.id }}
-                                        </a>
-                                    </td>
-                                    <td class="py-3 px-4">{{ invoice.customer_name }}</td>
-                                    <td class="py-3 px-4 text-right font-semibold">{{ formatCurrency(invoice.total_amount) }}</td>
-                                    <td class="py-3 px-4 text-center">
-                                        <span :class="{
-                                            'px-3 py-1 text-xs rounded-full font-medium': true,
-                                            'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': invoice.status === 'paid',
-                                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': invoice.status === 'pending',
-                                            'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400': invoice.status === 'cancelled'
-                                        }">
-                                            {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+        </TooltipProvider>
     </AppLayout>
 </template>

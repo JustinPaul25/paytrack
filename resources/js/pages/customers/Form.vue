@@ -2,36 +2,47 @@
   <form @submit.prevent="submit" class="space-y-6" enctype="multipart/form-data">
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="name">Name</Label>
-        <Input id="name" v-model="form.name" required />
+        <Label for="name">Full name</Label>
+        <Input id="name" v-model="form.name" placeholder="e.g., Aisha Bello" required />
+        <p class="text-xs text-muted-foreground mt-1">This is the customer’s name.</p>
         <InputError :message="form.errors.name" />
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="company_name">Company Name</Label>
-        <Input id="company_name" v-model="form.company_name" />
+        <Label for="company_name">Company (optional)</Label>
+        <Input id="company_name" v-model="form.company_name" placeholder="e.g., Bright Ventures Ltd." />
+        <p class="text-xs text-muted-foreground mt-1">Add if this customer represents a company.</p>
         <InputError :message="form.errors.company_name" />
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="email">Email</Label>
-        <Input id="email" v-model="form.email" type="email" required />
+        <Label for="email">Email address</Label>
+        <Input id="email" v-model="form.email" type="email" placeholder="name@company.com" required />
+        <p class="text-xs text-muted-foreground mt-1">We’ll use this to send receipts.</p>
         <InputError :message="form.errors.email" />
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="phone">Phone</Label>
-        <Input id="phone" v-model="form.phone" />
+        <Label for="phone">Phone number (optional)</Label>
+        <Input
+          id="phone"
+          v-model="form.phone"
+          placeholder="+234 801 234 5678"
+          inputmode="tel"
+          pattern="[0-9+\\s()-]*"
+          @input="onPhoneInput"
+        />
         <InputError :message="form.errors.phone" />
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
         <Label for="address">Address</Label>
-        <textarea id="address" v-model="form.address" class="w-full rounded border px-3 py-2 mt-1" rows="3" />
+        <textarea id="address" v-model="form.address" placeholder="Street, city, state" class="w-full rounded border px-3 py-2 mt-1" rows="3" />
+        <p class="text-xs text-muted-foreground mt-1">Helps with delivery and invoices.</p>
         <InputError :message="form.errors.address" />
       </div>
     </div>
@@ -43,7 +54,7 @@
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="profile_image">Profile Image</Label>
+        <Label for="profile_image">Profile picture (optional)</Label>
         <Input id="profile_image" type="file" accept="image/*" @change="onFileChange" />
         <InputError :message="form.errors.profile_image" />
         <div v-if="profileImageUrl" class="mt-2">
@@ -117,6 +128,16 @@ function onFileChange(e: Event) {
   } else {
     form.profile_image = null;
   }
+}
+
+function onPhoneInput(e: Event) {
+  const target = e.target as HTMLInputElement;
+  // Allow only digits, space, +, -, parentheses
+  const cleaned = target.value.replace(/[^0-9+\s()\-]/g, '');
+  if (cleaned !== target.value) {
+    target.value = cleaned;
+  }
+  form.phone = cleaned;
 }
 
 function submit() {

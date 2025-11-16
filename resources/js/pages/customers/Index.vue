@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, watch, watchEffect } from 'vue';
+import { ref, watch, watchEffect, computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -60,13 +60,50 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/customers', { search: val }, { preserveState: true, replace: true });
+        const next = (val ?? '').toString().trim();
+        const current = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
+            ? (page.props.filters as { search?: string }).search!
+            : '';
+        // Avoid redundant navigation if value didn't effectively change
+        if (next === current) return;
+        router.get('/customers', { search: next || undefined }, { preserveState: true, replace: true });
     }, 400);
 });
 
 function goToPage(pageNum: number) {
     router.get('/customers', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
 }
+
+// Numbered pagination helpers
+const customersPagination = computed(() => (page.props.customers as Paginated<Customer>));
+const currentPage = computed(() => customersPagination.value.current_page);
+const lastPage = computed(() => customersPagination.value.last_page);
+const pageNumbers = computed<(number | string)[]>(() => {
+    const total = lastPage.value || 1;
+    const current = currentPage.value || 1;
+    const delta = 2;
+    const range: (number | string)[] = [];
+    const start = Math.max(1, current - delta);
+    const end = Math.min(total, current + delta);
+
+    for (let i = start; i <= end; i++) range.push(i);
+
+    if (start > 1) {
+        // Ensure first page is visible
+        if (start > 2) {
+            range.unshift('...');
+        }
+        range.unshift(1);
+    }
+    if (end < total) {
+        // Ensure last page is visible
+        if (end < total - 1) {
+            range.push('...');
+        }
+        range.push(total);
+    }
+    return range;
+});
 
 async function deleteCustomer(id: number) {
     const result = await Swal.fire({
@@ -81,7 +118,41 @@ async function deleteCustomer(id: number) {
     if (result.isConfirmed) {
         router.delete(`/customers/${id}`, {
             onSuccess: () => {
+                const flash = (page.props as unknown as { flash?: { error?: string; success?: string } }).flash;
+                if (flash?.error) {
+                    Swal.fire({
+                        title: 'Cannot delete',
+                        text: flash.error,
+                        icon: 'error',
+                        confirmButtonText: 'View related deliveries',
+                        showCancelButton: true,
+                        cancelButtonText: 'Close',
+                        confirmButtonColor: '#8f5be8',
+                    }).then((choice) => {
+                        if (choice.isConfirmed) {
+                            router.get('/deliveries', { customer_id: id }, { preserveState: true, replace: true });
+                        }
+                    });
+                    return;
+                }
                 Swal.fire('Customer deleted', 'Customer deleted successfully.', 'success');
+            },
+            onError: () => {
+                const flash = (page.props as unknown as { flash?: { error?: string } }).flash;
+                const message = flash?.error ?? 'Cannot delete this customer because there are related records.';
+                Swal.fire({
+                    title: 'Cannot delete',
+                    text: message,
+                    icon: 'error',
+                    confirmButtonText: 'View related deliveries',
+                    showCancelButton: true,
+                    cancelButtonText: 'Close',
+                    confirmButtonColor: '#8f5be8',
+                }).then((choice) => {
+                    if (choice.isConfirmed) {
+                        router.get('/deliveries', { customer_id: id }, { preserveState: true, replace: true });
+                    }
+                });
             },
         });
     }
@@ -192,7 +263,23 @@ async function deleteCustomer(id: number) {
 
         <Card>
             <CardContent>
-                <table class="min-w-full divide-y divide-border">
+                <!-- Empty State -->
+                <div v-if="(page.props.customers as Paginated<Customer>).total === 0" class="py-12 text-center">
+                    <div class="mx-auto max-w-md">
+                        <h3 class="text-lg font-semibold mb-2">No customers yet</h3>
+                        <p class="text-sm text-muted-foreground mb-6">
+                            Customers you add will appear here. You can create invoices faster when customers are saved.
+                        </p>
+                        <Link :href="route('customers.create')">
+                            <Button variant="default">
+                                Add your first customer
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <table v-else class="min-w-full divide-y divide-border">
                     <thead>
                         <tr>
                             <th class="px-4 py-2 text-left">Name</th>
@@ -229,20 +316,34 @@ async function deleteCustomer(id: number) {
                     <div class="text-sm text-gray-700">
                         Showing {{ (page.props.customers as Paginated<Customer>).from }} to {{ (page.props.customers as Paginated<Customer>).to }} of {{ (page.props.customers as Paginated<Customer>).total }} results
                     </div>
-                    <div class="flex gap-2">
-                        <Button 
-                            v-if="(page.props.customers as Paginated<Customer>).prev_page_url" 
-                            variant="outline" 
+                    <div class="flex items-center gap-1">
+                        <Button
+                            v-if="(page.props.customers as Paginated<Customer>).prev_page_url"
+                            variant="outline"
                             size="sm"
                             @click="goToPage((page.props.customers as Paginated<Customer>).current_page - 1)"
                         >
                             Previous
                         </Button>
-                        <Button 
-                            v-if="(page.props.customers as Paginated<Customer>).next_page_url" 
-                            variant="outline" 
+
+                        <!-- Numbered pages -->
+                        <template v-for="n in pageNumbers" :key="'p-' + n">
+                            <Button
+                                v-if="typeof n === 'number'"
+                                :variant="n === currentPage ? 'default' : 'outline'"
+                                size="sm"
+                                @click="n !== currentPage && goToPage(n)"
+                            >
+                                {{ n }}
+                            </Button>
+                            <span v-else class="px-2 text-sm text-muted-foreground">…</span>
+                        </template>
+
+                        <Button
+                            v-if="(page.props.customers as Paginated<Customer>).next_page_url"
+                            variant="outline"
                             size="sm"
-                            @click="goToPage((page.props.customers as Paginated<Customer>).current_page + 1)"
+                            @click="goToPage((page.props.customers as Paginated<Customer>).current_page - 0 + 1)"
                         >
                             Next
                         </Button>

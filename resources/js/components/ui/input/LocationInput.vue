@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet's default icon path issues in Vite
 import { Icon } from 'leaflet'
+import type { LatLngExpression } from 'leaflet'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -32,6 +33,55 @@ const emits = defineEmits<{
 const selected = ref<{ lat: number; lng: number } | null>(null)
 const mapCenter = ref<[number, number]>([0, 0])
 const zoom = ref(props.mapZoom ?? (props.modelValue ? 13 : 2))
+
+// Simple place search (OSM Nominatim)
+const searchQuery = ref('')
+const searchResults = ref<{ display_name: string; lat: string; lon: string }[]>([])
+const searching = ref(false)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function runSearch(q: string) {
+  const query = q.trim()
+  if (!query) {
+    searchResults.value = []
+    return
+  }
+  searching.value = true
+  try {
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+    if (!resp.ok) throw new Error('Search failed')
+    const data = await resp.json()
+    searchResults.value = (data ?? []).slice(0, 5)
+  } catch {
+    searchResults.value = []
+  } finally {
+    searching.value = false
+  }
+}
+
+function onSearchInput(e: Event) {
+  const value = (e.target as HTMLInputElement).value
+  searchQuery.value = value
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => runSearch(value), 400)
+}
+
+function selectPlace(p: { display_name: string; lat: string; lon: string }) {
+  const lat = parseFloat(p.lat)
+  const lng = parseFloat(p.lon)
+  if (isNaN(lat) || isNaN(lng)) return
+  selected.value = { lat, lng }
+  mapCenter.value = [lat, lng]
+  zoom.value = 15
+  emits('update:modelValue', selected.value)
+  // keep chosen text in the field, clear dropdown
+  searchQuery.value = p.display_name
+  searchResults.value = []
+}
 
 watch(
   () => props.modelValue,
@@ -64,6 +114,30 @@ function onMarkerDrag(e: any) {
 
 <template>
   <div :class="cn('w-full', props.class)">
+    <!-- Place Search -->
+    <div style="margin-bottom: 0.5rem;">
+      <input
+        :value="searchQuery"
+        @input="onSearchInput"
+        type="text"
+        placeholder="Search place or address…"
+        aria-label="Search place or address"
+        style="width: 100%; height: 36px; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0 10px; background: var(--background, #fff); color: inherit;"
+      />
+      <div v-if="searching" style="margin-top: 4px; font-size: 12px; color: #6b7280;">Searching…</div>
+      <div v-if="searchResults.length" style="margin-top: 4px; border: 1px solid #e5e7eb; border-radius: 6px; background: var(--background, #fff); max-height: 180px; overflow: auto;">
+        <button
+          v-for="res in searchResults"
+          :key="res.lat + ',' + res.lon + '-' + res.display_name"
+          type="button"
+          @click="selectPlace(res)"
+          style="display: block; width: 100%; text-align: left; padding: 8px 10px; border: none; background: transparent; cursor: pointer; font-size: 12px; color: inherit;"
+        >
+          {{ res.display_name }}
+        </button>
+      </div>
+    </div>
+
     <LMap
       v-model:center="mapCenter"
       :zoom="zoom"

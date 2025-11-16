@@ -82,6 +82,14 @@ const grandTotal = computed(() => {
     return totalAmount.value + vatAmount.value;
 });
 
+// Basic validation to ensure form is ready for submission
+const canSubmit = computed(() => {
+    if (!form.customer_id) return false;
+    if (!form.invoice_items.length) return false;
+    // At least one valid line item
+    return form.invoice_items.some(it => !!it.product_id && it.quantity > 0 && it.price >= 0);
+});
+
 // Add new invoice item
 function addInvoiceItem() {
     form.invoice_items.push({
@@ -241,7 +249,7 @@ function getProductOptions() {
         { value: null, label: 'Select product' },
         ...props.products.map(product => ({
             value: product.id,
-            label: `${product.name} - ₱${product.selling_price.toFixed(2)}`
+            label: `${product.name}`
         }))
     ];
 }
@@ -284,6 +292,9 @@ function getProductOptions() {
                                 class="mt-1"
                                 required
                             />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                Draft: still editing, Pending: awaiting payment, Completed: paid, Cancelled: void.
+                            </div>
                             <InputError :message="form.errors.status" />
                         </div>
                     </div>
@@ -298,6 +309,9 @@ function getProductOptions() {
                                 class="mt-1"
                                 required
                             />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                Pick how the customer will pay (e.g. Cash, Bank Transfer, E‑Wallet).
+                            </div>
                             <InputError :message="form.errors.payment_method" />
                         </div>
                         
@@ -371,6 +385,9 @@ function getProductOptions() {
                                         @input="onQuantityChange(index)"
                                         required
                                     />
+                            <div v-if="item.product_id" class="text-[11px] text-gray-500 mt-1">
+                                In stock: {{ (props.products.find(p => p.id === item.product_id) || { stock: 0 }).stock }}
+                            </div>
                                     <InputError :message="getFormError(`invoice_items.${index}.quantity`)" />
                                 </div>
                                 
@@ -415,8 +432,8 @@ function getProductOptions() {
             <!-- Form Actions -->
             <Card>
                 <CardFooter class="flex gap-2 justify-end">
-                    <Button type="submit" variant="default">Create Invoice</Button>
-                    <Button type="button" variant="secondary" @click="submit(true)">Create & create another</Button>
+                    <Button type="submit" :disabled="!canSubmit" variant="default">Create Invoice</Button>
+                    <Button type="button" :disabled="!canSubmit" variant="secondary" @click="submit(true)">Create and make another</Button>
                     <Link :href="route('invoices.index')">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>

@@ -13,21 +13,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-        // Seed categories first, then products, then customers, then invoices, then refunds, then branches
+        // Core sample data
         $this->call([
+            RolesAndUsersSeeder::class,
             CategorySeeder::class,
             ProductSeeder::class,
             CustomerSeeder::class,
+            CustomerUserSeeder::class,
             InvoiceSeeder::class,
+            HistoricalInvoicesSeeder::class,
             DeliverySeeder::class,
-            RefundSeeder::class,
         ]);
     }
 }

@@ -45,6 +45,7 @@ interface InvoiceStats {
 }
 
 const page = usePage();
+const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
 const filters = ref<{ search?: string; status?: string }>(
     page.props.filters ? (page.props.filters as { search?: string; status?: string }) : {}
 );
@@ -86,21 +87,37 @@ function goToPage(pageNum: number) {
 
 async function deleteInvoice(id: number) {
     const result = await Swal.fire({
-        title: 'Delete Invoice?',
-        text: 'Are you sure you want to delete this invoice? This action cannot be undone.',
+        title: 'Delete this invoice?',
+        text: 'This will remove the invoice permanently. You can’t undo this.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#8f5be8',
         cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete invoice',
+        confirmButtonText: 'Yes, delete it',
     });
     if (result.isConfirmed) {
         router.delete(`/invoices/${id}`, {
             onSuccess: () => {
-                Swal.fire('Invoice deleted', 'Invoice deleted successfully.', 'success');
+                Swal.fire('Deleted', 'The invoice was deleted.', 'success');
             },
         });
     }
+}
+
+function markAsPaid(id: number) {
+    router.post(route('invoices.markPaid', id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Invoice marked as paid',
+                showConfirmButton: false,
+                timer: 2000,
+            });
+        },
+    });
 }
 
 function getStatusBadgeClass(status: string) {
@@ -129,6 +146,14 @@ function togglePendingFilter() {
     }, {
         preserveState: true,
         replace: true,
+    });
+}
+
+function formatDateFriendly(dateString: string) {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit'
     });
 }
 </script>
@@ -223,7 +248,7 @@ function togglePendingFilter() {
                 <input 
                     v-model="search" 
                     type="text" 
-                    placeholder="Search invoices by customer name..." 
+                    placeholder="Search by customer name" 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
             </div>
@@ -233,9 +258,9 @@ function togglePendingFilter() {
                     :class="status === 'pending' ? 'border-yellow-400 text-yellow-600 bg-yellow-50' : ''"
                     @click="togglePendingFilter"
                 >
-                    Collectibles
+                    Unpaid
                 </Button>
-            <Link :href="route('invoices.create')">
+            <Link v-if="!isCustomer" :href="route('invoices.create')">
                 <Button variant="default">
                     <span class="mr-2">+</span>
                     Add New Invoice
@@ -247,78 +272,97 @@ function togglePendingFilter() {
 
         <Card>
             <CardContent>
-                <table class="min-w-full divide-y divide-border">
-                    <thead>
-                        <tr>
-                            <th class="px-4 py-2 text-left">Reference #</th>
-                            <th class="px-4 py-2 text-left">Customer</th>
-                            <th class="px-4 py-2 text-left">Total Amount</th>
-                            <th class="px-4 py-2 text-left">Status</th>
-                            <th class="px-4 py-2 text-left">Payment Method</th>
-                            <th class="px-4 py-2 text-left">Created</th>
-                            <th class="px-4 py-2 text-left">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="invoice in (page.props.invoices as Paginated<Invoice>).data" :key="invoice.id" class="hover:bg-muted">
-                            <td class="px-4 py-2 font-medium">{{ invoice.reference_number }}</td>
-                            <td class="px-4 py-2">
-                                <div>
-                                    <div class="font-medium">{{ invoice.customer.name }}</div>
-                                    <div v-if="invoice.customer.company_name" class="text-sm text-gray-500">{{ invoice.customer.company_name }}</div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-2 font-medium">{{ formatCurrency(invoice.total_amount) }}</td>
-                            <td class="px-4 py-2">
-                                <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(invoice.status)]">
-                                    {{ invoice.status }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2">{{ invoice.payment_method.replace('_', ' ') }}</td>
-                            <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(invoice.created_at).toLocaleDateString() }}</td>
-                            <td class="px-4 py-2">
-                                <div class="flex gap-2">
-                                    <Link :href="route('invoices.show', invoice.id)">
-                                        <Button variant="ghost" size="sm">
-                                            <Icon name="eye" class="h-4 w-4" />
+                <div v-if="(page.props.invoices as Paginated<Invoice>).data.length === 0" class="py-12 text-center">
+                    <div class="text-xl font-semibold mb-2">No invoices yet</div>
+                    <p class="text-sm text-gray-600 mb-6" v-if="!isCustomer">Create your first invoice to get started.</p>
+                    <Link v-if="!isCustomer" :href="route('invoices.create')">
+                        <Button variant="default">
+                            <span class="mr-2">+</span>
+                            Create Invoice
+                        </Button>
+                    </Link>
+                </div>
+                <div v-else>
+                    <table class="min-w-full divide-y divide-border">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 text-left">Reference #</th>
+                                <th class="px-4 py-2 text-left">Customer</th>
+                                <th class="px-4 py-2 text-left">Total</th>
+                                <th class="px-4 py-2 text-left">Status</th>
+                                <th class="px-4 py-2 text-left">Payment</th>
+                                <th class="px-4 py-2 text-left">Date</th>
+                                <th class="px-4 py-2 text-left">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="invoice in (page.props.invoices as Paginated<Invoice>).data" :key="invoice.id" class="hover:bg-muted">
+                                <td class="px-4 py-2 font-medium">{{ invoice.reference_number }}</td>
+                                <td class="px-4 py-2">
+                                    <div>
+                                        <div class="font-medium">{{ invoice.customer.name }}</div>
+                                        <div v-if="invoice.customer.company_name" class="text-sm text-gray-500">{{ invoice.customer.company_name }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-2 font-medium">{{ formatCurrency(invoice.total_amount) }}</td>
+                                <td class="px-4 py-2">
+                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(invoice.status)]">
+                                        {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2">{{ invoice.payment_method.replace('_', ' ') }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-500">{{ formatDateFriendly(invoice.created_at) }}</td>
+                                <td class="px-4 py-2">
+                                    <div class="flex gap-2">
+                                        <Link :href="route('invoices.show', invoice.id)">
+                                            <Button variant="ghost" size="sm">
+                                                <Icon name="eye" class="h-4 w-4" />
+                                                <span class="ml-1">View</span>
+                                            </Button>
+                                        </Link>
+                                        <Link v-if="!isCustomer" :href="route('invoices.edit', invoice.id)">
+                                            <Button variant="ghost" size="sm">
+                                                <Icon name="edit" class="h-4 w-4" />
+                                                <span class="ml-1">Edit</span>
+                                            </Button>
+                                        </Link>
+                                        <Button v-if="!isCustomer && invoice.status === 'pending'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
+                                            <Icon name="check" class="h-4 w-4" />
+                                            <span class="ml-1">Mark as Paid</span>
                                         </Button>
-                                    </Link>
-                                    <Link :href="route('invoices.edit', invoice.id)">
-                                        <Button variant="ghost" size="sm">
-                                            <Icon name="edit" class="h-4 w-4" />
+                                        <Button v-if="!isCustomer" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)">
+                                            <Icon name="trash" class="h-4 w-4" />
+                                            <span class="ml-1">Delete</span>
                                         </Button>
-                                    </Link>
-                                    <Button variant="ghost" size="sm" @click="deleteInvoice(invoice.id)">
-                                        <Icon name="trash" class="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                <!-- Pagination -->
-                <div v-if="(page.props.invoices as Paginated<Invoice>).last_page > 1" class="flex items-center justify-between mt-6">
-                    <div class="text-sm text-gray-700">
-                        Showing {{ (page.props.invoices as Paginated<Invoice>).from }} to {{ (page.props.invoices as Paginated<Invoice>).to }} of {{ (page.props.invoices as Paginated<Invoice>).total }} results
-                    </div>
-                    <div class="flex gap-2">
-                        <Button 
-                            v-if="(page.props.invoices as Paginated<Invoice>).prev_page_url" 
-                            variant="outline" 
-                            size="sm"
-                            @click="goToPage((page.props.invoices as Paginated<Invoice>).current_page - 1)"
-                        >
-                            Previous
-                        </Button>
-                        <Button 
-                            v-if="(page.props.invoices as Paginated<Invoice>).next_page_url" 
-                            variant="outline" 
-                            size="sm"
-                            @click="goToPage((page.props.invoices as Paginated<Invoice>).current_page + 1)"
-                        >
-                            Next
-                        </Button>
+                    <!-- Pagination -->
+                    <div v-if="(page.props.invoices as Paginated<Invoice>).last_page > 1" class="flex items-center justify-between mt-6">
+                        <div class="text-sm text-gray-700">
+                            Showing {{ (page.props.invoices as Paginated<Invoice>).from }} to {{ (page.props.invoices as Paginated<Invoice>).to }} of {{ (page.props.invoices as Paginated<Invoice>).total }} results
+                        </div>
+                        <div class="flex gap-2">
+                            <Button 
+                                v-if="(page.props.invoices as Paginated<Invoice>).prev_page_url" 
+                                variant="outline" 
+                                size="sm"
+                                @click="goToPage((page.props.invoices as Paginated<Invoice>).current_page - 1)"
+                            >
+                                Previous
+                            </Button>
+                            <Button 
+                                v-if="(page.props.invoices as Paginated<Invoice>).next_page_url" 
+                                variant="outline" 
+                                size="sm"
+                                @click="goToPage((page.props.invoices as Paginated<Invoice>).current_page + 1)"
+                            >
+                                Next
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </CardContent>

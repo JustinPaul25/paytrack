@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -13,6 +14,99 @@ class SalesAnalyticsController extends Controller
 {
     public function index(Request $request)
     {
+        // Customers: render a customer-specific dashboard with their own data only
+        if ($request->user() && method_exists($request->user(), 'hasRole') && $request->user()->hasRole('Customer')) {
+            $customerId = Customer::where('email', $request->user()->email)->value('id');
+            if (!$customerId) {
+                // If no matching customer record, render an empty dashboard
+                return inertia('CustomerDashboard', [
+                    'customer' => ['id' => null, 'name' => $request->user()->name, 'email' => $request->user()->email],
+                    'monthlySpend' => [],
+                    'statusBreakdown' => ['paid' => 0, 'pending' => 0, 'cancelled' => 0],
+                    'topProducts' => [],
+                    'categorySpend' => [],
+                    'aovTrend' => [],
+                ]);
+            }
+
+            $start = Carbon::now()->subMonths(11)->startOfMonth();
+            $end = Carbon::now()->endOfMonth();
+
+            // Monthly spend (completed invoices only), last 12 months
+            $monthlySpend = DB::table('invoices')
+                ->select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('SUM(total_amount) as total'))
+                ->where('customer_id', $customerId)
+                ->where('status', 'completed')
+                ->whereBetween('created_at', [$start, $end])
+                ->groupBy('ym')
+                ->orderBy('ym')
+                ->get()
+                ->map(fn($r) => ['month' => $r->ym, 'total' => ((int)$r->total) / 100]);
+
+            // Status breakdown (all invoices)
+            $statusBreakdown = [
+                // Keep key name 'paid' for UI compatibility, but count 'completed' invoices
+                'paid' => (int) DB::table('invoices')->where('customer_id', $customerId)->where('status', 'completed')->count(),
+                'pending' => (int) DB::table('invoices')->where('customer_id', $customerId)->where('status', 'pending')->count(),
+                'cancelled' => (int) DB::table('invoices')->where('customer_id', $customerId)->where('status', 'cancelled')->count(),
+            ];
+
+            // Top products purchased (by quantity)
+            $topProducts = DB::table('invoice_items')
+                ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                ->join('products', 'invoice_items.product_id', '=', 'products.id')
+                ->where('invoices.customer_id', $customerId)
+                ->whereBetween('invoices.created_at', [$start, $end])
+                ->where('invoices.status', 'completed')
+                ->groupBy('products.id', 'products.name')
+                ->select('products.id', 'products.name', DB::raw('SUM(invoice_items.quantity) as total_quantity'))
+                ->orderByDesc('total_quantity')
+                ->limit(8)
+                ->get();
+
+            // Category spend
+            $categorySpend = DB::table('invoice_items')
+                ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                ->join('products', 'invoice_items.product_id', '=', 'products.id')
+                ->join('categories', 'products.category_id', '=', 'categories.id')
+                ->where('invoices.customer_id', $customerId)
+                ->whereBetween('invoices.created_at', [$start, $end])
+                ->where('invoices.status', 'completed')
+                ->groupBy('categories.id', 'categories.name')
+                ->select('categories.name as category', DB::raw('SUM(invoice_items.total) as total'))
+                ->orderByDesc('total')
+                ->get()
+                ->map(fn($r) => ['category' => $r->category, 'total' => ((int)$r->total) / 100]);
+
+            // Average order value trend (by month)
+            $aovTrend = DB::table('invoices')
+                ->select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('SUM(total_amount) as total'), DB::raw('COUNT(*) as cnt'))
+                ->where('customer_id', $customerId)
+                ->where('status', 'completed')
+                ->whereBetween('created_at', [$start, $end])
+                ->groupBy('ym')
+                ->orderBy('ym')
+                ->get()
+                ->map(function ($r) {
+                    $total = ((int)$r->total) / 100;
+                    $cnt = max(1, (int)$r->cnt);
+                    return ['month' => $r->ym, 'aov' => $total / $cnt];
+                });
+
+            return inertia('CustomerDashboard', [
+                'customer' => ['id' => $customerId],
+                'monthlySpend' => $monthlySpend,
+                'statusBreakdown' => $statusBreakdown,
+                'topProducts' => $topProducts,
+                'categorySpend' => $categorySpend,
+                'aovTrend' => $aovTrend,
+                'filters' => [
+                    'start_date' => $start->format('Y-m-d'),
+                    'end_date' => $end->format('Y-m-d'),
+                ],
+            ]);
+        }
+
         $period = $request->get('period', 'month'); // month, quarter, year
         $startDate = $request->get('start_date');
         $endDate = $request->get('end_date');
@@ -42,17 +136,21 @@ class SalesAnalyticsController extends Controller
 
         // Get sales data
         if ($useDummyData) {
-            $salesData = $this->getDummySalesData();
-            $topProducts = $this->getDummyTopProducts();
-            $salesByDate = $this->getDummySalesByDate($startDate, $endDate);
-            $salesByCategory = $this->getDummySalesByCategory();
-            $recentInvoices = $this->getDummyRecentInvoices();
+            // Use real datasets for all dashboard visuals even when dummy flag is present
+            $salesData = $this->getSalesData($startDate, $endDate);
+            $topProducts = $this->getTopProducts($startDate, $endDate);
+            $salesByDate = $this->getSalesByDate($startDate, $endDate);
+            $salesByCategory = $this->getSalesByCategory($startDate, $endDate);
+            $recentInvoices = $this->getRecentInvoices($startDate, $endDate);
+            // Churn metrics can still fall back if needed
+            $churnMetrics = $this->getChurnMetrics();
         } else {
             $salesData = $this->getSalesData($startDate, $endDate);
             $topProducts = $this->getTopProducts($startDate, $endDate);
             $salesByDate = $this->getSalesByDate($startDate, $endDate);
             $salesByCategory = $this->getSalesByCategory($startDate, $endDate);
             $recentInvoices = $this->getRecentInvoices($startDate, $endDate);
+            $churnMetrics = $this->getChurnMetrics();
         }
 
         return inertia('Dashboard', [
@@ -61,6 +159,7 @@ class SalesAnalyticsController extends Controller
             'salesByDate' => $salesByDate,
             'salesByCategory' => $salesByCategory,
             'recentInvoices' => $recentInvoices,
+            'churnMetrics' => $churnMetrics,
             'filters' => [
                 'period' => $period,
                 'start_date' => $startDate->format('Y-m-d'),
@@ -69,26 +168,119 @@ class SalesAnalyticsController extends Controller
         ]);
     }
 
+    private function getChurnMetrics()
+    {
+        // Last purchase per customer
+        $lastPurchases = Invoice::select('customer_id', DB::raw('MAX(created_at) as last_purchase'))
+            ->where('status', 'completed')
+            ->groupBy('customer_id')
+            ->pluck('last_purchase', 'customer_id');
+
+        $totalCustomers = Customer::count();
+        if ($totalCustomers === 0) {
+            return $this->getDummyChurnMetrics();
+        }
+
+        $now = Carbon::now();
+        $churnThreshold = $now->copy()->subDays(60);
+        $atRiskMin = $now->copy()->subDays(60);
+        $atRiskMax = $now->copy()->subDays(31);
+
+        $churned = 0;
+        $atRisk = 0;
+        $atRiskList = [];
+
+        if ($lastPurchases->isEmpty()) {
+            return $this->getDummyChurnMetrics();
+        }
+
+        foreach ($lastPurchases as $customerId => $lastDate) {
+            $last = Carbon::parse($lastDate);
+            if ($last->lessThanOrEqualTo($churnThreshold)) {
+                $churned++;
+            } elseif ($last->between($atRiskMin, $atRiskMax)) {
+                $atRisk++;
+                if (count($atRiskList) < 4) {
+                    $customer = Customer::find($customerId);
+                    if ($customer) {
+                        $atRiskList[] = [
+                            'id' => $customerId,
+                            'name' => $customer->name,
+                            'lastPurchase' => $last->format('M d, Y'),
+                            'riskLevel' => 'Medium',
+                            'daysSincePurchase' => $last->diffInDays($now),
+                        ];
+                    }
+                }
+            }
+        }
+
+        $churnRate = $totalCustomers > 0 ? round(($churned / $totalCustomers) * 100, 1) : 0;
+        $retentionRate = max(0, 100 - $churnRate);
+
+        // Churn trend for last 6 months (snapshot at each month end)
+        $trend = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthEnd = $now->copy()->subMonths($i)->endOfMonth();
+            $threshold = $monthEnd->copy()->subDays(60);
+            $snapshotChurned = 0;
+            foreach ($lastPurchases as $lastDate) {
+                $last = Carbon::parse($lastDate);
+                if ($last->lessThanOrEqualTo($threshold)) {
+                    $snapshotChurned++;
+                }
+            }
+            $rate = $totalCustomers > 0 ? round(($snapshotChurned / $totalCustomers) * 100, 1) : 0;
+            $trend[] = ['month' => $monthEnd->format('M'), 'rate' => $rate];
+        }
+
+        return [
+            'churnRate' => $churnRate,
+            'retentionRate' => $retentionRate,
+            'atRiskCustomers' => $atRisk,
+            'churnTrend' => $trend,
+            'customerSegments' => [], // optional for now
+            'churnBySegment' => [],   // optional for now
+            'atRiskCustomerList' => $atRiskList,
+            'recommendations' => [],
+        ];
+    }
+
+    private function getDummyChurnMetrics()
+    {
+        return [
+            'churnRate' => 0,
+            'retentionRate' => 100,
+            'atRiskCustomers' => 0,
+            'churnTrend' => collect(range(5,0))->map(fn($i)=>['month'=>Carbon::now()->subMonths($i)->format('M'),'rate'=>0])->toArray(),
+            'customerSegments' => [],
+            'churnBySegment' => [],
+            'atRiskCustomerList' => [],
+            'recommendations' => [],
+        ];
+    }
+
     private function getSalesData($startDate, $endDate)
     {
-        $totalSales = Invoice::whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', 'paid')
+        // Revenue: completed invoices only (stored in cents; normalize to currency)
+        $totalSalesCents = Invoice::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'completed')
             ->sum('total_amount');
+        $totalSales = $totalSalesCents / 100;
 
+        // Total invoices: all statuses
         $totalInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', 'paid')
             ->count();
 
-        $averageOrderValue = $totalInvoices > 0 ? $totalSales / $totalInvoices : 0;
+        // Average order value: use completed invoices to reflect realized sales
+        $paidInvoicesCount = Invoice::whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'completed')
+            ->count();
+        $averageOrderValue = $paidInvoicesCount > 0 ? $totalSales / $paidInvoicesCount : 0;
 
         $pendingInvoices = Invoice::whereBetween('created_at', [$startDate, $endDate])
             ->where('status', 'pending')
             ->count();
-
-        // If no real data, return dummy data
-        if ($totalSales == 0 && $totalInvoices == 0) {
-            return $this->getDummySalesData();
-        }
 
         return [
             'total_sales' => $totalSales,
@@ -109,44 +301,38 @@ class SalesAnalyticsController extends Controller
             ->join('products', 'invoice_items.product_id', '=', 'products.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->whereBetween('invoices.created_at', [$startDate, $endDate])
-            ->where('invoices.status', 'paid')
+            ->where('invoices.status', 'completed')
             ->groupBy('products.id', 'products.name')
             ->orderBy('total_revenue', 'desc')
             ->limit(10)
             ->get();
 
-        // If no real data, return dummy data
-        if ($products->isEmpty()) {
-            return $this->getDummyTopProducts();
-        }
-
-        return $products;
+        // Normalize revenue to currency
+        return $products->map(function ($p) {
+            $p->total_revenue = ((int) $p->total_revenue) / 100;
+            return $p;
+        });
     }
 
     private function getSalesByDate($startDate, $endDate)
     {
+        // Count all invoices; sum revenue only from completed invoices
         $salesByDate = Invoice::select(
                 DB::raw('DATE(created_at) as date'),
-                DB::raw('SUM(total_amount) as daily_sales'),
+                DB::raw("SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END) as daily_sales"),
                 DB::raw('COUNT(*) as invoice_count')
             )
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', 'paid')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
             ->map(function ($item) {
                 return [
                     'date' => $item->date,
-                    'sales' => $item->daily_sales,
+                    'sales' => ((int) $item->daily_sales) / 100,
                     'invoices' => $item->invoice_count,
                 ];
             });
-
-        // If no real data, return dummy data
-        if ($salesByDate->isEmpty()) {
-            return $this->getDummySalesByDate($startDate, $endDate);
-        }
 
         return $salesByDate;
     }
@@ -162,24 +348,23 @@ class SalesAnalyticsController extends Controller
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->whereBetween('invoices.created_at', [$startDate, $endDate])
-            ->where('invoices.status', 'paid')
+            ->where('invoices.status', 'completed')
             ->groupBy('categories.id', 'categories.name')
             ->orderBy('total_revenue', 'desc')
             ->get();
 
-        // If no real data, return dummy data
-        if ($salesByCategory->isEmpty()) {
-            return $this->getDummySalesByCategory();
-        }
-
-        return $salesByCategory;
+        // Normalize revenue to currency
+        return $salesByCategory->map(function ($c) {
+            $c->total_revenue = ((int) $c->total_revenue) / 100;
+            return $c;
+        });
     }
 
     private function getRecentInvoices($startDate, $endDate)
     {
-        $recentInvoices = Invoice::with(['customer', 'invoice_items.product'])
+        $recentInvoices = Invoice::with(['customer', 'invoiceItems.product'])
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', 'paid')
+            ->where('status', 'completed')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get()
@@ -190,14 +375,9 @@ class SalesAnalyticsController extends Controller
                     'total_amount' => $invoice->total_amount,
                     'status' => $invoice->status,
                     'created_at' => $invoice->created_at->format('M d, Y'),
-                    'items_count' => $invoice->invoice_items->count(),
+                    'items_count' => $invoice->invoiceItems ? $invoice->invoiceItems->count() : 0,
                 ];
             });
-
-        // If no real data, return dummy data
-        if ($recentInvoices->isEmpty()) {
-            return $this->getDummyRecentInvoices();
-        }
 
         return $recentInvoices;
     }

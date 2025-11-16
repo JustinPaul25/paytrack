@@ -6,17 +6,6 @@
                     <TrendingUp class="w-5 h-5 text-blue-600" />
                     Sales Prediction
                 </CardTitle>
-                <button
-                    @click="toggleCollapse"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
-                    :aria-expanded="!isCollapsed"
-                    aria-label="Toggle sales prediction details"
-                >
-                    <ChevronDown 
-                        class="w-5 h-5 text-gray-500 transition-transform duration-200"
-                        :class="{ 'rotate-180': !isCollapsed }"
-                    />
-                </button>
             </div>
         </CardHeader>
         
@@ -26,7 +15,7 @@
             :class="{ 'max-h-0': isCollapsed, 'max-h-[2000px]': !isCollapsed }"
         >
             <CardContent>
-                <!-- Demo Predictions Display -->
+                <!-- Live Predictions Display -->
                 <div class="space-y-6">
                     <!-- Next Day Prediction -->
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-6">
@@ -36,7 +25,7 @@
                                     Tomorrow's Prediction
                                 </h4>
                                 <p class="text-3xl font-bold text-blue-600">
-                                    {{ formatCurrency(demoData.predictedSales) }}
+                                    {{ formatCurrency(nextDayPrediction) }}
                                 </p>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                     Expected sales for {{ formatDate(tomorrow) }}
@@ -45,7 +34,7 @@
                             <div class="text-right">
                                 <div class="text-sm text-gray-600 dark:text-gray-400">Confidence</div>
                                 <div class="text-2xl font-bold text-green-600">
-                                    {{ (demoData.confidence * 100).toFixed(0) }}%
+                                    {{ (averageConfidence * 100).toFixed(0) }}%
                                 </div>
                             </div>
                         </div>
@@ -56,7 +45,7 @@
                         <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Next 7 Days Forecast</h4>
                         <div class="space-y-3">
                             <div 
-                                v-for="(prediction, index) in demoData.nextWeekPredictions" 
+                                v-for="(prediction, index) in nextWeekPredictions" 
                                 :key="index"
                                 class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                             >
@@ -112,13 +101,13 @@
                             <div class="flex items-center justify-between mb-3">
                                 <span class="text-sm text-gray-600 dark:text-gray-400">Predicted Monthly Revenue</span>
                                 <span class="font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ formatCurrency(demoData.monthlyPrediction) }}
+                                    {{ formatCurrency(monthlyPrediction) }}
                                 </span>
                             </div>
                             <div class="flex items-center gap-2">
                                 <TrendingUp class="w-4 h-4 text-green-600" />
                                 <span class="text-green-600 text-sm font-medium">
-                                    +{{ demoData.monthlyGrowth.toFixed(1) }}% vs current month
+                                    +{{ monthlyGrowth.toFixed(1) }}% vs current month
                                 </span>
                             </div>
                         </div>
@@ -127,7 +116,8 @@
                     <!-- Model Info -->
                     <div class="border-t pt-4">
                         <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                            <span>Using sample data</span>
+                            <span v-if="usingDummy">Using sample data</span>
+                            <span v-else>Live predictions</span>
                             <div class="flex items-center gap-2">
                                 <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                                 <span>Ready</span>
@@ -141,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Line } from 'vue-chartjs';
 import {
@@ -175,8 +165,8 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Collapsible state
-const isCollapsed = ref(true);
+// Collapsible state (disabled: content always open)
+const isCollapsed = ref(false);
 
 const tomorrow = computed(() => {
     const date = new Date();
@@ -184,26 +174,40 @@ const tomorrow = computed(() => {
     return date;
 });
 
-// Demo data
-const demoData = ref({
-    predictedSales: 4250,
-    confidence: 0.87,
-    nextWeekPredictions: [4250, 3800, 4100, 3950, 4600, 5200, 4800],
-    nextMonthPredictions: Array.from({ length: 30 }, (_, i) => 3500 + Math.random() * 2000),
-    monthlyPrediction: 125000,
-    monthlyGrowth: 12.5
+// Live prediction state
+const predictions = ref<Array<{ date: string; predicted_sales: number; confidence: number }>>([]);
+const averageConfidence = computed(() => {
+    if (!predictions.value.length) return 0.7;
+    const sum = predictions.value.reduce((acc, p) => acc + (p.confidence ?? 0.7), 0);
+    return sum / predictions.value.length;
 });
+const nextWeekPredictions = computed<number[]>(() => predictions.value.slice(0, 7).map(p => p.predicted_sales));
+const nextDayPrediction = computed<number>(() => (predictions.value[0]?.predicted_sales ?? 0));
+const monthlyPrediction = computed<number>(() => {
+    if (predictions.value.length >= 30) {
+        return predictions.value.slice(0, 30).reduce((acc, p) => acc + p.predicted_sales, 0);
+    }
+    if (predictions.value.length > 0) {
+        const avg = predictions.value.reduce((acc, p) => acc + p.predicted_sales, 0) / predictions.value.length;
+        return avg * 30;
+    }
+    return 0;
+});
+const monthlyGrowth = computed<number>(() => {
+    return Math.max(0, Math.min(25, (averageConfidence.value - 0.6) * 100));
+});
+const usingDummy = ref(false);
 
 // Prediction Chart.js data and options
 const predictionChartData = computed(() => ({
-    labels: demoData.value.nextWeekPredictions.map((_, index) => {
+    labels: nextWeekPredictions.value.map((_, index) => {
         const date = getDateFromIndex(index);
         return formatDate(date).split(' ')[1];
     }),
     datasets: [
         {
             label: 'Predicted Sales',
-            data: demoData.value.nextWeekPredictions,
+            data: nextWeekPredictions.value,
             borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
@@ -215,7 +219,7 @@ const predictionChartData = computed(() => ({
         },
         {
             label: 'Confidence Range',
-            data: demoData.value.nextWeekPredictions.map(pred => pred * 0.95),
+            data: nextWeekPredictions.value.map(pred => pred * 0.95),
             borderColor: 'rgba(59, 130, 246, 0.3)',
             backgroundColor: 'rgba(59, 130, 246, 0.05)',
             fill: false,
@@ -253,8 +257,8 @@ const predictionChartOptions = computed(() => ({
     scales: {
         y: {
             beginAtZero: false,
-            min: 3000,
-            max: 5500,
+            min: Math.min(...nextWeekPredictions.value, 0),
+            max: Math.max(...nextWeekPredictions.value, 1) * 1.1,
             grid: {
                 color: 'rgba(156, 163, 175, 0.1)',
             },
@@ -285,10 +289,10 @@ const predictionChartOptions = computed(() => ({
     }
 }));
 
-const maxPrediction = computed(() => Math.max(...demoData.value.nextWeekPredictions));
+const maxPrediction = computed(() => Math.max(...nextWeekPredictions.value, 0));
 
 const chartPoints = computed(() => {
-    const points = demoData.value.nextWeekPredictions.map((value, index) => {
+    const points = nextWeekPredictions.value.map((value, index) => {
         const x = (index / 6) * 100;
         const y = 100 - ((value / maxPrediction.value) * 100);
         return `${x},${y}`;
@@ -297,7 +301,7 @@ const chartPoints = computed(() => {
 });
 
 const chartPointsArray = computed(() => {
-    return demoData.value.nextWeekPredictions.map((value, index) => {
+    return nextWeekPredictions.value.map((value, index) => {
         const x = (index / 6) * 100;
         const y = 100 - ((value / maxPrediction.value) * 100);
         return { x, y };
@@ -335,7 +339,26 @@ function getDateFromIndex(index: number): Date {
 }
 
 function getPredictionBarWidth(prediction: number): number {
-    const maxPrediction = Math.max(...demoData.value.nextWeekPredictions);
+    const maxPrediction = Math.max(...nextWeekPredictions.value, 0);
     return maxPrediction > 0 ? (prediction / maxPrediction) * 100 : 0;
 }
+
+// Fetch live predictions on mount
+onMounted(async () => {
+    try {
+        const res = await fetch(`/sales/predictions?period=month&days_ahead=30`, {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        if (!res.ok) throw new Error(`Failed to fetch predictions: ${res.status}`);
+        const data = await res.json();
+        usingDummy.value = !!data?.model_info?.note;
+        predictions.value = Array.isArray(data?.predictions) ? data.predictions : [];
+    } catch (e) {
+        usingDummy.value = true;
+        predictions.value = [];
+        console.error(e);
+    }
+});
 </script> 

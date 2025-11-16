@@ -3,17 +3,51 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Requests\CustomerRequest;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\CustomerCredentials;
 
 class CustomerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $customers = Customer::latest()->paginate(10);
+        $search = $request->input('search');
+
+        $query = Customer::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query
+            ->orderBy('updated_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        // Optional stats for the collapsible widget (safe if not used)
+        $stats = [
+            'totalCustomers' => Customer::count(),
+            'customersWithCompany' => Customer::whereNotNull('company_name')->where('company_name', '!=', '')->count(),
+            'customersWithPhone' => Customer::whereNotNull('phone')->where('phone', '!=', '')->count(),
+            'recentlyAdded' => Customer::where('created_at', '>=', now()->subDays(7))->count(),
+        ];
+
         return Inertia::render('customers/Index', [
             'customers' => $customers,
+            'filters' => [
+                'search' => $search,
+            ],
+            'stats' => $stats,
         ]);
     }
 
@@ -29,6 +63,21 @@ class CustomerController extends Controller
         if ($request->hasFile('profile_image')) {
             $customer->addMediaFromRequest('profile_image')->toMediaCollection('profile_image');
         }
+
+        // Create corresponding user account for the customer
+        $generatedPassword = Str::random(10);
+        $user = User::create([
+            'name' => $customer->name,
+            'email' => $customer->email,
+            'password' => Hash::make($generatedPassword),
+        ]);
+        // Assign "Customer" role if roles system is present
+        if (method_exists($user, 'syncRoles')) {
+            $user->syncRoles(['Customer']);
+        }
+        // Email credentials to the customer
+        Mail::to($customer->email)->send(new CustomerCredentials($customer->name, $customer->email, $generatedPassword));
+
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
 
@@ -54,7 +103,20 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        // Block delete if related records exist to avoid FK errors
+        $hasInvoices = \App\Models\Invoice::where('customer_id', $customer->id)->exists();
+        $hasDeliveries = \App\Models\Delivery::where('customer_id', $customer->id)->exists();
+
+        if ($hasInvoices || $hasDeliveries) {
+            return redirect()
+                ->back()
+                ->with('error', 'Cannot delete this customer because there are related records (invoices or deliveries). Please remove or reassign those first.');
+        }
+
+        // Remove profile image if present
+        $customer->clearMediaCollection('profile_image');
         $customer->delete();
+
         return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
     }
 } 

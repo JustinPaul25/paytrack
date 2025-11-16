@@ -6,17 +6,6 @@
                     <Package class="w-5 h-5 text-indigo-600" />
                     Product Sales Trend
                 </CardTitle>
-                <button
-                    @click="toggleCollapse"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200"
-                    :aria-expanded="!isCollapsed"
-                    aria-label="Toggle product sales trend details"
-                >
-                    <ChevronDown 
-                        class="w-5 h-5 text-gray-500 transition-transform duration-200"
-                        :class="{ 'rotate-180': !isCollapsed }"
-                    />
-                </button>
             </div>
         </CardHeader>
         
@@ -87,7 +76,6 @@
                                         </div>
                                         <div>
                                             <p class="font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</p>
-                                            <p class="text-sm text-gray-600 dark:text-gray-400">{{ product.category }}</p>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -121,16 +109,7 @@
                     </div>
                 </div>
 
-                <!-- Status -->
-                <div class="border-t pt-4 mt-6">
-                    <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                        <span>Using sample data</span>
-                        <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                            <span>Ready</span>
-                        </div>
-                    </div>
-                </div>
+                <!-- Status removed: now using live data -->
             </CardContent>
         </div>
     </Card>
@@ -165,27 +144,33 @@ ChartJS.register(
     Filler
 );
 
-// Collapsible state
-const isCollapsed = ref(true);
+// Collapsible state (disabled: content always open)
+const isCollapsed = ref(false);
 
-// Product sales data
-const productSalesData = [
-    { day: 'Mon', sales: 245 },
-    { day: 'Tue', sales: 312 },
-    { day: 'Wed', sales: 289 },
-    { day: 'Thu', sales: 356 },
-    { day: 'Fri', sales: 298 },
-    { day: 'Sat', sales: 378 },
-    { day: 'Sun', sales: 234 }
-];
+interface SalesByDate { date: string; sales: number; invoices: number }
+interface TopProduct { name: string; total_quantity: number; total_revenue: number }
+
+const props = defineProps<{
+    salesByDate: SalesByDate[];
+    topProducts: TopProduct[];
+}>();
+
+// Transform last 7 days for chart
+const last7Days = computed(() => {
+    const arr = props.salesByDate.slice(-7);
+    return arr;
+});
 
 // Product Chart.js data and options
 const productChartData = computed(() => ({
-    labels: productSalesData.map(item => item.day),
+    labels: last7Days.value.map(item => {
+        const d = new Date(item.date);
+        return d.toLocaleDateString('en-US', { weekday: 'short' });
+    }),
     datasets: [
         {
             label: 'Daily Sales',
-            data: productSalesData.map(item => item.sales),
+            data: last7Days.value.map(item => item.sales),
             borderColor: 'rgb(99, 102, 241)',
             backgroundColor: 'rgba(99, 102, 241, 0.1)',
             fill: true,
@@ -194,16 +179,6 @@ const productChartData = computed(() => ({
             pointBorderColor: '#ffffff',
             pointBorderWidth: 2,
             pointRadius: 5,
-        },
-        {
-            label: 'Average Trend',
-            data: productSalesData.map(() => 300),
-            borderColor: 'rgb(156, 163, 175)',
-            backgroundColor: 'rgba(156, 163, 175, 0.05)',
-            fill: false,
-            tension: 0,
-            borderDash: [10, 5],
-            pointRadius: 0,
         }
     ]
 }));
@@ -269,12 +244,11 @@ const productChartOptions = computed(() => ({
     }
 }));
 
-const topSellingProducts = [
-    { name: 'Ink Cartridge', category: 'Printing', units: 1247, revenue: 187500 },
-    { name: 'Paper A4', category: 'Office', units: 892, revenue: 160000 },
-    { name: 'USB Cable', category: 'Electronics', units: 756, revenue: 90000 },
-    { name: 'Mouse Wireless', category: 'Electronics', units: 634, revenue: 72000 }
-];
+const topSellingProducts = computed(() => props.topProducts.map(p => ({
+    name: p.name,
+    units: p.total_quantity,
+    revenue: p.total_revenue
+})));
 
 const productMetrics = [
     { name: 'High Performance', percentage: 35, color: '#10B981' },
@@ -282,12 +256,13 @@ const productMetrics = [
     { name: 'Low Performance', percentage: 20, color: '#F59E0B' }
 ];
 
-// Chart computations
+// Chart computations (kept for potential SVG usage; now based on live data)
 const productSalesPoints = computed(() => {
-    const points = productSalesData.map((item, index) => {
-        const x = (index / (productSalesData.length - 1)) * 100;
-        const minValue = 0;
-        const maxValue = 400;
+    const data = last7Days.value;
+    const maxValue = Math.max(...data.map(i => i.sales), 1);
+    const minValue = 0;
+    const points = data.map((item, index) => {
+        const x = (index / Math.max(1, data.length - 1)) * 100;
         const y = 100 - (((item.sales - minValue) / (maxValue - minValue)) * 80 + 10);
         return `${x},${y}`;
     });
@@ -295,10 +270,11 @@ const productSalesPoints = computed(() => {
 });
 
 const productSalesPointsArray = computed(() => {
-    return productSalesData.map((item, index) => {
-        const x = (index / (productSalesData.length - 1)) * 100;
-        const minValue = 0;
-        const maxValue = 400;
+    const data = last7Days.value;
+    const maxValue = Math.max(...data.map(i => i.sales), 1);
+    const minValue = 0;
+    return data.map((item, index) => {
+        const x = (index / Math.max(1, data.length - 1)) * 100;
         const y = 100 - (((item.sales - minValue) / (maxValue - minValue)) * 80 + 10);
         return { x, y };
     });

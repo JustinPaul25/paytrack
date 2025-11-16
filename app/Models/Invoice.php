@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class Invoice extends Model
 {
@@ -66,12 +66,7 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
-    
-    public function refunds(): HasMany
-    {
-        return $this->hasMany(Refund::class);
-    }
-    
+
     // Money accessors (get in dollars, set in cents)
     public function getTotalAmountAttribute($value)
     {

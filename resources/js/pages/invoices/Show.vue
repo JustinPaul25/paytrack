@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -72,6 +72,9 @@ const props = defineProps<{
     invoice: Invoice;
 }>();
 
+const page = usePage();
+const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Invoices',
@@ -141,11 +144,13 @@ function getCustomerInitials(customer: Customer) {
         <div class="flex items-center justify-between my-6">
             <h1 class="text-2xl font-bold">{{ props.invoice.reference_number }}</h1>
             <div class="flex gap-2">
-                <Link :href="route('invoices.edit', props.invoice.id)">
-                    <Button variant="default">Edit Invoice</Button>
+                <Button variant="outline" @click="window.print()">Download PDF</Button>
+                <Button variant="outline" @click="window.print()">Print</Button>
+                <Link v-if="isCustomer && props.invoice.status === 'completed'" :href="route('refundRequests.create', props.invoice.id)">
+                    <Button variant="default">Request Refund</Button>
                 </Link>
                 <Link :href="route('invoices.index')">
-                    <Button variant="ghost">Back to Invoices</Button>
+                    <Button variant="ghost">Back</Button>
                 </Link>
             </div>
         </div>
