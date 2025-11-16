@@ -214,7 +214,7 @@ async function deleteRole(id: number) {
                                     {{ role.permissions_count }}
                                 </span>
                             </td>
-                            <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(role.updated_at).toLocaleDateString() }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(role.updated_at).toLocaleDateString() }}</td>
                             <td class="px-4 py-2">
                                 <div class="flex gap-2">
                                     <Link :href="route('roles.edit', role.id)">
