@@ -18,7 +18,6 @@ const form = useForm({
     name: '',
     guard_name: 'web',
     permissions: [] as number[],
-    create_another: undefined as number | undefined,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -50,12 +49,7 @@ function selectAll(resource: string) {
     }
 }
 
-function submit(createAnother = false) {
-    if (createAnother) {
-        form.create_another = 1;
-    } else {
-        delete form.create_another;
-    }
+function submit() {
     form.post(route('roles.store'), {
         preserveScroll: true,
         onSuccess: () => {
@@ -68,10 +62,6 @@ function submit(createAnother = false) {
                 timer: 3000,
                 timerProgressBar: true,
             });
-            if (createAnother) {
-                form.reset();
-                form.permissions = [];
-            }
         },
     });
 }
@@ -117,7 +107,6 @@ function submit(createAnother = false) {
                     </div>
                     <CardFooter class="flex gap-2 justify-end">
                         <Button type="submit" variant="default">Create</Button>
-                        <Button type="button" variant="secondary" @click="submit(true)">Create & create another</Button>
                         <Link :href="route('roles.index')">
                             <Button type="button" variant="ghost">Cancel</Button>
                         </Link>

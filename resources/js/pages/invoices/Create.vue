@@ -53,7 +53,6 @@ const form = useForm({
             total: 0
         }
     ],
-    create_another: undefined as number | undefined,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -160,7 +159,7 @@ function onPriceChange(index: number) {
     updateItemTotal(index);
 }
 
-function submit(createAnother = false) {
+function submit() {
     // Double-check if any item quantity exceeds stock (as a safety measure)
     for (let i = 0; i < form.invoice_items.length; i++) {
         const item = form.invoice_items[i];
@@ -180,12 +179,6 @@ function submit(createAnother = false) {
             }
         }
     }
-
-    if (createAnother) {
-        form.create_another = 1;
-    } else {
-        delete form.create_another;
-    }
     
     form.post(route('invoices.store'), {
         preserveScroll: true,
@@ -199,16 +192,6 @@ function submit(createAnother = false) {
                 timer: 3000,
                 timerProgressBar: true,
             });
-            if (createAnother) {
-                form.reset();
-                // Reset to one empty item
-                form.invoice_items = [{
-                    product_id: null,
-                    quantity: 1,
-                    price: 0,
-                    total: 0
-                }];
-            }
         },
     });
 }

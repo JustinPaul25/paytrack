@@ -47,7 +47,6 @@ const form = useForm({
     status: 'pending',
     notes: '',
     delivery_fee: '',
-    create_another: undefined as number | undefined,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -61,7 +60,45 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
-function submit(createAnother = false) {
+function onContactPhoneInput(e: Event) {
+    const target = e.target as HTMLInputElement;
+    let value = target.value;
+    
+    // Remove all non-digit and non-plus characters
+    value = value.replace(/[^0-9+]/g, '');
+    
+    // If starts with +, ensure it's +63
+    if (value.startsWith('+')) {
+        if (value.length > 1 && !value.startsWith('+63')) {
+            value = '+63' + value.substring(1).replace(/[^0-9]/g, '');
+        }
+        // Limit to +639XXXXXXXXX (13 chars: +639 + 9 digits)
+        if (value.length > 13) {
+            value = value.substring(0, 13);
+        }
+    } else {
+        // If starts with 0, ensure it's 09
+        if (value.length > 0 && value[0] === '0' && value.length > 1 && value[1] !== '9') {
+            value = '09' + value.substring(2).replace(/[^0-9]/g, '');
+        }
+        // If starts with 63, convert to +63
+        if (value.startsWith('63')) {
+            value = '+' + value;
+        }
+        // Limit to 11 digits for 09XXXXXXXXX format
+        if (value.length > 11 && !value.startsWith('+')) {
+            value = value.substring(0, 11);
+        }
+    }
+    
+    // Update the input and form
+    if (value !== target.value) {
+        target.value = value;
+    }
+    form.contact_phone = value;
+}
+
+function submit() {
     // Require invoice selection on the client-side
     if (!form.invoice_id) {
         form.setError('invoice_id', 'Invoice is required.');
@@ -73,12 +110,6 @@ function submit(createAnother = false) {
     if (!phMobileRegex.test(form.contact_phone || '')) {
         form.setError('contact_phone', 'Enter a valid PH mobile number (09XXXXXXXXX or +639XXXXXXXXX).');
         return;
-    }
-
-    if (createAnother) {
-        form.create_another = 1;
-    } else {
-        delete form.create_another;
     }
     
     form.post(route('deliveries.store'), {
@@ -93,9 +124,6 @@ function submit(createAnother = false) {
                 timer: 3000,
                 timerProgressBar: true,
             });
-            if (createAnother) {
-                form.reset();
-            }
         },
     });
 }
@@ -349,6 +377,7 @@ async function getCurrentLocationAddress() {
                                 maxlength="13"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                                 placeholder="09XXXXXXXXX or +639XXXXXXXXX"
+                                @input="onContactPhoneInput"
                                 required
                             />
                             <InputError :message="form.errors.contact_phone" />
@@ -443,7 +472,6 @@ async function getCurrentLocationAddress() {
             <Card>
                 <CardFooter class="flex gap-2 justify-end">
                     <Button type="submit" variant="default">Create Delivery</Button>
-                    <Button type="button" variant="secondary" @click="submit(true)">Create & create another</Button>
                     <Link :href="route('deliveries.index')">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>

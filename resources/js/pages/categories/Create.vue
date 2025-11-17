@@ -15,7 +15,6 @@ import InputError from '@/components/InputError.vue';
 const form = useForm({
     name: '',
     description: '',
-    create_another: undefined as number | undefined,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -29,12 +28,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
-function submit(createAnother = false) {
-    if (createAnother) {
-        form.create_another = 1;
-    } else {
-        delete form.create_another;
-    }
+function submit() {
     form.post(route('categories.store'), {
         preserveScroll: true,
         onSuccess: () => {
@@ -47,9 +41,6 @@ function submit(createAnother = false) {
                 timer: 3000,
                 timerProgressBar: true,
             });
-            if (createAnother) {
-                form.reset();
-            }
         },
     });
 }

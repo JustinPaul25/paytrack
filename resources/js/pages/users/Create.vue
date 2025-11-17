@@ -20,7 +20,6 @@ const form = useForm({
     password: '',
     password_confirmation: '',
     roles: [] as number[],
-    create_another: undefined as number | undefined,
     profile_image: null as File | null, // Allow File or null
 });
 
@@ -49,12 +48,7 @@ function onProfileImageChange(e: Event) {
     }
 }
 
-function submit(createAnother = false) {
-    if (createAnother) {
-        form.create_another = 1;
-    } else {
-        delete form.create_another;
-    }
+function submit() {
     form.post(route('users.store'), {
         preserveScroll: true,
         forceFormData: true,
@@ -68,19 +62,8 @@ function submit(createAnother = false) {
                 timer: 3000,
                 timerProgressBar: true,
             });
-            if (createAnother) {
-                form.reset();
-                profileImage.value = null;
-                profileImageUrl.value = null;
-                // Clear the file input
-                const fileInput = document.getElementById('profile_image') as HTMLInputElement;
-                if (fileInput) {
-                    fileInput.value = '';
-                }
-            } else {
-                // Redirect to users index page
-                window.location.href = route('users.index');
-            }
+            // Redirect to users index page
+            window.location.href = route('users.index');
         },
     });
 }
@@ -144,7 +127,6 @@ function submit(createAnother = false) {
                     </div>
                     <CardFooter class="flex gap-2 justify-end">
                         <Button type="submit" variant="default">Create</Button>
-                        <Button type="button" variant="secondary" @click="submit(true)">Create & create another</Button>
                         <Link :href="route('users.index')">
                             <Button type="button" variant="ghost">Cancel</Button>
                         </Link>

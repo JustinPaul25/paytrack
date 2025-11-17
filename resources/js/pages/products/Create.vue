@@ -15,6 +15,8 @@ import { ref } from 'vue';
 
 const props = defineProps<{ categories: Array<{ id: number; name: string }> }>();
 
+const imagePreview = ref<string | null>(null);
+
 const form = useForm({
     name: '',
     description: '',
@@ -24,7 +26,6 @@ const form = useForm({
     stock: '',
     SKU: '',
     image: null as File | null,
-    create_another: undefined as number | undefined,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -49,12 +50,7 @@ function handleImageChange(e: Event) {
     }
 }
 
-function submit(createAnother = false) {
-    if (createAnother) {
-        form.create_another = 1;
-    } else {
-        delete form.create_another;
-    }
+function submit() {
     form.post(route('products.store'), {
         preserveScroll: true,
         forceFormData: true,
@@ -68,9 +64,6 @@ function submit(createAnother = false) {
                 timer: 3000,
                 timerProgressBar: true,
             });
-            if (createAnother) {
-                form.reset();
-            }
         },
     });
 }
