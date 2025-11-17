@@ -81,6 +81,18 @@ async function deleteCategory(id: number) {
             onSuccess: () => {
                 Swal.fire('Category deleted', 'Category deleted successfully.', 'success');
             },
+            onError: (errors: any) => {
+                // Handle different error formats
+                let message = 'Failed to delete category. Please try again.';
+                if (typeof errors === 'string') {
+                    message = errors;
+                } else if (errors?.message) {
+                    message = errors.message;
+                } else if (errors?.error) {
+                    message = errors.error;
+                }
+                Swal.fire('Error', message, 'error');
+            },
         });
     }
 }
