@@ -9,7 +9,7 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Category::query();
+        $query = Category::query()->withCount('products');
         $search = $request->input('search');
         if ($search) {
             $query->where('name', 'like', "%{$search}%");
@@ -26,10 +26,7 @@ class CategoryController extends Controller
 
     public function create()
     {
-        $categories = Category::all(['id', 'name']);
-        return inertia('categories/Create', [
-            'categories' => $categories,
-        ]);
+        return inertia('categories/Create');
     }
 
     public function store(Request $request)
@@ -37,7 +34,6 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:categories,id',
         ]);
         $category = Category::create($validated);
         return redirect()->route('categories.index');
@@ -50,10 +46,8 @@ class CategoryController extends Controller
 
     public function edit(Category $category)
     {
-        $categories = Category::where('id', '!=', $category->id)->get(['id', 'name']);
         return inertia('categories/Edit', [
             'category' => $category,
-            'categories' => $categories,
         ]);
     }
 
@@ -62,7 +56,6 @@ class CategoryController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:categories,id',
         ]);
         $category->update($validated);
 

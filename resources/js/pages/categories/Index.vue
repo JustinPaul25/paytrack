@@ -16,6 +16,7 @@ interface Category {
     name: string;
     description?: string;
     updated_at: string;
+    products_count?: number;
 }
 interface Paginated<T> {
     data: T[];
@@ -210,7 +211,12 @@ async function deleteCategory(id: number) {
                                             <Icon name="edit" class="h-4 w-4" />
                                         </Button>
                                     </Link>
-                                    <Button variant="ghost" size="sm" @click="deleteCategory(category.id)">
+                                    <Button 
+                                        v-if="!category.products_count || category.products_count === 0"
+                                        variant="ghost" 
+                                        size="sm" 
+                                        @click="deleteCategory(category.id)"
+                                    >
                                         <Icon name="trash" class="h-4 w-4" />
                                     </Button>
                                 </div>
