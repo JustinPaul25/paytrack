@@ -155,22 +155,38 @@ const props = defineProps<{
     topProducts: TopProduct[];
 }>();
 
-// Transform last 7 days for chart
-const last7Days = computed(() => {
-    const arr = props.salesByDate.slice(-7);
-    return arr;
+// Generate last 7 days with proper labels
+const last7DaysData = computed(() => {
+    const today = new Date();
+    const days = [];
+    
+    // Create array for last 7 days
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Find matching data or use 0
+        const dataPoint = props.salesByDate.find(item => item.date === dateStr);
+        days.push({
+            date: dateStr,
+            dateObj: date,
+            sales: dataPoint ? dataPoint.sales : 0
+        });
+    }
+    
+    return days;
 });
 
 // Product Chart.js data and options
 const productChartData = computed(() => ({
-    labels: last7Days.value.map(item => {
-        const d = new Date(item.date);
-        return d.toLocaleDateString('en-US', { weekday: 'short' });
+    labels: last7DaysData.value.map(item => {
+        return item.dateObj.toLocaleDateString('en-US', { weekday: 'short' });
     }),
     datasets: [
         {
             label: 'Daily Sales',
-            data: last7Days.value.map(item => item.sales),
+            data: last7DaysData.value.map(item => item.sales),
             borderColor: 'rgb(99, 102, 241)',
             backgroundColor: 'rgba(99, 102, 241, 0.1)',
             fill: true,
@@ -182,6 +198,21 @@ const productChartData = computed(() => ({
         }
     ]
 }));
+
+// Compute max value for y-axis
+const chartMaxValue = computed(() => {
+    const maxValue = Math.max(...last7DaysData.value.map(item => item.sales), 0);
+    if (maxValue === 0) return 100;
+    const rounded = Math.ceil(maxValue / 50) * 50;
+    return Math.max(rounded, 100);
+});
+
+const chartStepSize = computed(() => {
+    const maxValue = Math.max(...last7DaysData.value.map(item => item.sales), 0);
+    if (maxValue === 0) return 50;
+    const rounded = Math.ceil(maxValue / 50) * 50;
+    return rounded >= 400 ? 100 : 50;
+});
 
 const productChartOptions = computed(() => ({
     responsive: true,
@@ -215,12 +246,12 @@ const productChartOptions = computed(() => ({
         y: {
             beginAtZero: true,
             min: 0,
-            max: 400,
+            suggestedMax: chartMaxValue.value,
             grid: {
                 color: 'rgba(156, 163, 175, 0.1)',
             },
             ticks: {
-                stepSize: 100,
+                stepSize: chartStepSize.value,
                 font: {
                     size: 11
                 }
@@ -258,7 +289,7 @@ const productMetrics = [
 
 // Chart computations (kept for potential SVG usage; now based on live data)
 const productSalesPoints = computed(() => {
-    const data = last7Days.value;
+    const data = last7DaysData.value;
     const maxValue = Math.max(...data.map(i => i.sales), 1);
     const minValue = 0;
     const points = data.map((item, index) => {
@@ -270,7 +301,7 @@ const productSalesPoints = computed(() => {
 });
 
 const productSalesPointsArray = computed(() => {
-    const data = last7Days.value;
+    const data = last7DaysData.value;
     const maxValue = Math.max(...data.map(i => i.sales), 1);
     const minValue = 0;
     return data.map((item, index) => {

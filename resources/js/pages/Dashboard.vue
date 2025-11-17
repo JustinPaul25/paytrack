@@ -11,12 +11,11 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardDescription from '@/components/ui/card/CardDescription.vue';
 import BaseChart from '@/components/charts/BaseChart.vue';
 import SalesPredictionWidget from '@/components/SalesPredictionWidget.vue';
-import CustomerChurnWidget from '@/components/CustomerChurnWidget.vue';
 import ProductSalesTrendWidget from '@/components/ProductSalesTrendWidget.vue';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { type BreadcrumbItem } from '@/types';
-import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, Users, BarChart3 } from 'lucide-vue-next';
+import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, BarChart3 } from 'lucide-vue-next';
 
 interface SalesData {
     total_sales: number;
@@ -65,7 +64,6 @@ const props = defineProps<{
     salesByDate: SalesByDate[];
     salesByCategory: SalesByCategory[];
     recentInvoices: RecentInvoice[];
-    churnMetrics?: any;
     filters: Filters;
 }>();
 
@@ -505,10 +503,6 @@ const closeNotifications = () => {
                                 <TrendingUp class="tab-icon" />
                                 Sales Prediction
                             </TabsTrigger>
-                            <TabsTrigger value="customer-churn" class="tab-trigger-full">
-                                <Users class="tab-icon" />
-                                Customer Churn Analysis
-                            </TabsTrigger>
                             <TabsTrigger value="product-trend" class="tab-trigger-full">
                                 <BarChart3 class="tab-icon" />
                                 Product Sales Trend
@@ -539,10 +533,6 @@ const closeNotifications = () => {
                         
                         <TabsContent value="sales-prediction" class="tab-content-full">
                             <SalesPredictionWidget :sales-data="salesByDate" />
-                        </TabsContent>
-                        
-                        <TabsContent value="customer-churn" class="tab-content-full">
-                            <CustomerChurnWidget :metrics="churnMetrics" />
                         </TabsContent>
                         
                         <TabsContent value="product-trend" class="tab-content-full">
