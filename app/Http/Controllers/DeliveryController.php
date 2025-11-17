@@ -128,6 +128,79 @@ class DeliveryController extends Controller
         $delivery->delete();
     }
 
+    public function customerDeliveries(Request $request)
+    {
+        // Find customer by matching user's email
+        $user = $request->user();
+        $customer = Customer::where('email', $user->email)->first();
+
+        if (!$customer) {
+            return inertia('deliveries/CustomerIndex', [
+                'deliveries' => [],
+                'filters' => [],
+                'stats' => [
+                    'totalDeliveries' => 0,
+                    'pendingDeliveries' => 0,
+                    'completedDeliveries' => 0,
+                    'cancelledDeliveries' => 0,
+                ],
+            ]);
+        }
+
+        $query = Delivery::with(['customer', 'invoice'])
+            ->where('customer_id', $customer->id);
+        
+        $search = $request->input('search');
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('delivery_address', 'like', "%{$search}%")
+                  ->orWhere('contact_person', 'like', "%{$search}%")
+                  ->orWhere('contact_phone', 'like', "%{$search}%");
+            });
+        }
+
+        $deliveries = $query->orderBy('delivery_date', 'desc')
+            ->orderBy('delivery_time', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        // Calculate statistics for this customer only
+        $totalDeliveries = Delivery::where('customer_id', $customer->id)->count();
+        $pendingDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'pending')->count();
+        $completedDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'completed')->count();
+        $cancelledDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'cancelled')->count();
+
+        return inertia('deliveries/CustomerIndex', [
+            'deliveries' => $deliveries,
+            'filters' => [
+                'search' => $search,
+            ],
+            'stats' => [
+                'totalDeliveries' => $totalDeliveries,
+                'pendingDeliveries' => $pendingDeliveries,
+                'completedDeliveries' => $completedDeliveries,
+                'cancelledDeliveries' => $cancelledDeliveries,
+            ],
+        ]);
+    }
+
+    public function customerShow(Request $request, Delivery $delivery)
+    {
+        // Find customer by matching user's email
+        $user = $request->user();
+        $customer = Customer::where('email', $user->email)->first();
+
+        // Verify the delivery belongs to this customer
+        if (!$customer || $delivery->customer_id !== $customer->id) {
+            abort(403, 'Unauthorized access to this delivery.');
+        }
+
+        $delivery->load(['customer', 'invoice']);
+        return inertia('deliveries/CustomerShow', [
+            'delivery' => $delivery,
+        ]);
+    }
+
     public function shortcut()
     {
         $deliveries = Delivery::with(['customer', 'invoice'])->orderByDesc('delivery_date')->get();

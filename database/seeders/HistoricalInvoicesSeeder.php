@@ -93,3 +93,4 @@ class HistoricalInvoicesSeeder extends Seeder
 }
 
 
+

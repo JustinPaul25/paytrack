@@ -21,6 +21,11 @@ const mainNavItems: NavItem[] = isCustomer
             href: '/dashboard',
             icon: LayoutGrid,
         },
+        {
+            title: 'My Deliveries',
+            href: '/my-deliveries',
+            icon: Truck,
+        },
     ]
     : [
         {

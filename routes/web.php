@@ -98,6 +98,12 @@ Route::middleware(['auth'])->group(function () {
     });
     // (refund routes removed)
 
+    // Customer Deliveries (Customer role)
+    Route::middleware('role:Customer')->group(function () {
+        Route::get('my-deliveries', [DeliveryController::class, 'customerDeliveries'])->name('deliveries.customer');
+        Route::get('my-deliveries/{delivery}', [DeliveryController::class, 'customerShow'])->name('deliveries.customer.show');
+    });
+
     // Deliveries (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::get('deliveries/shortcut', [DeliveryController::class, 'shortcut'])->name('deliveries.shortcut');
