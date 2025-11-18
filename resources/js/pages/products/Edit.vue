@@ -8,15 +8,24 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import Label from '@/components/ui/label/Label.vue';
+import { SearchSelect } from '@/components/ui/select';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
 import InputError from '@/components/InputError.vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
     product: any,
     categories: Array<{ id: number; name: string }>,
     image_url?: string
 }>();
+
+const categoryOptions = computed(() => {
+    return props.categories.map(cat => ({
+        value: cat.id,
+        label: cat.name
+    }));
+});
 
 const form = useForm({
     name: props.product.name,
@@ -99,10 +108,15 @@ function submit() {
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="category_id">Category</Label>
-                            <select id="category_id" v-model="form.category_id" class="w-full rounded border px-3 py-2 mt-1">
-                                <option :value="null">Select category</option>
-                                <option v-for="cat in props.categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                            </select>
+                            <SearchSelect
+                                id="category_id"
+                                v-model="form.category_id"
+                                :options="categoryOptions"
+                                placeholder="Select category"
+                                search-placeholder="Search categories..."
+                                class="mt-1"
+                                required
+                            />
                             <InputError :message="form.errors.category_id" />
                         </div>
                     </div>
