@@ -34,7 +34,6 @@ const form = useForm({
     purchase_price: props.product.purchase_price,
     selling_price: props.product.selling_price,
     stock: props.product.stock,
-    SKU: props.product.SKU,
     image: null as File | null,
 });
 
@@ -137,11 +136,6 @@ function submit() {
                             <Label for="stock">Stock</Label>
 							<input id="stock" v-model="form.stock" type="number" min="0" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 100" />
                             <InputError :message="form.errors.stock" />
-                        </div>
-                        <div class="flex-1">
-                            <Label for="SKU">SKU</Label>
-							<input id="SKU" v-model="form.SKU" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., BP-A4-80G-500" />
-                            <InputError :message="form.errors.SKU" />
                         </div>
                     </div>
                     <div class="flex gap-4">
