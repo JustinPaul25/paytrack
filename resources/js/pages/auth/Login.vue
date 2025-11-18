@@ -89,7 +89,7 @@ const submit = () => {
                                 @click="showPassword = !showPassword"
                                 class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                             >
-                                <Eye v-if="!showPassword" class="h-5 w-5" />
+                                <Eye v-if="showPassword" class="h-5 w-5" />
                                 <EyeOff v-else class="h-5 w-5" />
                             </button>
                         </div>
