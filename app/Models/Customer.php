@@ -60,4 +60,12 @@ class Customer extends Model implements HasMedia
             ->sharpen(10)
             ->nonQueued();
     }
+
+    /**
+     * Get the orders for the customer.
+     */
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }

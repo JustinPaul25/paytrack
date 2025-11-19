@@ -7,8 +7,44 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
 import { createPinia } from 'pinia';
+import Echo from '@ably/laravel-echo';
+import * as Ably from 'ably';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+
+// Initialize Ably and Laravel Echo for real-time broadcasting
+window.Ably = Ably;
+
+if (import.meta.env.VITE_ABLY_KEY) {
+    // Initialize Ably and make it globally available
+    window.Ably = Ably;
+
+    // Initialize Laravel Echo with Ably
+    // The @ably/laravel-echo package has built-in Ably support
+    window.Echo = new Echo({
+        broadcaster: 'ably',
+        key: import.meta.env.VITE_ABLY_KEY,
+        encrypted: true,
+        authEndpoint: '/broadcasting/auth',
+        auth: {
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+        },
+    });
+
+    // Log connection status for debugging
+    if (window.Echo.connector?.ably) {
+        window.Echo.connector.ably.connection.on((stateChange: any) => {
+            console.log('Ably connection state:', stateChange.current);
+            if (stateChange.current === 'connected') {
+                console.log('✅ Ably connected successfully');
+            } else if (stateChange.current === 'disconnected') {
+                console.warn('⚠️ Ably disconnected:', stateChange.reason);
+            }
+        });
+    }
+}
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

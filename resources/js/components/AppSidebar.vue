@@ -13,6 +13,9 @@ import AppLogo from './AppLogo.vue';
 const page = usePage();
 const isCustomer = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Customer'));
 const isAdmin = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Admin'));
+const isStaff = !!((page.props.auth as any)?.userRoles && 
+    ((page.props.auth as any).userRoles.includes('Admin') || (page.props.auth as any).userRoles.includes('Staff')));
+const pendingOrderCount = (page.props.pendingOrderCount as number) || 0;
 
 const mainNavItems: NavItem[] = isCustomer
     ? [
@@ -90,6 +93,22 @@ const isSalesOpen = ref(true);
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                             <SidebarMenuSub>
+                                <SidebarMenuSubItem v-if="isCustomer">
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/orders" class="flex items-center justify-between w-full">
+                                            <div class="flex items-center gap-2">
+                                                <ShoppingCart />
+                                                <span>Orders</span>
+                                            </div>
+                                            <span 
+                                                v-if="pendingOrderCount > 0"
+                                                class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
+                                            >
+                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
+                                            </span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link href="/invoices">
@@ -98,7 +117,22 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                
+                                <SidebarMenuSubItem v-if="!isCustomer">
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/orders" class="flex items-center justify-between w-full">
+                                            <div class="flex items-center gap-2">
+                                                <ShoppingCart />
+                                                <span>Orders</span>
+                                            </div>
+                                            <span 
+                                                v-if="isStaff && pendingOrderCount > 0"
+                                                class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
+                                            >
+                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
+                                            </span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
                                 <SidebarMenuSubItem v-if="!isCustomer">
                                     <SidebarMenuSubButton as-child>
                                         <Link href="/deliveries">

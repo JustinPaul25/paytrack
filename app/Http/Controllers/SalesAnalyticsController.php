@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Customer;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -282,11 +283,15 @@ class SalesAnalyticsController extends Controller
             ->where('status', 'pending')
             ->count();
 
+        // Pending orders (all orders, not filtered by date range - these are current action items)
+        $pendingOrders = Order::where('status', 'pending')->count();
+
         return [
             'total_sales' => $totalSales,
             'total_invoices' => $totalInvoices,
             'average_order_value' => $averageOrderValue,
             'pending_invoices' => $pendingInvoices,
+            'pending_orders' => $pendingOrders,
         ];
     }
 

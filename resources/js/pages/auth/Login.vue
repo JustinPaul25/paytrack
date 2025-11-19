@@ -127,6 +127,12 @@ const submit = () => {
                         Log In
                     </Button>
 
+                    <!-- Registration Link -->
+                    <div class="text-center text-sm text-muted-foreground">
+                        Don't have an account?
+                        <TextLink :href="route('customer.register')" class="underline underline-offset-4">Register here</TextLink>
+                    </div>
+
                     <!-- Divider -->
                     <!-- <div class="relative my-6">
                         <div class="absolute inset-0 flex items-center">

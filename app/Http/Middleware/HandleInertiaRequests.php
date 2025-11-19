@@ -6,6 +6,8 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use App\Models\RefundRequest;
+use App\Models\Order;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -56,6 +58,12 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'pendingRefundCount' => fn () => $request->user()?->hasRole('Admin') 
+                ? RefundRequest::where('status', 'pending')->count() 
+                : 0,
+            'pendingOrderCount' => fn () => ($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))
+                ? Order::where('status', 'pending')->count()
+                : 0,
         ];
     }
 }

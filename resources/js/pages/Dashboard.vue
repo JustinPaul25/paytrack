@@ -15,13 +15,14 @@ import ProductSalesTrendWidget from '@/components/ProductSalesTrendWidget.vue';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { type BreadcrumbItem } from '@/types';
-import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, BarChart3 } from 'lucide-vue-next';
+import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, BarChart3, ShoppingCart } from 'lucide-vue-next';
 
 interface SalesData {
     total_sales: number;
     total_invoices: number;
     average_order_value: number;
     pending_invoices: number;
+    pending_orders: number;
 }
 
 interface TopProduct {
@@ -371,7 +372,7 @@ const closeNotifications = () => {
                 </div>
 
                 <!-- Sales Overview Cards -->
-                <div class="metrics-grid">
+                <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
                     <Card class="metric-card">
                         <CardContent class="metric-card-content">
                             <div class="metric-header">
@@ -477,6 +478,33 @@ const closeNotifications = () => {
                                 </div>
                                 <div class="metric-icon-wrapper metric-icon-orange">
                                     <Clock class="metric-icon" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card class="metric-card">
+                        <CardContent class="metric-card-content">
+                            <div class="metric-header">
+                                <div class="metric-info">
+                                    <div class="metric-label-group">
+                                        <span class="metric-label">Pending Orders</span>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <HelpCircle class="help-icon" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Customer orders waiting for staff approval</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <p class="metric-value">
+                                        {{ salesData.pending_orders }}
+                                    </p>
+                                    <p class="metric-description">Require review</p>
+                                </div>
+                                <div class="metric-icon-wrapper metric-icon-purple">
+                                    <ShoppingCart class="metric-icon" />
                                 </div>
                             </div>
                         </CardContent>

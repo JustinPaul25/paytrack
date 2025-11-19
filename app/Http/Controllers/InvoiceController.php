@@ -7,6 +7,7 @@ use App\Models\InvoiceItem;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\RefundRequest;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -141,6 +142,11 @@ class InvoiceController extends Controller
                 ]);
             }
 
+            // Deduct stock if invoice is completed
+            if ($validated['status'] === 'completed') {
+                $this->deductStockForInvoice($invoice);
+            }
+
             DB::commit();
             return redirect()->route('invoices.index');
         } catch (\Exception $e) {
@@ -228,6 +234,8 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
         try {
+            $oldStatus = $invoice->status;
+            
             // Calculate subtotal amount
             $subtotalAmount = 0;
             foreach ($validated['invoice_items'] as $item) {
@@ -240,6 +248,11 @@ class InvoiceController extends Controller
             
             // Calculate total amount (subtotal + VAT)
             $totalAmount = $subtotalAmount + $vatAmount;
+
+            // If old status was completed, restore stock before deleting items
+            if ($oldStatus === 'completed') {
+                $this->restoreStockForInvoice($invoice);
+            }
 
             // Update invoice
             $invoice->update([
@@ -265,6 +278,11 @@ class InvoiceController extends Controller
                     'price' => $item['price'],
                     'total' => $item['quantity'] * $item['price'],
                 ]);
+            }
+
+            // If new status is completed, deduct stock for new items
+            if ($validated['status'] === 'completed') {
+                $this->deductStockForInvoice($invoice);
             }
 
             DB::commit();
@@ -296,11 +314,116 @@ class InvoiceController extends Controller
         if (auth()->user()?->hasRole('Customer')) {
             abort(403);
         }
-        // Allow quick status update without requiring full invoice payload
-        if ($invoice->status !== 'completed') {
-            $invoice->update(['status' => 'completed']);
+        
+        DB::beginTransaction();
+        try {
+            // Allow quick status update without requiring full invoice payload
+            if ($invoice->status !== 'completed') {
+                $invoice->update(['status' => 'completed']);
+                // Deduct stock when marking as paid/completed
+                $this->deductStockForInvoice($invoice);
+            }
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
 
         return redirect()->back();
+    }
+
+    /**
+     * Deduct stock for all items in an invoice
+     */
+    private function deductStockForInvoice(Invoice $invoice)
+    {
+        // Check if stock was already deducted for this invoice
+        $existingMovements = StockMovement::where('invoice_id', $invoice->id)
+            ->where('type', 'sale')
+            ->exists();
+        
+        if ($existingMovements) {
+            // Stock already deducted, skip
+            return;
+        }
+
+        $invoiceItems = $invoice->invoiceItems()->with('product')->get();
+
+        foreach ($invoiceItems as $invoiceItem) {
+            $product = $invoiceItem->product;
+            if (!$product) {
+                continue;
+            }
+
+            $beforeStock = (int) $product->stock;
+            $quantityToDeduct = (int) $invoiceItem->quantity;
+
+            // Check stock availability
+            if ($beforeStock < $quantityToDeduct) {
+                throw new \Exception("Insufficient stock for product {$product->name}. Available: {$beforeStock}, Required: {$quantityToDeduct}");
+            }
+
+            $product->stock = $beforeStock - $quantityToDeduct;
+            $product->save();
+
+            // Record stock movement
+            StockMovement::create([
+                'product_id' => $product->id,
+                'invoice_id' => $invoice->id,
+                'user_id' => auth()->id(),
+                'type' => 'sale',
+                'quantity' => -1 * $quantityToDeduct, // negative for outbound
+                'quantity_before' => $beforeStock,
+                'quantity_after' => $product->stock,
+                'notes' => "Invoice {$invoice->reference_number} completed",
+            ]);
+        }
+    }
+
+    /**
+     * Restore stock for all items in an invoice (when status changes from completed)
+     */
+    private function restoreStockForInvoice(Invoice $invoice)
+    {
+        // Get existing stock movements for this invoice
+        $stockMovements = StockMovement::where('invoice_id', $invoice->id)
+            ->where('type', 'sale')
+            ->get();
+
+        if ($stockMovements->isEmpty()) {
+            // No stock movements to restore
+            return;
+        }
+
+        foreach ($stockMovements as $movement) {
+            $product = Product::find($movement->product_id);
+            if (!$product) {
+                continue;
+            }
+
+            // Restore the stock
+            $beforeStock = (int) $product->stock;
+            $quantityToRestore = abs($movement->quantity); // Make it positive
+            $product->stock = $beforeStock + $quantityToRestore;
+            $product->save();
+
+            // Create a reversal movement for traceability (optional, or you could delete the original)
+            // For now, we'll just update the product stock and mark the movement as reversed
+            // by creating a new adjustment movement
+            StockMovement::create([
+                'product_id' => $product->id,
+                'invoice_id' => $invoice->id,
+                'user_id' => auth()->id(),
+                'type' => 'adjustment',
+                'quantity' => $quantityToRestore, // positive for inbound
+                'quantity_before' => $beforeStock,
+                'quantity_after' => $product->stock,
+                'notes' => "Stock restored - Invoice {$invoice->reference_number} status changed",
+            ]);
+        }
+
+        // Optionally delete or mark the original movements as reversed
+        // For simplicity, we'll leave them for audit trail and just create adjustment entries
     }
 } 

@@ -24,6 +24,7 @@
         "vue-tsc": "^2.2.4"
     },
     "dependencies": {
+        "@ably/laravel-echo": "^1.0.6",
         "@inertiajs/inertia": "^0.11.1",
         "@inertiajs/vue3": "^2.0.0",
         "@tailwindcss/vite": "^4.1.1",
@@ -32,10 +33,12 @@
         "@vitejs/plugin-vue": "^5.2.1",
         "@vue-leaflet/vue-leaflet": "^0.10.1",
         "@vueuse/core": "^12.8.2",
+        "ably": "^1.2.50",
         "chart.js": "^4.5.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "concurrently": "^9.0.1",
+        "laravel-echo": "^2.2.6",
         "laravel-vite-plugin": "^1.0",
         "leaflet": "^1.9.4",
         "lucide-vue-next": "^0.468.0",

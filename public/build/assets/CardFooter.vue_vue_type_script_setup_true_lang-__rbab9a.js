@@ -1,1 +1,0 @@
-import{c as r}from"./index-B-rgOcUC.js";import{d as a,f as t,o as n,k as c,x as l,u as p}from"./app-BetSr-W8.js";const i=a({__name:"CardFooter",props:{class:{}},setup(e){const s=e;return(o,m)=>(n(),t("div",{"data-slot":"card-footer",class:l(p(r)("flex items-center px-6 [.border-t]:pt-6",s.class))},[c(o.$slots,"default")],2))}});export{i as _};

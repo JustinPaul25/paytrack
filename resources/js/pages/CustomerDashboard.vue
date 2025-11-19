@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
+import { Button } from '@/components/ui/button';
 
 interface MonthlyPoint { month: string; total: number }
 interface AovPoint { month: string; aov: number }
@@ -26,6 +27,16 @@ function formatCurrency(amount: number) {
 <template>
     <AppLayout>
         <Head title="My Dashboard" />
+
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-bold">My Dashboard</h1>
+            <Link :href="route('orders.create')">
+                <Button variant="default">
+                    <span class="mr-2">+</span>
+                    Create Order
+                </Button>
+            </Link>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Monthly Spend Trend -->
@@ -142,6 +153,7 @@ function formatCurrency(amount: number) {
         </div>
     </AppLayout>
 </template>
+
 
 
 

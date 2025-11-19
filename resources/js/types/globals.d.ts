@@ -1,9 +1,12 @@
 import { AppPageProps } from '@/types/index';
+import Echo from '@ably/laravel-echo';
+import * as Ably from 'ably';
 
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {
     interface ImportMetaEnv {
         readonly VITE_APP_NAME: string;
+        readonly VITE_ABLY_KEY?: string;
         [key: string]: string | boolean | undefined;
     }
 
@@ -22,5 +25,12 @@ declare module 'vue' {
         $inertia: typeof Router;
         $page: Page;
         $headManager: ReturnType<typeof createHeadManager>;
+    }
+}
+
+declare global {
+    interface Window {
+        Ably: typeof Ably;
+        Echo?: Echo;
     }
 }

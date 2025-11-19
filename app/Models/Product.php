@@ -47,6 +47,12 @@ class Product extends Model implements HasMedia
         return $this->hasMany(Refund::class);
     }
 
+    // Order items relationship
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     // Media Library: register image collection
     public function registerMediaCollections(): void
     {

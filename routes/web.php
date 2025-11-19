@@ -71,6 +71,27 @@ Route::middleware(['auth'])->group(function () {
         Route::post('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
     });
 
+    // Order routes (Customers can create and view their orders, Staff can view all and approve/reject)
+    Route::middleware('role:Customer')->group(function () {
+        Route::get('orders/create', [\App\Http\Controllers\OrderController::class, 'create'])->name('orders.create');
+        Route::post('orders', [\App\Http\Controllers\OrderController::class, 'store'])->name('orders.store');
+        Route::post('orders/{order}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
+    });
+    
+    // Order routes (all authenticated can view, but scope differs by role)
+    Route::get('orders', [\App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
+    Route::get('orders/{order}', [\App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
+    
+    // Order approval/rejection (Admin|Staff only)
+    Route::middleware('role:Admin|Staff')->group(function () {
+        Route::post('orders/{order}/approve', [\App\Http\Controllers\OrderController::class, 'approve'])->name('orders.approve');
+        Route::post('orders/{order}/reject', [\App\Http\Controllers\OrderController::class, 'reject'])->name('orders.reject');
+        Route::post('orders/{order}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
+    });
+
+    // Order comments (all authenticated users can comment on their orders)
+    Route::post('orders/{order}/comments', [\App\Http\Controllers\OrderController::class, 'addComment'])->name('orders.comments.store');
+
     // Invoice CRUD routes (all authenticated can view/manage per your policy)
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class)->except(['update']);
     Route::post('invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->name('invoices.update');
