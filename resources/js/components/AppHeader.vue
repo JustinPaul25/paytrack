@@ -13,6 +13,7 @@ import { getInitials } from '@/composables/useInitials';
 import type { BreadcrumbItem, NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, Menu, Search, Bell, ShoppingCart } from 'lucide-vue-next';
+import NotificationBell from '@/components/NotificationBell.vue';
 import { computed } from 'vue';
 
 interface Props {
@@ -137,6 +138,8 @@ const rightNavItems: NavItem[] = [
                             <Search class="size-5 opacity-80 group-hover:opacity-100" />
                         </Button>
 
+                        <!-- Notification Bell is now floating at top-right, removed from header -->
+
                         <!-- Refund Request Notification Bell -->
                         <TooltipProvider v-if="isAdmin" :delay-duration="0">
                             <Tooltip>
@@ -161,34 +164,6 @@ const rightNavItems: NavItem[] = [
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{{ pendingRefundCount }} pending refund {{ pendingRefundCount === 1 ? 'request' : 'requests' }}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-
-                        <!-- Pending Orders Notification -->
-                        <TooltipProvider v-if="isStaff" :delay-duration="0">
-                            <Tooltip>
-                                <TooltipTrigger as-child>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        as-child
-                                        class="group relative h-9 w-9 cursor-pointer"
-                                    >
-                                        <Link :href="route('orders.index') + '?status=pending'">
-                                            <span class="sr-only">Pending Orders</span>
-                                            <ShoppingCart class="size-5 opacity-80 group-hover:opacity-100" />
-                                            <span 
-                                                v-if="pendingOrderCount > 0"
-                                                class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-500 text-xs font-semibold text-white"
-                                            >
-                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
-                                            </span>
-                                        </Link>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{{ pendingOrderCount }} pending {{ pendingOrderCount === 1 ? 'order' : 'orders' }}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>

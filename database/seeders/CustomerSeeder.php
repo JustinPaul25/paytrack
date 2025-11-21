@@ -4,6 +4,10 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\Product;
+use App\Models\User;
 
 class CustomerSeeder extends Seeder
 {
@@ -91,10 +95,82 @@ class CustomerSeeder extends Seeder
             ],
         ];
 
-        foreach ($customers as $customer) {
-            Customer::create($customer);
+        // Get products and a user for invoice creation
+        $products = Product::all();
+        $user = User::first();
+
+        if ($products->isEmpty()) {
+            $this->command->warn('No products found. Invoices will not be created. Please run ProductSeeder first.');
         }
 
-        $this->command->info('Customers seeded successfully!');
+        if (!$user) {
+            $this->command->warn('No user found. Invoices will not be created. Please run RolesAndUsersSeeder first.');
+        }
+
+        foreach ($customers as $customerData) {
+            $customer = Customer::create($customerData);
+
+            // Create invoices for this customer only if products and user exist
+            if (!$products->isEmpty() && $user) {
+                // Create 2-3 invoices per customer with different statuses
+                $statuses = ['completed', 'pending', 'draft'];
+                $paymentMethods = ['cash', 'bank_transfer', 'e-wallet'];
+                
+                // Randomly select 2-3 invoices per customer
+                $invoiceCount = rand(2, 3);
+                
+                for ($i = 0; $i < $invoiceCount; $i++) {
+                    // Select 1-4 random products for this invoice
+                    $selectedProducts = $products->random(min(4, max(1, rand(1, $products->count()))));
+                    $subtotalAmount = 0;
+                    $items = [];
+
+                    foreach ($selectedProducts as $product) {
+                        $quantity = rand(1, 5);
+                        $price = $product->selling_price; // Returns dollars (accessor converts from cents)
+                        $total = $quantity * $price;
+                        $subtotalAmount += $total;
+                        $items[] = [
+                            'product' => $product,
+                            'quantity' => $quantity,
+                            'price' => $price,
+                            'total' => $total
+                        ];
+                    }
+
+                    // Calculate VAT (12%)
+                    $vatRate = 12.00;
+                    $vatAmount = $subtotalAmount * ($vatRate / 100);
+                    $totalAmount = $subtotalAmount + $vatAmount;
+
+                    // Create invoice (mutators will convert dollar values to cents)
+                    $invoice = Invoice::create([
+                        'customer_id' => $customer->id,
+                        'user_id' => $user->id,
+                        'status' => $statuses[$i % count($statuses)],
+                        'payment_method' => $paymentMethods[$i % count($paymentMethods)],
+                        'payment_reference' => 'CUST-SEED-' . strtoupper(substr($customer->name, 0, 3)) . '-' . uniqid(),
+                        'notes' => 'Seeded invoice for ' . $customer->name,
+                        'subtotal_amount' => $subtotalAmount,
+                        'vat_amount' => $vatAmount,
+                        'vat_rate' => $vatRate,
+                        'total_amount' => $totalAmount,
+                    ]);
+
+                    // Create invoice items (mutators will convert dollar values to cents)
+                    foreach ($items as $item) {
+                        InvoiceItem::create([
+                            'invoice_id' => $invoice->id,
+                            'product_id' => $item['product']->id,
+                            'quantity' => $item['quantity'],
+                            'price' => $item['price'],
+                            'total' => $item['total'],
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $this->command->info('Customers and their invoices seeded successfully!');
     }
 } 

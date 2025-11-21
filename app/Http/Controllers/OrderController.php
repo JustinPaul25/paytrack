@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Events\OrderCommentAdded;
+use App\Events\OrderCreated;
+use App\Events\OrderUpdated;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderComment;
@@ -189,6 +191,9 @@ class OrderController extends Controller
             }
 
             DB::commit();
+
+            // Dispatch OrderCreated event to create notifications and broadcast
+            event(new OrderCreated($order));
             return redirect()->route('orders.index')->with('success', 'Order created successfully. Waiting for staff approval.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -319,6 +324,9 @@ class OrderController extends Controller
                 ->where('notes', "Order {$order->reference_number} approved")
                 ->update(['invoice_id' => $invoice->id]);
 
+            // Reload order to get fresh data
+            $order->refresh();
+            
             // Update order
             $order->update([
                 'status' => 'approved',
@@ -327,7 +335,14 @@ class OrderController extends Controller
                 'approved_at' => now(),
             ]);
 
+            // Reload relationships
+            $order->load(['approvedBy', 'invoice']);
+
             DB::commit();
+            
+            // Broadcast order update for real-time updates
+            broadcast(new OrderUpdated($order))->toOthers();
+            
             return redirect()->route('orders.show', $order)->with('success', 'Order approved and invoice created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -358,6 +373,12 @@ class OrderController extends Controller
             'rejection_reason' => $validated['rejection_reason'],
         ]);
 
+        // Reload order
+        $order->refresh();
+
+        // Broadcast order update for real-time updates
+        broadcast(new OrderUpdated($order))->toOthers();
+
         return redirect()->route('orders.show', $order)->with('success', 'Order rejected successfully.');
     }
 
@@ -387,6 +408,12 @@ class OrderController extends Controller
         $order->update([
             'status' => 'cancelled',
         ]);
+
+        // Reload order
+        $order->refresh();
+
+        // Broadcast order update for real-time updates
+        broadcast(new OrderUpdated($order))->toOthers();
 
         return redirect()->route('orders.show', $order)->with('success', 'Order cancelled successfully.');
     }

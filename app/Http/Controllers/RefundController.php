@@ -9,12 +9,12 @@ class RefundController extends Controller
 {
     public function index(Request $request)
     {
-        if (!($request->user()?->hasRole('Admin'))) {
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
-        $status = $request->get('status', 'approved'); // approved, processed, completed, cancelled
+        $status = $request->get('status', ''); // approved, processed, completed, cancelled, or empty for all
         $query = Refund::with(['invoice', 'product', 'user'])->orderByDesc('created_at');
-        if ($status) {
+        if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
         $refunds = $query->paginate(10)->withQueryString();
@@ -27,7 +27,7 @@ class RefundController extends Controller
 
     public function process(Refund $refund, Request $request)
     {
-        if (!($request->user()?->hasRole('Admin'))) {
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
         if (!in_array($refund->status, ['approved', 'processed'])) {
@@ -50,7 +50,7 @@ class RefundController extends Controller
 
     public function complete(Refund $refund, Request $request)
     {
-        if (!($request->user()?->hasRole('Admin'))) {
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
         if (!in_array($refund->status, ['processed', 'approved'])) {
@@ -104,7 +104,7 @@ class RefundController extends Controller
 
     public function cancel(Refund $refund, Request $request)
     {
-        if (!($request->user()?->hasRole('Admin'))) {
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
         if (in_array($refund->status, ['completed', 'cancelled'])) {

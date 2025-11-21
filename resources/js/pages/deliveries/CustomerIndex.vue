@@ -114,7 +114,7 @@ function formatDate(dateString: string) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium text-muted-foreground">Total Deliveries</p>
-                                <p class="text-xl font-bold text-blue-600">{{ (page.props.stats as DeliveryStats).totalDeliveries }}</p>
+                                <p class="text-xl font-bold text-blue-600">{{ (page.props.stats as DeliveryStats)?.totalDeliveries ?? 0 }}</p>
                             </div>
                             <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
                                 <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +131,7 @@ function formatDate(dateString: string) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium text-muted-foreground">Pending</p>
-                                <p class="text-xl font-bold text-yellow-600">{{ (page.props.stats as DeliveryStats).pendingDeliveries }}</p>
+                                <p class="text-xl font-bold text-yellow-600">{{ (page.props.stats as DeliveryStats)?.pendingDeliveries ?? 0 }}</p>
                             </div>
                             <div class="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center">
                                 <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +148,7 @@ function formatDate(dateString: string) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium text-muted-foreground">Completed</p>
-                                <p class="text-xl font-bold text-green-600">{{ (page.props.stats as DeliveryStats).completedDeliveries }}</p>
+                                <p class="text-xl font-bold text-green-600">{{ (page.props.stats as DeliveryStats)?.completedDeliveries ?? 0 }}</p>
                             </div>
                             <div class="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
                                 <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,7 +165,7 @@ function formatDate(dateString: string) {
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium text-muted-foreground">Cancelled</p>
-                                <p class="text-xl font-bold text-red-600">{{ (page.props.stats as DeliveryStats).cancelledDeliveries }}</p>
+                                <p class="text-xl font-bold text-red-600">{{ (page.props.stats as DeliveryStats)?.cancelledDeliveries ?? 0 }}</p>
                             </div>
                             <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
                                 <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,8 +204,8 @@ function formatDate(dateString: string) {
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
-                    <tbody v-if="(page.props.deliveries as Paginated<Delivery>).data.length">
-                        <tr v-for="delivery in (page.props.deliveries as Paginated<Delivery>).data" :key="delivery.id" class="hover:bg-muted">
+                    <tbody v-if="page.props.deliveries && (page.props.deliveries as Paginated<Delivery>).data?.length > 0">
+                        <tr v-for="delivery in (page.props.deliveries as Paginated<Delivery>).data || []" :key="delivery.id" class="hover:bg-muted">
                             <td class="px-4 py-2">
                                 <div>
                                     <div class="font-medium">{{ formatDate(delivery.delivery_date) }}</div>
@@ -257,7 +257,7 @@ function formatDate(dateString: string) {
                 </table>
 
                 <!-- Pagination -->
-                <div v-if="(page.props.deliveries as Paginated<Delivery>).last_page > 1" class="flex items-center justify-between mt-6">
+                <div v-if="page.props.deliveries && (page.props.deliveries as Paginated<Delivery>).last_page > 1" class="flex items-center justify-between mt-6">
                     <div class="text-sm text-gray-700">
                         Showing {{ (page.props.deliveries as Paginated<Delivery>).from }} to {{ (page.props.deliveries as Paginated<Delivery>).to }} of {{ (page.props.deliveries as Paginated<Delivery>).total }} results
                     </div>

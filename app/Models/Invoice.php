@@ -17,6 +17,7 @@ class Invoice extends Model
         'vat_rate',
         'status', 
         'payment_method', 
+        'payment_status',
         'payment_reference', 
         'notes'
     ];
@@ -69,6 +70,11 @@ class Invoice extends Model
     public function refunds()
     {
         return $this->hasMany(Refund::class);
+    }
+
+    public function deliveries()
+    {
+        return $this->hasMany(Delivery::class);
     }
 
     // Money accessors (get in dollars, set in cents)

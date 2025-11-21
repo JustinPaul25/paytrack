@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -11,6 +11,7 @@ import Avatar from '@/components/ui/avatar/Avatar.vue';
 import AvatarImage from '@/components/ui/avatar/AvatarImage.vue';
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue';
 import { type BreadcrumbItem } from '@/types';
+import DeliveryFormModal from '@/components/DeliveryFormModal.vue';
 
 interface Product {
     id: number;
@@ -43,6 +44,7 @@ interface Customer {
     email: string;
     phone?: string;
     address?: string;
+    location?: { lat: number; lng: number } | null;
     media?: Media[];
 }
 
@@ -53,6 +55,7 @@ interface User {
 
 interface Invoice {
     id: number;
+    customer_id: number;
     reference_number: string;
     customer: Customer;
     user: User;
@@ -69,10 +72,25 @@ interface Invoice {
     invoice_items: InvoiceItem[];
 }
 
+interface Delivery {
+    id: number;
+    delivery_address: string;
+    contact_person: string;
+    contact_phone: string;
+    delivery_date?: string;
+    delivery_time: string;
+    status: string;
+    delivery_fee: number;
+    notes?: string;
+    created_at?: string;
+}
+
 const props = defineProps<{
     invoice: Invoice;
     refunds?: { id:number; refund_number:string; product_name?:string; quantity_refunded:number; refund_amount:number; status:string; created_at:string }[];
     refundRequests?: { id:number; tracking_number:string; product_name?:string; quantity:number; status:string; created_at:string; media_link?:string; review_notes?:string }[];
+    deliveries?: Delivery[];
+    customers?: Customer[];
 }>();
 
 const page = usePage();
@@ -95,6 +113,15 @@ const breadcrumbs: BreadcrumbItem[] = [
 function getStatusBadgeClass(status: string) {
     switch (status) {
         case 'draft': return 'bg-gray-100 text-gray-800';
+        case 'pending': return 'bg-yellow-100 text-yellow-800';
+        case 'completed': return 'bg-green-100 text-green-800';
+        case 'cancelled': return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getDeliveryStatusBadgeClass(status: string) {
+    switch (status) {
         case 'pending': return 'bg-yellow-100 text-yellow-800';
         case 'completed': return 'bg-green-100 text-green-800';
         case 'cancelled': return 'bg-red-100 text-red-800';
@@ -147,6 +174,8 @@ function getCustomerInitials(customer: Customer) {
         .toUpperCase()
         .slice(0, 2);
 }
+
+const showDeliveryModal = ref(false);
 </script>
 
 <template>
@@ -158,6 +187,9 @@ function getCustomerInitials(customer: Customer) {
             <div class="flex gap-2">
                 <Button variant="outline" @click="printPage">Download PDF</Button>
                 <Button variant="outline" @click="printPage">Print</Button>
+                <template v-if="!isCustomer && props.invoice.status !== 'completed'">
+                    <Button variant="default" @click="showDeliveryModal = true">Out for Delivery</Button>
+                </template>
                 <template v-if="isCustomer && props.invoice.status === 'completed'">
                     <Link v-if="!hasPendingRefundRequest" :href="route('refundRequests.create', props.invoice.id)">
                         <Button variant="default">Request Refund</Button>
@@ -263,6 +295,62 @@ function getCustomerInitials(customer: Customer) {
 
             <!-- Sidebar -->
             <div class="space-y-6">
+                <!-- Deliveries Card -->
+                <Card v-if="props.deliveries && props.deliveries.length">
+                    <CardHeader>
+                        <CardTitle>Deliveries</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div v-for="delivery in props.deliveries" :key="delivery.id" class="border rounded-md p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="font-medium">Delivery #{{ delivery.id }}</div>
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                        :class="getDeliveryStatusBadgeClass(delivery.status)"
+                                    >
+                                        {{ delivery.status }}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-600 space-y-1">
+                                    <div v-if="delivery.delivery_date">
+                                        <span class="font-medium">Date:</span> {{ delivery.delivery_date }}
+                                    </div>
+                                    <div v-if="delivery.delivery_time">
+                                        <span class="font-medium">Time:</span> {{ delivery.delivery_time }}
+                                    </div>
+                                    <div>
+                                        <span class="font-medium">Address:</span>
+                                        <p class="text-xs mt-0.5">{{ delivery.delivery_address }}</p>
+                                    </div>
+                                    <div v-if="delivery.contact_person">
+                                        <span class="font-medium">Contact:</span> {{ delivery.contact_person }}
+                                    </div>
+                                    <div v-if="delivery.contact_phone">
+                                        <span class="font-medium">Phone:</span> {{ delivery.contact_phone }}
+                                    </div>
+                                    <div v-if="delivery.delivery_fee > 0">
+                                        <span class="font-medium">Fee:</span> {{ formatCurrency(delivery.delivery_fee) }}
+                                    </div>
+                                    <div v-if="delivery.notes" class="mt-2 pt-2 border-t">
+                                        <span class="font-medium">Notes:</span>
+                                        <p class="text-xs mt-0.5">{{ delivery.notes }}</p>
+                                    </div>
+                                    <div v-if="delivery.created_at" class="text-xs text-gray-500 mt-2">
+                                        Created: {{ delivery.created_at }}
+                                    </div>
+                                    <div v-if="!isCustomer" class="mt-2 pt-2 border-t">
+                                        <Link :href="route('deliveries.show', delivery.id)">
+                                            <Button variant="outline" size="sm" class="w-full">
+                                                View Delivery Details
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Refund Requests Card -->
                 <Card v-if="props.refundRequests && props.refundRequests.length">
                     <CardHeader>
@@ -391,5 +479,13 @@ function getCustomerInitials(customer: Customer) {
                 </Card>
             </div>
         </div>
+
+        <!-- Delivery Form Modal -->
+        <DeliveryFormModal 
+            v-if="props.customers"
+            v-model:open="showDeliveryModal"
+            :invoice="props.invoice"
+            :customers="props.customers"
+        />
     </AppLayout>
 </template> 

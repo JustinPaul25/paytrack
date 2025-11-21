@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RefundRequestStoreRequest;
+use App\Events\RefundRequestCreated;
 use App\Mail\RefundRequestSubmitted;
 use App\Models\Customer;
 use App\Models\Invoice;
@@ -18,14 +19,24 @@ class RefundRequestController extends Controller
 {
     public function index(Request $request)
     {
-        // Admin only list for now
-        if (!($request->user()?->hasRole('Admin'))) {
+        $status = $request->get('status', ''); // pending, approved, rejected, converted, or empty for all
+        $query = RefundRequest::query()->with(['invoice', 'product']);
+
+        // Customer role: restrict to own refund requests only
+        if ($request->user()?->hasRole('Customer')) {
+            $customerId = Customer::where('email', $request->user()->email)->value('id');
+            if ($customerId) {
+                $query->where('email', $request->user()->email);
+            } else {
+                // If we can't match a customer record, show an empty list
+                $query->whereRaw('1=0');
+            }
+        } elseif (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
+            // Only Admin, Staff, and Customer can access
             abort(403);
         }
 
-        $status = $request->get('status', 'pending');
-        $query = RefundRequest::query()->with(['invoice', 'product']);
-        if ($status) {
+        if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
         $refundRequests = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
@@ -158,6 +169,9 @@ class RefundRequestController extends Controller
             if (!empty($refundRequest->email)) {
                 Mail::to($refundRequest->email)->queue(new RefundRequestSubmitted($refundRequest));
             }
+
+            // Dispatch event for real-time notifications to Admin/Staff
+            event(new RefundRequestCreated($refundRequest));
         }
 
         return redirect()->route('invoices.show', $invoice->id)
@@ -166,8 +180,8 @@ class RefundRequestController extends Controller
 
     public function approve(RefundRequest $refundRequest, Request $request)
     {
-        // Admin only
-        if (!($request->user()?->hasRole('Admin'))) {
+        // Admin and Staff only
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
         if ($refundRequest->status !== 'pending') {
@@ -216,13 +230,36 @@ class RefundRequestController extends Controller
             }
         }
 
+        // Create notification for customer
+        $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();
+        if ($customerUser) {
+            $notification = \App\Models\Notification::create([
+                'user_id' => $customerUser->id,
+                'type' => 'refund.request.approved',
+                'notifiable_id' => $refundRequest->id,
+                'notifiable_type' => \App\Models\RefundRequest::class,
+                'title' => 'Refund Request Approved',
+                'message' => "Your refund request {$refundRequest->tracking_number} for invoice {$refundRequest->invoice_reference} has been approved.",
+                'action_url' => "/invoices/{$refundRequest->invoice_id}",
+                'read' => false,
+                'data' => [
+                    'refund_request_id' => $refundRequest->id,
+                    'tracking_number' => $refundRequest->tracking_number,
+                    'invoice_reference' => $refundRequest->invoice_reference,
+                    'invoice_id' => $refundRequest->invoice_id,
+                ],
+            ]);
+            // Broadcast notification
+            broadcast(new \App\Events\NotificationCreated($notification));
+        }
+
         return redirect()->back();
     }
 
     public function reject(RefundRequest $refundRequest, Request $request)
     {
-        // Admin only
-        if (!($request->user()?->hasRole('Admin'))) {
+        // Admin and Staff only
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
         if ($refundRequest->status !== 'pending') {
@@ -243,6 +280,29 @@ class RefundRequestController extends Controller
             } catch (\Throwable $e) {
                 // ignore mail errors
             }
+        }
+
+        // Create notification for customer
+        $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();
+        if ($customerUser) {
+            $notification = \App\Models\Notification::create([
+                'user_id' => $customerUser->id,
+                'type' => 'refund.request.rejected',
+                'notifiable_id' => $refundRequest->id,
+                'notifiable_type' => \App\Models\RefundRequest::class,
+                'title' => 'Refund Request Declined',
+                'message' => "Your refund request {$refundRequest->tracking_number} for invoice {$refundRequest->invoice_reference} has been declined.",
+                'action_url' => "/invoices/{$refundRequest->invoice_id}",
+                'read' => false,
+                'data' => [
+                    'refund_request_id' => $refundRequest->id,
+                    'tracking_number' => $refundRequest->tracking_number,
+                    'invoice_reference' => $refundRequest->invoice_reference,
+                    'invoice_id' => $refundRequest->invoice_id,
+                ],
+            ]);
+            // Broadcast notification
+            broadcast(new \App\Events\NotificationCreated($notification));
         }
 
         return redirect()->back();

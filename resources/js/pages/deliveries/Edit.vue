@@ -37,7 +37,7 @@ interface Delivery {
     delivery_address: string;
     contact_person: string;
     contact_phone: string;
-    delivery_date: string;
+    delivery_date: string | null;
     delivery_time: string;
     status: string;
     notes?: string;
@@ -53,13 +53,37 @@ const props = defineProps<{
     invoices: Invoice[];
 }>();
 
+// Format date for HTML date input (YYYY-MM-DD)
+function formatDateForInput(date: string | null | undefined): string {
+    if (!date) return '';
+    
+    // If already in YYYY-MM-DD format, return as is
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date;
+    }
+    
+    // Try to parse and format the date
+    try {
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) {
+            return '';
+        }
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch (e) {
+        return '';
+    }
+}
+
 const form = useForm({
     customer_id: props.delivery.customer_id,
     invoice_id: props.delivery.invoice_id || null,
     delivery_address: props.delivery.delivery_address,
     contact_person: props.delivery.contact_person,
     contact_phone: props.delivery.contact_phone,
-    delivery_date: props.delivery.delivery_date,
+    delivery_date: formatDateForInput(props.delivery.delivery_date),
     delivery_time: props.delivery.delivery_time,
     status: props.delivery.status,
     notes: props.delivery.notes || '',

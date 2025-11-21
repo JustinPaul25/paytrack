@@ -164,7 +164,7 @@ class InvoiceController extends Controller
                 abort(403);
             }
         }
-        $invoice->load(['customer.media', 'user', 'invoiceItems.product', 'refunds.product']);
+        $invoice->load(['customer.media', 'user', 'invoiceItems.product', 'refunds.product', 'deliveries']);
         $refunds = $invoice->refunds()->with('product')->orderByDesc('created_at')->get()->map(function ($r) {
             return [
                 'id' => $r->id,
@@ -193,10 +193,31 @@ class InvoiceController extends Controller
                     'media_link' => $rq->media_link,
                 ];
             });
+        // Get customers for delivery form
+        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location']);
+        
+        // Get deliveries for this invoice
+        $deliveries = $invoice->deliveries()->orderByDesc('created_at')->get()->map(function ($d) {
+            return [
+                'id' => $d->id,
+                'delivery_address' => $d->delivery_address,
+                'contact_person' => $d->contact_person,
+                'contact_phone' => $d->contact_phone,
+                'delivery_date' => $d->delivery_date?->format('M d, Y'),
+                'delivery_time' => $d->delivery_time,
+                'status' => $d->status,
+                'delivery_fee' => $d->delivery_fee,
+                'notes' => $d->notes,
+                'created_at' => $d->created_at?->format('M d, Y'),
+            ];
+        });
+        
         return inertia('invoices/Show', [
             'invoice' => $invoice,
             'refunds' => $refunds,
             'refundRequests' => $refundRequests,
+            'deliveries' => $deliveries,
+            'customers' => $customers,
         ]);
     }
 

@@ -13,9 +13,17 @@ class ProductController extends Controller
     {
         $query = Product::with('category');
         $search = $request->input('search');
+        $lowStock = $request->input('low_stock');
+        
         if ($search) {
             $query->where('name', 'like', "%{$search}%");
         }
+        
+        // Filter by low stock if requested
+        if ($lowStock) {
+            $query->where('stock', '<=', 10);
+        }
+        
         $products = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
 
         // Calculate statistics
@@ -30,6 +38,7 @@ class ProductController extends Controller
             'products' => $products,
             'filters' => [
                 'search' => $search,
+                'low_stock' => $lowStock,
             ],
             'stats' => [
                 'totalProducts' => $totalProducts,

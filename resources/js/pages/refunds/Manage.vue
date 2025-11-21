@@ -136,9 +136,13 @@ function formatCurrency(amount: number) {
             <div class="flex gap-2">
                 <select
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    :value="filters.status || 'approved'"
-                    @change="(e:any) => router.get(route('refunds.index'), { status: e.target.value }, { preserveState: true, replace: true })"
+                    :value="filters.status || 'all'"
+                    @change="(e:any) => {
+                        const status = e.target.value === 'all' ? '' : e.target.value;
+                        router.get(route('refunds.index'), status ? { status } : {}, { preserveState: true, replace: true });
+                    }"
                 >
+                    <option value="all">All</option>
                     <option value="approved">Approved</option>
                     <option value="processed">Processed</option>
                     <option value="completed">Completed</option>
@@ -153,10 +157,10 @@ function formatCurrency(amount: number) {
             </CardHeader>
             <CardContent>
                 <div v-if="!(page.props.refunds as Paginated<Refund>).data.length" class="py-8 text-center text-sm text-gray-500">
-                    <div v-if="(filters.status && filters.status !== '')">
+                    <div v-if="(filters.status && filters.status !== '' && filters.status !== 'all')">
                         No refunds found for the selected filter.
                         <div class="mt-3">
-                            <Button variant="outline" @click="router.get(route('refunds.index'), { status: 'approved' }, { preserveState: true, replace: true })">
+                            <Button variant="outline" @click="router.get(route('refunds.index'), {}, { preserveState: true, replace: true })">
                                 Clear filters
                             </Button>
                         </div>

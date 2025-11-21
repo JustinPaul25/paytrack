@@ -6,15 +6,15 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet } from 'lucide-vue-next';
+import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
 const page = usePage();
 const isCustomer = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Customer'));
 const isAdmin = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Admin'));
-const isStaff = !!((page.props.auth as any)?.userRoles && 
-    ((page.props.auth as any).userRoles.includes('Admin') || (page.props.auth as any).userRoles.includes('Staff')));
+const isStaff = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Staff'));
+const isStaffOnly = isStaff && !isAdmin; // Staff but not Admin
 const pendingOrderCount = (page.props.pendingOrderCount as number) || 0;
 
 const mainNavItems: NavItem[] = isCustomer
@@ -25,9 +25,24 @@ const mainNavItems: NavItem[] = isCustomer
             icon: LayoutGrid,
         },
         {
+            title: 'My Orders',
+            href: '/orders',
+            icon: ShoppingCart,
+        },
+        {
+            title: 'My Invoices',
+            href: '/invoices',
+            icon: Receipt,
+        },
+        {
             title: 'My Deliveries',
             href: '/my-deliveries',
             icon: Truck,
+        },
+        {
+            title: 'My Refund Requests',
+            href: '/refund-requests',
+            icon: RotateCcw,
         },
     ]
     : [
@@ -36,11 +51,11 @@ const mainNavItems: NavItem[] = isCustomer
             href: '/dashboard',
             icon: LayoutGrid,
         },
-        {
+        ...(isStaffOnly ? [{
             title: 'Customers',
             href: '/customers',
             icon: Folder,
-        },
+        }] : []),
     ];
 
 const footerNavItems: NavItem[] = [
@@ -56,8 +71,8 @@ const footerNavItems: NavItem[] = [
     // },
 ];
 
-const isProductsOpen = ref(true);
 const isUsersOpen = ref(true);
+const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
 </script>
 
@@ -78,8 +93,8 @@ const isSalesOpen = ref(true);
         <SidebarContent>
             <NavMain :items="mainNavItems" />
 
-            <!-- Sales Group -->
-            <SidebarMenu class="px-2">
+            <!-- Sales Group (Staff only, not Admin) -->
+            <SidebarMenu v-if="isStaffOnly" class="px-2">
                 <SidebarMenuItem>
                     <Collapsible v-model:open="isSalesOpen">
                         <CollapsibleTrigger as-child>
@@ -93,7 +108,15 @@ const isSalesOpen = ref(true);
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                             <SidebarMenuSub>
-                                <SidebarMenuSubItem v-if="isCustomer">
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/invoices">
+                                            <Receipt />
+                                            <span>Invoices</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link href="/orders" class="flex items-center justify-between w-full">
                                             <div class="flex items-center gap-2">
@@ -111,37 +134,13 @@ const isSalesOpen = ref(true);
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
-                                        <Link href="/invoices">
-                                            <Receipt />
-                                            <span>Invoices</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer">
-                                    <SidebarMenuSubButton as-child>
-                                        <Link href="/orders" class="flex items-center justify-between w-full">
-                                            <div class="flex items-center gap-2">
-                                                <ShoppingCart />
-                                                <span>Orders</span>
-                                            </div>
-                                            <span 
-                                                v-if="isStaff && pendingOrderCount > 0"
-                                                class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
-                                            >
-                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
-                                            </span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer">
-                                    <SidebarMenuSubButton as-child>
                                         <Link href="/deliveries">
                                             <Truck />
                                             <span>Deliveries</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer">
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link href="/expenses">
                                             <TrendingDown />
@@ -149,8 +148,7 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-
-                                <SidebarMenuSubItem v-if="!isCustomer">
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link href="/sales/transactions">
                                             <CreditCard />
@@ -158,7 +156,7 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer">
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link :href="route('finance.cash-flow')">
                                             <BarChart3 />
@@ -166,7 +164,7 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer">
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link :href="route('finance.reports')">
                                             <FileSpreadsheet />
@@ -174,7 +172,7 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer && isAdmin">
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link :href="route('refundRequests.index')">
                                             <RotateCcw />
@@ -182,7 +180,7 @@ const isSalesOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem v-if="!isCustomer && isAdmin">
+                                <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
                                         <Link :href="route('refunds.index')">
                                             <RotateCcw />
@@ -196,8 +194,8 @@ const isSalesOpen = ref(true);
                 </SidebarMenuItem>
             </SidebarMenu>
 
-            <!-- Products Group -->
-            <SidebarMenu v-if="!isCustomer" class="px-2">
+            <!-- Products Group (Staff only, not Admin) -->
+            <SidebarMenu v-if="isStaffOnly" class="px-2">
                 <SidebarMenuItem>
                     <Collapsible v-model:open="isProductsOpen">
                         <CollapsibleTrigger as-child>

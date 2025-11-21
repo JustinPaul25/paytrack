@@ -154,6 +154,27 @@ class SalesAnalyticsController extends Controller
             $churnMetrics = $this->getChurnMetrics();
         }
 
+        // Get low stock products for staff users
+        $lowStockProducts = [];
+        if ($request->user() && method_exists($request->user(), 'hasRole') && 
+            ($request->user()->hasRole('Staff') || $request->user()->hasRole('Admin'))) {
+            $lowStockProducts = Product::where('stock', '<=', 10)
+                ->with('category')
+                ->orderBy('stock', 'asc')
+                ->limit(20)
+                ->get()
+                ->map(function ($product) {
+                    return [
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'stock' => $product->stock,
+                        'SKU' => $product->SKU,
+                        'category' => $product->category ? $product->category->name : 'No category',
+                    ];
+                })
+                ->toArray();
+        }
+
         return inertia('Dashboard', [
             'salesData' => $salesData,
             'topProducts' => $topProducts,
@@ -161,6 +182,7 @@ class SalesAnalyticsController extends Controller
             'salesByCategory' => $salesByCategory,
             'recentInvoices' => $recentInvoices,
             'churnMetrics' => $churnMetrics,
+            'lowStockProducts' => $lowStockProducts,
             'filters' => [
                 'period' => $period,
                 'start_date' => $startDate->format('Y-m-d'),

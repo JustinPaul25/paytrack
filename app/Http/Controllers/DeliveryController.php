@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Delivery;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -76,7 +77,31 @@ class DeliveryController extends Controller
             'delivery_fee' => 'required|numeric|min:0',
         ]);
 
-        $delivery = Delivery::create($validated);
+        DB::beginTransaction();
+        try {
+            $delivery = Delivery::create($validated);
+            
+            // If delivery is created as completed, also mark the associated invoice as completed and paid
+            if ($validated['status'] === 'completed' && $validated['invoice_id']) {
+                $invoice = Invoice::find($validated['invoice_id']);
+                if ($invoice && $invoice->status !== 'completed') {
+                    $invoice->update([
+                        'status' => 'completed',
+                        'payment_status' => 'paid',
+                    ]);
+                    // Deduct stock for the invoice if not already done
+                    $this->deductStockForInvoice($invoice);
+                } elseif ($invoice && $invoice->status === 'completed') {
+                    // If invoice is already completed, just update payment status
+                    $invoice->update(['payment_status' => 'paid']);
+                }
+            }
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
         
         return redirect()->route('deliveries.index');
     }
@@ -118,7 +143,36 @@ class DeliveryController extends Controller
             'delivery_fee' => 'required|numeric|min:0',
         ]);
 
-        $delivery->update($validated);
+        $oldStatus = $delivery->status;
+        $newStatus = $validated['status'];
+
+        DB::beginTransaction();
+        try {
+            $delivery->update($validated);
+            $delivery->refresh(); // Refresh to get the latest data
+            
+            // If delivery is being marked as completed, also mark the associated invoice as completed and paid
+            $invoiceId = $validated['invoice_id'] ?? $delivery->invoice_id;
+            if ($newStatus === 'completed' && $oldStatus !== 'completed' && $invoiceId) {
+                $invoice = Invoice::find($invoiceId);
+                if ($invoice && $invoice->status !== 'completed') {
+                    $invoice->update([
+                        'status' => 'completed',
+                        'payment_status' => 'paid',
+                    ]);
+                    // Deduct stock for the invoice if not already done
+                    $this->deductStockForInvoice($invoice);
+                } elseif ($invoice && $invoice->status === 'completed') {
+                    // If invoice is already completed, just update payment status
+                    $invoice->update(['payment_status' => 'paid']);
+                }
+            }
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
         
         return redirect()->route('deliveries.index');
     }
@@ -134,21 +188,24 @@ class DeliveryController extends Controller
         $user = $request->user();
         $customer = Customer::where('email', $user->email)->first();
 
+        $query = Delivery::with(['customer', 'invoice']);
+        
         if (!$customer) {
-            return inertia('deliveries/CustomerIndex', [
-                'deliveries' => [],
-                'filters' => [],
-                'stats' => [
-                    'totalDeliveries' => 0,
-                    'pendingDeliveries' => 0,
-                    'completedDeliveries' => 0,
-                    'cancelledDeliveries' => 0,
-                ],
-            ]);
+            // Return empty paginated result if no customer found
+            $query->whereRaw('1=0');
+            $totalDeliveries = 0;
+            $pendingDeliveries = 0;
+            $completedDeliveries = 0;
+            $cancelledDeliveries = 0;
+        } else {
+            $query->where('customer_id', $customer->id);
+            
+            // Calculate statistics for this customer only
+            $totalDeliveries = Delivery::where('customer_id', $customer->id)->count();
+            $pendingDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'pending')->count();
+            $completedDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'completed')->count();
+            $cancelledDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'cancelled')->count();
         }
-
-        $query = Delivery::with(['customer', 'invoice'])
-            ->where('customer_id', $customer->id);
         
         $search = $request->input('search');
         if ($search) {
@@ -163,12 +220,6 @@ class DeliveryController extends Controller
             ->orderBy('delivery_time', 'desc')
             ->paginate(10)
             ->withQueryString();
-
-        // Calculate statistics for this customer only
-        $totalDeliveries = Delivery::where('customer_id', $customer->id)->count();
-        $pendingDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'pending')->count();
-        $completedDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'completed')->count();
-        $cancelledDeliveries = Delivery::where('customer_id', $customer->id)->where('status', 'cancelled')->count();
 
         return inertia('deliveries/CustomerIndex', [
             'deliveries' => $deliveries,
@@ -280,6 +331,54 @@ class DeliveryController extends Controller
             'stats' => $stats,
             'mapCenter' => $defaultCenter,
         ]);
+    }
+
+    /**
+     * Deduct stock for all items in an invoice
+     */
+    private function deductStockForInvoice(Invoice $invoice)
+    {
+        // Check if stock was already deducted for this invoice
+        $existingMovements = StockMovement::where('invoice_id', $invoice->id)
+            ->where('type', 'sale')
+            ->exists();
+        
+        if ($existingMovements) {
+            // Stock already deducted, skip
+            return;
+        }
+
+        $invoiceItems = $invoice->invoiceItems()->with('product')->get();
+
+        foreach ($invoiceItems as $invoiceItem) {
+            $product = $invoiceItem->product;
+            if (!$product) {
+                continue;
+            }
+
+            $beforeStock = (int) $product->stock;
+            $quantityToDeduct = (int) $invoiceItem->quantity;
+
+            // Check stock availability
+            if ($beforeStock < $quantityToDeduct) {
+                throw new \Exception("Insufficient stock for product {$product->name}. Available: {$beforeStock}, Required: {$quantityToDeduct}");
+            }
+
+            $product->stock = $beforeStock - $quantityToDeduct;
+            $product->save();
+
+            // Record stock movement
+            StockMovement::create([
+                'product_id' => $product->id,
+                'invoice_id' => $invoice->id,
+                'user_id' => auth()->id(),
+                'type' => 'sale',
+                'quantity' => -1 * $quantityToDeduct, // negative for outbound
+                'quantity_before' => $beforeStock,
+                'quantity_after' => $product->stock,
+                'notes' => "Invoice {$invoice->reference_number} completed via delivery",
+            ]);
+        }
     }
 
     /**

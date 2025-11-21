@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { type BreadcrumbItem } from '@/types';
 import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, BarChart3, ShoppingCart } from 'lucide-vue-next';
+import Swal from 'sweetalert2';
 
 interface SalesData {
     total_sales: number;
@@ -59,6 +60,14 @@ interface Filters {
     end_date: string;
 }
 
+interface LowStockProduct {
+    id: number;
+    name: string;
+    stock: number;
+    SKU: string;
+    category: string;
+}
+
 const props = defineProps<{
     salesData: SalesData;
     topProducts: TopProduct[];
@@ -66,6 +75,7 @@ const props = defineProps<{
     salesByCategory: SalesByCategory[];
     recentInvoices: RecentInvoice[];
     filters: Filters;
+    lowStockProducts?: LowStockProduct[];
 }>();
 
 const period = ref(props.filters.period);
@@ -100,6 +110,47 @@ function updateFilters() {
 
 watch([period, startDate, endDate], () => {
     updateFilters();
+});
+
+// Check for low stock products and show popup for staff users
+const page = usePage();
+const isStaff = Array.isArray((page.props as any).auth?.userRoles) && 
+    ((page.props as any).auth.userRoles.includes('Staff') || (page.props as any).auth.userRoles.includes('Admin'));
+
+onMounted(() => {
+    // Show low stock alert for staff users
+    if (isStaff && props.lowStockProducts && props.lowStockProducts.length > 0) {
+        const productList = props.lowStockProducts
+            .slice(0, 10) // Show first 10 products
+            .map(p => `<li><strong>${p.name}</strong> (${p.category}) - Stock: <span style="color: #dc2626; font-weight: bold;">${p.stock}</span></li>`)
+            .join('');
+        
+        const moreCount = props.lowStockProducts.length > 10 ? props.lowStockProducts.length - 10 : 0;
+        const moreText = moreCount > 0 ? `<br><br><strong>And ${moreCount} more product(s) with low stock.</strong>` : '';
+        
+        Swal.fire({
+            icon: 'warning',
+            title: 'Low Stock Alert',
+            html: `
+                <p>There are <strong>${props.lowStockProducts.length}</strong> product(s) with low stock (≤10 units):</p>
+                <ul style="text-align: left; margin: 15px 0; padding-left: 20px;">
+                    ${productList}
+                </ul>
+                ${moreText}
+                <p style="margin-top: 15px;">Please review and restock these items soon.</p>
+            `,
+            confirmButtonText: 'View Products',
+            confirmButtonColor: '#8f5be8',
+            showCancelButton: true,
+            cancelButtonText: 'Dismiss',
+            cancelButtonColor: '#6b7280',
+            width: '600px',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                router.visit('/products?low_stock=1');
+            }
+        });
+    }
 });
 
 // Chart data computations

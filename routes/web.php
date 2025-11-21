@@ -92,26 +92,32 @@ Route::middleware(['auth'])->group(function () {
     // Order comments (all authenticated users can comment on their orders)
     Route::post('orders/{order}/comments', [\App\Http\Controllers\OrderController::class, 'addComment'])->name('orders.comments.store');
 
+    // Notification routes
+    Route::get('notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{notification}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::get('notifications/unread-count', [\App\Http\Controllers\NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+
     // Invoice CRUD routes (all authenticated can view/manage per your policy)
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class)->except(['update']);
     Route::post('invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->name('invoices.update');
     Route::post('invoices/{invoice}/mark-paid', [\App\Http\Controllers\InvoiceController::class, 'markPaid'])->name('invoices.markPaid');
 
-    // Refund Requests
+    // Refund Requests (Admin, Staff, and Customer)
     Route::get('refund-requests', [\App\Http\Controllers\RefundRequestController::class, 'index'])
-        ->middleware('role:Admin')
+        ->middleware('role:Admin|Staff|Customer')
         ->name('refundRequests.index');
     Route::get('invoices/{invoice}/refund-request', [\App\Http\Controllers\RefundRequestController::class, 'create'])->name('refundRequests.create');
     Route::post('invoices/{invoice}/refund-request', [\App\Http\Controllers\RefundRequestController::class, 'store'])->name('refundRequests.store');
     Route::post('refund-requests/{refundRequest}/approve', [\App\Http\Controllers\RefundRequestController::class, 'approve'])
-        ->middleware('role:Admin')
+        ->middleware('role:Admin|Staff')
         ->name('refundRequests.approve');
     Route::post('refund-requests/{refundRequest}/reject', [\App\Http\Controllers\RefundRequestController::class, 'reject'])
-        ->middleware('role:Admin')
+        ->middleware('role:Admin|Staff')
         ->name('refundRequests.reject');
 
-    // Refunds (Admin)
-    Route::middleware('role:Admin')->group(function () {
+    // Refunds (Admin|Staff)
+    Route::middleware('role:Admin|Staff')->group(function () {
         Route::get('refunds', [\App\Http\Controllers\RefundController::class, 'index'])->name('refunds.index');
         Route::post('refunds/{refund}/process', [\App\Http\Controllers\RefundController::class, 'process'])->name('refunds.process');
         Route::post('refunds/{refund}/complete', [\App\Http\Controllers\RefundController::class, 'complete'])->name('refunds.complete');

@@ -103,6 +103,9 @@ const commentForm = useForm({
 // Create a reactive ref for comments that can be updated in real-time
 const comments = ref<OrderComment[]>([...(props.order.comments || [])]);
 
+// Create a reactive ref for order that can be updated in real-time
+const order = ref<Order>({ ...props.order });
+
 // Watch for prop changes (e.g., when page reloads after comment submission)
 watch(() => props.order.comments, (newComments) => {
     if (newComments && Array.isArray(newComments)) {
@@ -294,19 +297,19 @@ const hasStockIssues = computed(() => {
         return props.hasStockIssues;
     }
     // Fallback check on frontend
-    return props.order.order_items.some((item: OrderItem) => item.quantity > item.product.stock);
+    return order.value.order_items.some((item: OrderItem) => item.quantity > item.product.stock);
 });
 
 const canApprove = computed(() => {
-    return isStaff && props.order.status === 'pending' && !hasStockIssues.value;
+    return isStaff && order.value.status === 'pending' && !hasStockIssues.value;
 });
 
 const canReject = computed(() => {
-    return isStaff && props.order.status === 'pending';
+    return isStaff && order.value.status === 'pending';
 });
 
 const canCancel = computed(() => {
-    return (isCustomer || isStaff) && props.order.status === 'pending';
+    return (isCustomer || isStaff) && order.value.status === 'pending';
 });
 
 function addComment() {
@@ -403,6 +406,52 @@ onMounted(() => {
         } else {
             console.error('❌ Failed to create channel:', channelName);
         }
+
+        // Listen for order updates (status changes, approval, etc.)
+        echoChannel.listen('.order.updated', (data: { order: any }) => {
+            console.log('🔄 Received order.updated event:', data);
+            
+            if (data.order) {
+                // Store old status to check if it changed
+                const oldStatus = order.value.status;
+                
+                // Update order status and related fields
+                order.value.status = data.order.status;
+                order.value.rejection_reason = data.order.rejection_reason;
+                order.value.approved_at = data.order.approved_at;
+                order.value.updated_at = data.order.updated_at;
+                
+                // Update approved_by if provided
+                if (data.order.approved_by) {
+                    order.value.approved_by = {
+                        id: data.order.approved_by.id,
+                        name: data.order.approved_by.name,
+                    };
+                }
+                
+                // Update invoice if provided
+                if (data.order.invoice) {
+                    order.value.invoice = {
+                        id: data.order.invoice.id,
+                        reference_number: data.order.invoice.reference_number,
+                    };
+                }
+                
+                // Show notification for status changes
+                if (data.order.status !== oldStatus) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'info',
+                        title: `Order ${data.order.status}`,
+                        text: `Order ${order.value.reference_number} has been ${data.order.status}`,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
+                }
+            }
+        });
 
         // Listen for the custom event name (with dot prefix for custom events)
         echoChannel.listen('.comment.added', (data: { comment: OrderComment }) => {

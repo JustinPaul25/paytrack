@@ -42,8 +42,9 @@ interface ProductStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
+const filters = ref<{ search?: string; low_stock?: string }>(page.props.filters ? (page.props.filters as { search?: string; low_stock?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const lowStock = ref(typeof filters.value.low_stock === 'string' ? filters.value.low_stock : '');
 const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -54,18 +55,26 @@ watchEffect(() => {
     search.value = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
         ? (page.props.filters as { search?: string }).search!
         : '';
+    lowStock.value = (page.props.filters && typeof (page.props.filters as { low_stock?: string }).low_stock === 'string')
+        ? (page.props.filters as { low_stock?: string }).low_stock!
+        : '';
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/products', { search: val }, { preserveState: true, replace: true });
+        router.get('/products', { search: val, low_stock: lowStock.value }, { preserveState: true, replace: true });
     }, 400);
 });
 
+function toggleLowStock() {
+    lowStock.value = lowStock.value ? '' : '1';
+    router.get('/products', { search: search.value, low_stock: lowStock.value }, { preserveState: true, replace: true });
+}
+
 function goToPage(pageNum: number) {
-    router.get('/products', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
+    router.get('/products', { search: search.value, low_stock: lowStock.value, page: pageNum }, { preserveState: true, replace: true });
 }
 
 function formatCurrency(amount: number) {
@@ -189,6 +198,14 @@ async function deleteProduct(id: number) {
                     placeholder="Search products by name, SKU, or category..." 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
+                <Button 
+                    @click="toggleLowStock" 
+                    :variant="lowStock ? 'default' : 'outline'"
+                    :class="lowStock ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : ''"
+                >
+                    <Icon name="alertTriangle" class="w-4 h-4 mr-2" />
+                    Low Stock
+                </Button>
             </div>
             <div class="flex gap-2 items-center">
                 <Link :href="route('products.trashed.index')">

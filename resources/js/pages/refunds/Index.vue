@@ -38,6 +38,10 @@ interface Paginated<T> {
 
 const page = usePage();
 const filters = (page.props.filters || {}) as { status?: string };
+const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
+const isAdmin = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Admin');
+const isStaff = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Staff');
+const canProcessRefunds = isAdmin || isStaff;
 
 const showDetails = ref<RefundRequest | null>(null);
 
@@ -90,13 +94,17 @@ function reject(id: number) {
         <Head title="Refund Requests" />
 
         <div class="flex items-center justify-between my-6">
-            <h1 class="text-2xl font-bold">Refund Requests</h1>
+            <h1 class="text-2xl font-bold">{{ isCustomer ? 'My Refund Requests' : 'Refund Requests' }}</h1>
             <div class="flex gap-2">
                 <select
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    :value="filters.status || 'pending'"
-                    @change="(e:any) => router.get(route('refundRequests.index'), { status: e.target.value }, { preserveState: true, replace: true })"
+                    :value="filters.status || 'all'"
+                    @change="(e:any) => {
+                        const status = e.target.value === 'all' ? '' : e.target.value;
+                        router.get(route('refundRequests.index'), status ? { status } : {}, { preserveState: true, replace: true });
+                    }"
                 >
+                    <option value="all">All</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
@@ -111,10 +119,10 @@ function reject(id: number) {
             </CardHeader>
             <CardContent>
                 <div v-if="!(page.props.refundRequests as Paginated<RefundRequest>).data.length" class="py-8 text-center text-sm text-gray-500">
-                    <div v-if="(filters.status && filters.status !== '')">
+                    <div v-if="(filters.status && filters.status !== '' && filters.status !== 'all')">
                         No refund requests for the selected filter.
                         <div class="mt-3">
-                            <Button variant="outline" @click="router.get(route('refundRequests.index'), { status: 'pending' }, { preserveState: true, replace: true })">
+                            <Button variant="outline" @click="router.get(route('refundRequests.index'), {}, { preserveState: true, replace: true })">
                                 Clear filters
                             </Button>
                         </div>
@@ -129,7 +137,7 @@ function reject(id: number) {
                             <tr>
                                 <th class="px-4 py-2 text-left">Tracking</th>
                                 <th class="px-4 py-2 text-left">Invoice</th>
-                                <th class="px-4 py-2 text-left">Customer</th>
+                                <th v-if="!isCustomer" class="px-4 py-2 text-left">Customer</th>
                                 <th class="px-4 py-2 text-left">Qty</th>
                                 <th class="px-4 py-2 text-left">Status</th>
                                 <th class="px-4 py-2 text-left">Submitted</th>
@@ -143,9 +151,12 @@ function reject(id: number) {
                                     <div v-if="r.reason" class="text-xs text-gray-500 truncate max-w-64">{{ r.reason }}</div>
                                 </td>
                                 <td class="px-4 py-2">
-                                    <div class="text-sm">{{ r.invoice_reference || ('#' + r.invoice_id) }}</div>
+                                    <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)" class="text-sm text-blue-600 hover:underline">
+                                        {{ r.invoice_reference || ('#' + r.invoice_id) }}
+                                    </Link>
+                                    <div v-else class="text-sm">{{ r.invoice_reference || ('#' + r.invoice_id) }}</div>
                                 </td>
-                                <td class="px-4 py-2">
+                                <td v-if="!isCustomer" class="px-4 py-2">
                                     <div class="text-sm">{{ r.customer_name }}</div>
                                     <div v-if="r.email" class="text-xs text-gray-500">{{ r.email }}</div>
                                 </td>
@@ -164,14 +175,14 @@ function reject(id: number) {
                                 <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(r.created_at).toLocaleString() }}</td>
                                 <td class="px-4 py-2">
                                     <div class="flex gap-2">
-                                        <Button v-if="r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
+                                        <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
                                             Approve
                                         </Button>
-                                        <Button v-if="r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
+                                        <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
                                             Decline
                                         </Button>
                                         <Button size="sm" variant="outline" @click="showDetails = r">View details</Button>
-                                        <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)">
+                                        <Link v-if="r.invoice_id && !isCustomer" :href="route('invoices.show', r.invoice_id)">
                                             <Button size="sm" variant="ghost">View Invoice</Button>
                                         </Link>
                                     </div>
