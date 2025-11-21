@@ -61,6 +61,7 @@ interface Order {
     vat_amount: number;
     vat_rate: number;
     status: string;
+    delivery_type: string;
     notes?: string;
     rejection_reason?: string;
     created_at: string;
@@ -648,6 +649,10 @@ onUnmounted(() => {
                         <div>
                             <p class="text-sm text-gray-600">Reference Number</p>
                             <p class="font-medium">{{ order.reference_number }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Delivery Type</p>
+                            <p class="font-medium capitalize">{{ order.delivery_type }}</p>
                         </div>
                         <div>
                             <p class="text-sm text-gray-600">Created At</p>

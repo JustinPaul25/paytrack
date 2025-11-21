@@ -19,6 +19,7 @@ interface Order {
     invoice?: { id: number; reference_number: string };
     total_amount: number;
     status: string;
+    delivery_type: string;
     notes?: string;
     rejection_reason?: string;
     created_at: string;

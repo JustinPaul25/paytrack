@@ -34,6 +34,7 @@ const props = defineProps<{
 
 const form = useForm({
     customer_id: props.customer_id,
+    delivery_type: 'delivery',
     notes: '',
     order_items: [
         {
@@ -232,6 +233,21 @@ function getItemTotal(index: number): number {
                         <p class="text-sm text-yellow-800">
                             <strong>Note:</strong> Your order will be reviewed by staff for product availability before approval. Once approved, an invoice will be automatically generated.
                         </p>
+                    </div>
+                    
+                    <div>
+                        <Label for="delivery_type">Delivery Type *</Label>
+                        <Select
+                            id="delivery_type"
+                            v-model="form.delivery_type"
+                            :options="[
+                                { value: 'pickup', label: 'Pickup' },
+                                { value: 'delivery', label: 'Delivery' }
+                            ]"
+                            class="mt-1"
+                            required
+                        />
+                        <InputError :message="form.errors.delivery_type" />
                     </div>
                     
                     <div>

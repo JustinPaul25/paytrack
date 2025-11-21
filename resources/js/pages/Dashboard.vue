@@ -112,13 +112,15 @@ watch([period, startDate, endDate], () => {
     updateFilters();
 });
 
-// Check for low stock products and show popup for staff users
+// Check for low stock products and show popup for staff users only (not admin)
 const page = usePage();
+const isAdmin = Array.isArray((page.props as any).auth?.userRoles) && 
+    (page.props as any).auth.userRoles.includes('Admin');
 const isStaff = Array.isArray((page.props as any).auth?.userRoles) && 
-    ((page.props as any).auth.userRoles.includes('Staff') || (page.props as any).auth.userRoles.includes('Admin'));
+    (page.props as any).auth.userRoles.includes('Staff') && !isAdmin;
 
 onMounted(() => {
-    // Show low stock alert for staff users
+    // Show low stock alert for staff users only (not admin)
     if (isStaff && props.lowStockProducts && props.lowStockProducts.length > 0) {
         const productList = props.lowStockProducts
             .slice(0, 10) // Show first 10 products

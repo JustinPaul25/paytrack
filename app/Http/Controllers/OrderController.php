@@ -121,6 +121,7 @@ class OrderController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
+            'delivery_type' => 'required|in:pickup,delivery',
             'notes' => 'nullable|string',
             'order_items' => 'required|array|min:1',
             'order_items.*.product_id' => 'required|exists:products,id',
@@ -173,6 +174,7 @@ class OrderController extends Controller
                 'vat_rate' => $vatRate,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
+                'delivery_type' => $validated['delivery_type'],
                 'notes' => $validated['notes'] ?? null,
             ]);
 

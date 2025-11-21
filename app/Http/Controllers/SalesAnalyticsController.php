@@ -154,10 +154,10 @@ class SalesAnalyticsController extends Controller
             $churnMetrics = $this->getChurnMetrics();
         }
 
-        // Get low stock products for staff users
+        // Get low stock products for staff users only (not admin)
         $lowStockProducts = [];
         if ($request->user() && method_exists($request->user(), 'hasRole') && 
-            ($request->user()->hasRole('Staff') || $request->user()->hasRole('Admin'))) {
+            $request->user()->hasRole('Staff') && !$request->user()->hasRole('Admin')) {
             $lowStockProducts = Product::where('stock', '<=', 10)
                 ->with('category')
                 ->orderBy('stock', 'asc')

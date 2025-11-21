@@ -24,7 +24,7 @@ class CustomerRegistrationRequest extends FormRequest
                 'unique:customers,email',
                 'unique:users,email',
             ],
-            'phone' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+\s()\-,]*$/'],
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^(?:\+?63|0)9\d{9}$/'],
             'address' => ['nullable', 'string'],
             'location' => ['nullable', 'array'],
             'location.lat' => ['nullable', 'numeric', 'between:-90,90'],
@@ -61,7 +61,7 @@ class CustomerRegistrationRequest extends FormRequest
             'email.unique' => 'This email is already in use.',
 
             'phone.max' => 'Phone number is too long (max 50 characters).',
-            'phone.regex' => 'Use numbers and phone characters only (digits, +, -, spaces, parentheses).',
+            'phone.regex' => 'Please enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).',
 
             'location.array' => 'Location must be a valid location.',
             'location.lat.numeric' => 'Latitude must be a number between -90 and 90.',

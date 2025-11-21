@@ -97,28 +97,88 @@ function onPhoneInput(e: Event) {
     // Remove all non-digit and non-plus characters
     value = value.replace(/[^0-9+]/g, '');
     
-    // If starts with +, ensure it's +63
+    // Handle + format: +639XXXXXXXXX (13 chars: +63 + 9 + 9 digits)
     if (value.startsWith('+')) {
+        // If starts with + but not +63, try to fix it
         if (value.length > 1 && !value.startsWith('+63')) {
-            value = '+63' + value.substring(1).replace(/[^0-9]/g, '');
+            const digits = value.substring(1).replace(/[^0-9]/g, '');
+            // If first digit is 9, it's likely a local number, prepend +63
+            if (digits.length > 0 && digits[0] === '9') {
+                value = '+63' + digits;
+            } else if (digits.startsWith('63')) {
+                // Already has 63, just add +
+                value = '+' + digits;
+            } else {
+                // Unknown format, start with +63
+                value = '+63' + digits;
+            }
         }
-        // Limit to +639XXXXXXXXX (13 chars: +639 + 9 digits)
+        // Ensure +63 is followed by 9 (Philippine mobile numbers start with 9)
+        if (value.length > 3 && value.startsWith('+63') && value[3] !== '9') {
+            // Remove any non-9 digits after +63
+            const after63 = value.substring(3).replace(/[^0-9]/g, '');
+            // Find first 9 or keep empty
+            const nineIndex = after63.indexOf('9');
+            if (nineIndex >= 0) {
+                value = '+63' + after63.substring(nineIndex);
+            } else {
+                // No 9 found, keep +63 and wait for user to type 9
+                value = '+63';
+            }
+        }
+        // Limit to +639XXXXXXXXX (13 chars)
         if (value.length > 13) {
             value = value.substring(0, 13);
         }
-    } else {
-        // If starts with 0, ensure it's 09
-        if (value.length > 0 && value[0] === '0' && value.length > 1 && value[1] !== '9') {
-            value = '09' + value.substring(2).replace(/[^0-9]/g, '');
+    } 
+    // Handle 0 format: 09XXXXXXXXX (11 digits)
+    else if (value.startsWith('0')) {
+        // If starts with 0 but next is not 9, fix it
+        if (value.length > 1 && value[1] !== '9') {
+            const digits = value.substring(1).replace(/[^0-9]/g, '');
+            // Find first 9 or prepend 9
+            const nineIndex = digits.indexOf('9');
+            if (nineIndex >= 0) {
+                value = '09' + digits.substring(nineIndex + 1);
+            } else {
+                value = '09' + digits;
+            }
         }
-        // If starts with 63, convert to +63
-        if (value.startsWith('63')) {
-            value = '+' + value;
-        }
-        // Limit to 11 digits for 09XXXXXXXXX format
-        if (value.length > 11 && !value.startsWith('+')) {
+        // Limit to 11 digits
+        if (value.length > 11) {
             value = value.substring(0, 11);
         }
+    }
+    // Handle 63 format: convert to +63
+    else if (value.startsWith('63')) {
+        const after63 = value.substring(2).replace(/[^0-9]/g, '');
+        // Ensure next digit is 9
+        if (after63.length > 0 && after63[0] === '9') {
+            value = '+63' + after63;
+        } else {
+            const nineIndex = after63.indexOf('9');
+            if (nineIndex >= 0) {
+                value = '+63' + after63.substring(nineIndex);
+            } else {
+                value = '+63';
+            }
+        }
+        // Limit to 13 chars
+        if (value.length > 13) {
+            value = value.substring(0, 13);
+        }
+    }
+    // Handle 9 format: assume it's local, prepend 0
+    else if (value.length > 0 && value[0] === '9' && !value.startsWith('09') && !value.startsWith('+')) {
+        value = '0' + value;
+        // Limit to 11 digits
+        if (value.length > 11) {
+            value = value.substring(0, 11);
+        }
+    }
+    // For any other digits, limit to 11
+    else if (!value.startsWith('+') && value.length > 11) {
+        value = value.substring(0, 11);
     }
     
     // Update the input and form
@@ -285,7 +345,7 @@ const submit = () => {
                     <!-- Step 2: Contact Information -->
                     <div v-show="currentStep === 2" class="space-y-6">
                         <div>
-                            <Label for="company_name" class="text-sm font-medium text-foreground mb-2 block">Company Name (Optional)</Label>
+                            <Label for="company_name" class="text-sm font-medium text-foreground mb-2 block">Company Name</Label>
                             <Input
                                 id="company_name"
                                 type="text"
@@ -299,7 +359,7 @@ const submit = () => {
                         </div>
 
                         <div>
-                            <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Phone Number (Optional)</Label>
+                            <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Phone Number</Label>
                             <Input
                                 id="phone"
                                 v-model="form.phone"
@@ -318,7 +378,7 @@ const submit = () => {
                     <!-- Step 3: Location & Address -->
                     <div v-show="currentStep === 3" class="space-y-6">
                         <div>
-                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Address (Optional)</Label>
+                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Address</Label>
                             <textarea
                                 id="address"
                                 v-model="form.address"
@@ -331,7 +391,7 @@ const submit = () => {
                         </div>
 
                         <div>
-                            <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location (Optional)</Label>
+                            <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location</Label>
                             <LocationInput v-model="form.location" />
                             <InputError :message="form.errors.location" />
                         </div>
@@ -340,7 +400,7 @@ const submit = () => {
                     <!-- Step 4: Profile Picture -->
                     <div v-show="currentStep === 4" class="space-y-6">
                         <div>
-                            <Label for="profile_image" class="text-sm font-medium text-foreground mb-2 block">Profile Picture (Optional)</Label>
+                            <Label for="profile_image" class="text-sm font-medium text-foreground mb-2 block">Profile Picture</Label>
                             <Input
                                 id="profile_image"
                                 type="file"

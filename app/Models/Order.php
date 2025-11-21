@@ -11,6 +11,7 @@ class Order extends Model
         'invoice_id',
         'reference_number',
         'status',
+        'delivery_type',
         'notes',
         'subtotal_amount',
         'vat_amount',
