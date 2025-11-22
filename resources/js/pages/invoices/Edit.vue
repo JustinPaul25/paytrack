@@ -57,6 +57,7 @@ const form = useForm({
     customer_id: props.invoice.customer_id,
     status: props.invoice.status,
     payment_method: props.invoice.payment_method,
+    invoice_type: props.invoice.invoice_type || 'walk_in',
     notes: props.invoice.notes || '',
     invoice_items: props.invoice.invoice_items.map(item => ({
         id: item.id,
@@ -78,19 +79,9 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
-// Computed total
+// Computed total (VAT already included in product price)
 const totalAmount = computed(() => {
     return form.invoice_items.reduce((sum: number, item: any) => sum + item.total, 0);
-});
-
-// Computed VAT amount (12%)
-const vatAmount = computed(() => {
-    return totalAmount.value * 0.12;
-});
-
-// Computed grand total (subtotal + VAT)
-const grandTotal = computed(() => {
-    return totalAmount.value + vatAmount.value;
 });
 
 // Basic validation to ensure form is ready for submission
@@ -197,6 +188,12 @@ const paymentMethodOptions = [
     { value: 'other', label: 'Other' }
 ];
 
+// Invoice type options
+const invoiceTypeOptions = [
+    { value: 'walk_in', label: 'Walk-in' },
+    { value: 'delivery', label: 'Delivery' }
+];
+
 // Product options for each item
 function getProductOptions() {
     return [
@@ -269,7 +266,20 @@ function getProductOptions() {
                             <InputError :message="form.errors.payment_method" />
                         </div>
                         
-
+                        <div>
+                            <Label for="invoice_type">Invoice Type</Label>
+                            <Select
+                                v-model="form.invoice_type"
+                                :options="invoiceTypeOptions"
+                                placeholder="Select invoice type"
+                                class="mt-1"
+                                required
+                            />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                Walk-in: Customer purchases in-store. Delivery: Items will be delivered.
+                            </div>
+                            <InputError :message="form.errors.invoice_type" />
+                        </div>
                     </div>
                     
                     <div>
@@ -374,9 +384,8 @@ function getProductOptions() {
                     <div class="mt-4 pt-3 border-t">
                         <div class="flex justify-end">
                             <div class="text-right space-y-1">
-                                <div class="text-sm text-muted-foreground">Subtotal: ₱{{ totalAmount.toFixed(2) }}</div>
-                                <div class="text-sm text-muted-foreground">VAT (12%): ₱{{ vatAmount.toFixed(2) }}</div>
-                                <div class="text-base font-medium">Total Amount: ₱{{ grandTotal.toFixed(2) }}</div>
+                                <div class="text-base font-medium">Total Amount: ₱{{ totalAmount.toFixed(2) }}</div>
+                                <div class="text-xs text-muted-foreground mt-1">12% VAT is included in price</div>
                             </div>
                         </div>
                     </div>

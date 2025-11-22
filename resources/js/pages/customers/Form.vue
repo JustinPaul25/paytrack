@@ -27,16 +27,12 @@
     <div class="flex gap-4">
       <div class="flex-1">
         <Label for="phone">Phone number (optional)</Label>
-        <Input
+        <PhoneInput
           id="phone"
           v-model="form.phone"
-          placeholder="09XXXXXXXXX or +639XXXXXXXXX"
-          inputmode="tel"
-          pattern="^(?:\+?63|0)9\d{9}$"
-          maxlength="13"
-          @input="onPhoneInput"
+          placeholder="XXXXXXXXXX"
         />
-        <p class="text-xs text-muted-foreground mt-1">Philippine mobile number format only (09XXXXXXXXX or +639XXXXXXXXX).</p>
+        <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number.</p>
         <InputError :message="form.errors.phone" />
       </div>
     </div>
@@ -77,6 +73,7 @@ import { useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import Label from '@/components/ui/label/Label.vue';
 import Input from '@/components/ui/input/Input.vue';
+import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import { Button } from '@/components/ui/button';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import LocationInput from '@/components/ui/input/LocationInput.vue';
@@ -143,43 +140,6 @@ function onFileChange(e: Event) {
   }
 }
 
-function onPhoneInput(e: Event) {
-  const target = e.target as HTMLInputElement;
-  let value = target.value;
-  
-  // Remove all non-digit and non-plus characters
-  value = value.replace(/[^0-9+]/g, '');
-  
-  // If starts with +, ensure it's +63
-  if (value.startsWith('+')) {
-    if (value.length > 1 && !value.startsWith('+63')) {
-      value = '+63' + value.substring(1).replace(/[^0-9]/g, '');
-    }
-    // Limit to +639XXXXXXXXX (13 chars: +639 + 9 digits)
-    if (value.length > 13) {
-      value = value.substring(0, 13);
-    }
-  } else {
-    // If starts with 0, ensure it's 09
-    if (value.length > 0 && value[0] === '0' && value.length > 1 && value[1] !== '9') {
-      value = '09' + value.substring(2).replace(/[^0-9]/g, '');
-    }
-    // If starts with 63, convert to +63
-    if (value.startsWith('63')) {
-      value = '+' + value;
-    }
-    // Limit to 11 digits for 09XXXXXXXXX format
-    if (value.length > 11 && !value.startsWith('+')) {
-      value = value.substring(0, 11);
-    }
-  }
-  
-  // Update the input and form
-  if (value !== target.value) {
-    target.value = value;
-  }
-  form.phone = value;
-}
 
 function submit() {
   if (form.customerId) {

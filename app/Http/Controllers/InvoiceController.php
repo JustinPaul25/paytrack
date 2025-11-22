@@ -111,12 +111,12 @@ class InvoiceController extends Controller
                 $subtotalAmount += $item['quantity'] * $item['price'];
             }
 
-            // Calculate VAT (12%)
+            // VAT is already included in product prices, so total = subtotal
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / 100);
+            $vatAmount = 0; // VAT already included in product prices
             
-            // Calculate total amount (subtotal + VAT)
-            $totalAmount = $subtotalAmount + $vatAmount;
+            // Total amount equals subtotal (VAT already included)
+            $totalAmount = $subtotalAmount;
 
             // Create invoice
             $invoice = Invoice::create([
@@ -128,6 +128,7 @@ class InvoiceController extends Controller
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
+                'invoice_type' => $validated['invoice_type'],
                 'notes' => $validated['notes'],
             ]);
 
@@ -246,6 +247,7 @@ class InvoiceController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
+            'invoice_type' => 'required|string|in:walk_in,delivery',
             'notes' => 'nullable|string',
             'invoice_items' => 'required|array|min:1',
             'invoice_items.*.product_id' => 'required|exists:products,id',
@@ -263,12 +265,12 @@ class InvoiceController extends Controller
                 $subtotalAmount += $item['quantity'] * $item['price'];
             }
 
-            // Calculate VAT (12%)
+            // VAT is already included in product prices, so total = subtotal
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / 100);
+            $vatAmount = 0; // VAT already included in product prices
             
-            // Calculate total amount (subtotal + VAT)
-            $totalAmount = $subtotalAmount + $vatAmount;
+            // Total amount equals subtotal (VAT already included)
+            $totalAmount = $subtotalAmount;
 
             // If old status was completed, restore stock before deleting items
             if ($oldStatus === 'completed') {
@@ -284,6 +286,7 @@ class InvoiceController extends Controller
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
+                'invoice_type' => $validated['invoice_type'],
                 'notes' => $validated['notes'],
             ]);
 

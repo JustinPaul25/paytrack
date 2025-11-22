@@ -74,26 +74,19 @@ const footerNavItems: NavItem[] = [
 const isUsersOpen = ref(true);
 const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
+const isFinancialOpen = ref(true);
 </script>
 
 <template>
     <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child>
-                        <Link :href="route('dashboard')">
-                            <AppLogo />
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
+            <NavUser />
         </SidebarHeader>
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
 
-            <!-- Sales Group (Staff only, not Admin) -->
+            <!-- Sales Group (Staff o   nly, not Admin) -->
             <SidebarMenu v-if="isStaffOnly" class="px-2">
                 <SidebarMenuItem>
                     <Collapsible v-model:open="isSalesOpen">
@@ -263,11 +256,71 @@ const isSalesOpen = ref(true);
                     </Collapsible>
                 </SidebarMenuItem>
             </SidebarMenu>
+
+            <!-- Financial Group (Admin only) -->
+            <SidebarMenu v-if="isAdmin" class="px-2">
+                <SidebarMenuItem>
+                    <Collapsible v-model:open="isFinancialOpen">
+                        <CollapsibleTrigger as-child>
+                            <SidebarMenuButton tooltip="Financial">
+                                <FileSpreadsheet />
+                                <span>Financial</span>
+                                <ChevronDown class="ml-auto h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isFinancialOpen }" />
+                            </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                            <SidebarMenuSub>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/invoices">
+                                            <Receipt />
+                                            <span>Invoices</span>
+                                            <span class="ml-auto text-xs text-muted-foreground">(View Only)</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/expenses">
+                                            <TrendingDown />
+                                            <span>Expenses</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/sales/transactions">
+                                            <CreditCard />
+                                            <span>Transactions</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('finance.cash-flow')">
+                                            <BarChart3 />
+                                            <span>Cash Flow</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('finance.reports')">
+                                            <FileSpreadsheet />
+                                            <span>Financial Report</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                            </SidebarMenuSub>
+                        </CollapsibleContent>
+                    </Collapsible>
+                </SidebarMenuItem>
+            </SidebarMenu>
         </SidebarContent>
 
         <SidebarFooter>
             <!-- Quick Deliveries Shortcut -->
-            <SidebarMenu v-if="!isCustomer" class="px-2">
+            <SidebarMenu v-if="!isCustomer && !isAdmin" class="px-2">
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200">
                         <Link href="/deliveries/shortcut">
@@ -279,7 +332,15 @@ const isSalesOpen = ref(true);
             </SidebarMenu>
             
             <NavFooter :items="footerNavItems" />
-            <NavUser />
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton size="lg" as-child>
+                        <Link :href="route('dashboard')">
+                            <AppLogo />
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
         </SidebarFooter>
     </Sidebar>
     <slot />

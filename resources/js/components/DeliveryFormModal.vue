@@ -12,6 +12,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import Label from '@/components/ui/label/Label.vue';
+import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import Swal from 'sweetalert2';
 import InputError from '@/components/InputError.vue';
 import DeliveryRouteMap from '@/components/DeliveryRouteMap.vue';
@@ -146,104 +147,13 @@ watch(() => props.open, (isOpen) => {
     }
 });
 
-function onContactPhoneInput(e: Event) {
-    const target = e.target as HTMLInputElement;
-    let value = target.value;
-    
-    // Remove all non-digit and non-plus characters
-    value = value.replace(/[^0-9+]/g, '');
-    
-    // If starts with +, ensure it's +63
-    if (value.startsWith('+')) {
-        if (value.length > 1 && !value.startsWith('+63')) {
-            value = '+63' + value.substring(1).replace(/[^0-9]/g, '');
-        }
-        // Limit to +639XXXXXXXXX (13 chars: +639 + 9 digits)
-        if (value.length > 13) {
-            value = value.substring(0, 13);
-        }
-    } else {
-        // If starts with 0, ensure it's 09
-        if (value.length > 0 && value[0] === '0' && value.length > 1 && value[1] !== '9') {
-            value = '09' + value.substring(2).replace(/[^0-9]/g, '');
-        }
-        // If starts with 63, convert to +63
-        if (value.startsWith('63')) {
-            value = '+' + value;
-        }
-        // Limit to 11 digits for 09XXXXXXXXX format
-        if (value.length > 11 && !value.startsWith('+')) {
-            value = value.substring(0, 11);
-        }
-    }
-    
-    // Update the input and form
-    if (value !== target.value) {
-        target.value = value;
-    }
-    form.contact_phone = value;
-}
 
-// Get current location address using reverse geocoding
-async function getCurrentLocationAddress() {
-    try {
-        if (!navigator.geolocation) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Geolocation not supported',
-                text: 'Your browser does not support geolocation.',
-            });
-            return;
-        }
-
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-            });
-        });
-
-        const { latitude, longitude } = position.coords;
-        
-        // Use OpenStreetMap Nominatim for reverse geocoding
-        const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
-        );
-        
-        if (!response.ok) {
-            throw new Error('Failed to get address');
-        }
-        
-        const data = await response.json();
-        
-        if (data.display_name) {
-            form.delivery_address = data.display_name;
-            Swal.fire({
-                icon: 'success',
-                title: 'Location Retrieved',
-                text: 'Current location address has been filled in.',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000,
-            });
-        }
-    } catch (error) {
-        console.error('Error getting location address:', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Location Error',
-            text: 'Failed to get your current location address. Please enter it manually.',
-        });
-    }
-}
 
 function submit() {
-    // Validate Philippine mobile format on the client-side
-    const phMobileRegex = /^(?:\+?63|0)9\d{9}$/;
-    if (!phMobileRegex.test(form.contact_phone || '')) {
-        form.setError('contact_phone', 'Enter a valid PH mobile number (09XXXXXXXXX or +639XXXXXXXXX).');
+    // Validate Philippine mobile format on the client-side (10 digits after +63)
+    const phMobileRegex = /^\+63\d{10}$/;
+    if (form.contact_phone && !phMobileRegex.test(form.contact_phone)) {
+        form.setError('contact_phone', 'Enter a valid 10-digit Philippine mobile number.');
         return;
     }
     
@@ -314,24 +224,14 @@ function closeModal() {
                     
                     <div>
                         <Label for="delivery_address">Delivery Address</Label>
-                        <div class="flex gap-2 mt-1">
-                            <textarea
-                                v-model="form.delivery_address"
-                                id="delivery_address"
-                                class="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                rows="3"
-                                placeholder="Enter complete delivery address"
-                                required
-                            />
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                @click="getCurrentLocationAddress"
-                                class="h-fit px-3 py-2"
-                            >
-                                📍 Get Current Location
-                            </Button>
-                        </div>
+                        <textarea
+                            v-model="form.delivery_address"
+                            id="delivery_address"
+                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                            rows="3"
+                            placeholder="Enter complete delivery address"
+                            required
+                        />
                         <InputError :message="form.errors.delivery_address" />
                     </div>
                     
@@ -351,17 +251,12 @@ function closeModal() {
                         
                         <div>
                             <Label for="contact_phone">Contact Phone</Label>
-                            <input
+                            <PhoneInput
                                 v-model="form.contact_phone"
-                                type="tel"
                                 id="contact_phone"
-                                inputmode="numeric"
-                                pattern="^(?:\+?63|0)9\d{9}$"
-                                maxlength="13"
-                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="09XXXXXXXXX or +639XXXXXXXXX"
-                                @input="onContactPhoneInput"
+                                placeholder="XXXXXXXXXX"
                                 required
+                                class="mt-1"
                             />
                             <InputError :message="form.errors.contact_phone" />
                         </div>

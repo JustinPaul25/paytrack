@@ -3,11 +3,14 @@ import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import { Label } from '@/components/ui/label';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Eye, EyeOff, ChevronRight, ChevronLeft, Check } from 'lucide-vue-next';
-import { ref } from 'vue';
-import LocationInput from '@/components/ui/input/LocationInput.vue';
+import { ref, defineAsyncComponent } from 'vue';
+
+// Dynamically import LocationInput to prevent initialization when not needed
+const LocationInput = defineAsyncComponent(() => import('@/components/ui/input/LocationInput.vue'));
 
 const form = useForm({
     // Step 1: Basic Information
@@ -59,6 +62,16 @@ const canGoNext = () => {
 
 const nextStep = () => {
     if (currentStep.value < totalSteps && canGoNext()) {
+        // Validate phone number when leaving step 2 (Contact Information)
+        if (currentStep.value === 2 && form.phone) {
+            // Phone number must be exactly 10 digits (stored as +63XXXXXXXXXX = 13 chars)
+            const phMobileRegex = /^\+63\d{10}$/;
+            if (!phMobileRegex.test(form.phone)) {
+                form.setError('phone', 'Please enter a valid 10-digit Philippine mobile number.');
+                return;
+            }
+        }
+        form.clearErrors('phone');
         currentStep.value++;
     }
 };
@@ -90,103 +103,6 @@ function onFileChange(e: Event) {
     }
 }
 
-function onPhoneInput(e: Event) {
-    const target = e.target as HTMLInputElement;
-    let value = target.value;
-    
-    // Remove all non-digit and non-plus characters
-    value = value.replace(/[^0-9+]/g, '');
-    
-    // Handle + format: +639XXXXXXXXX (13 chars: +63 + 9 + 9 digits)
-    if (value.startsWith('+')) {
-        // If starts with + but not +63, try to fix it
-        if (value.length > 1 && !value.startsWith('+63')) {
-            const digits = value.substring(1).replace(/[^0-9]/g, '');
-            // If first digit is 9, it's likely a local number, prepend +63
-            if (digits.length > 0 && digits[0] === '9') {
-                value = '+63' + digits;
-            } else if (digits.startsWith('63')) {
-                // Already has 63, just add +
-                value = '+' + digits;
-            } else {
-                // Unknown format, start with +63
-                value = '+63' + digits;
-            }
-        }
-        // Ensure +63 is followed by 9 (Philippine mobile numbers start with 9)
-        if (value.length > 3 && value.startsWith('+63') && value[3] !== '9') {
-            // Remove any non-9 digits after +63
-            const after63 = value.substring(3).replace(/[^0-9]/g, '');
-            // Find first 9 or keep empty
-            const nineIndex = after63.indexOf('9');
-            if (nineIndex >= 0) {
-                value = '+63' + after63.substring(nineIndex);
-            } else {
-                // No 9 found, keep +63 and wait for user to type 9
-                value = '+63';
-            }
-        }
-        // Limit to +639XXXXXXXXX (13 chars)
-        if (value.length > 13) {
-            value = value.substring(0, 13);
-        }
-    } 
-    // Handle 0 format: 09XXXXXXXXX (11 digits)
-    else if (value.startsWith('0')) {
-        // If starts with 0 but next is not 9, fix it
-        if (value.length > 1 && value[1] !== '9') {
-            const digits = value.substring(1).replace(/[^0-9]/g, '');
-            // Find first 9 or prepend 9
-            const nineIndex = digits.indexOf('9');
-            if (nineIndex >= 0) {
-                value = '09' + digits.substring(nineIndex + 1);
-            } else {
-                value = '09' + digits;
-            }
-        }
-        // Limit to 11 digits
-        if (value.length > 11) {
-            value = value.substring(0, 11);
-        }
-    }
-    // Handle 63 format: convert to +63
-    else if (value.startsWith('63')) {
-        const after63 = value.substring(2).replace(/[^0-9]/g, '');
-        // Ensure next digit is 9
-        if (after63.length > 0 && after63[0] === '9') {
-            value = '+63' + after63;
-        } else {
-            const nineIndex = after63.indexOf('9');
-            if (nineIndex >= 0) {
-                value = '+63' + after63.substring(nineIndex);
-            } else {
-                value = '+63';
-            }
-        }
-        // Limit to 13 chars
-        if (value.length > 13) {
-            value = value.substring(0, 13);
-        }
-    }
-    // Handle 9 format: assume it's local, prepend 0
-    else if (value.length > 0 && value[0] === '9' && !value.startsWith('09') && !value.startsWith('+')) {
-        value = '0' + value;
-        // Limit to 11 digits
-        if (value.length > 11) {
-            value = value.substring(0, 11);
-        }
-    }
-    // For any other digits, limit to 11
-    else if (!value.startsWith('+') && value.length > 11) {
-        value = value.substring(0, 11);
-    }
-    
-    // Update the input and form
-    if (value !== target.value) {
-        target.value = value;
-    }
-    form.phone = value;
-}
 
 const submit = () => {
     form.post(route('customer.register'), {
@@ -360,23 +276,19 @@ const submit = () => {
 
                         <div>
                             <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Phone Number</Label>
-                            <Input
+                            <PhoneInput
                                 id="phone"
                                 v-model="form.phone"
-                                placeholder="09XXXXXXXXX or +639XXXXXXXXX"
-                                inputmode="tel"
-                                pattern="^(?:\+?63|0)9\d{9}$"
-                                maxlength="13"
-                                @input="onPhoneInput"
+                                placeholder="XXXXXXXXXX"
                                 class="w-full"
                             />
-                            <p class="text-xs text-muted-foreground mt-1">Philippine mobile number format only (09XXXXXXXXX or +639XXXXXXXXX).</p>
+                            <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number.</p>
                             <InputError :message="form.errors.phone" />
                         </div>
                     </div>
 
                     <!-- Step 3: Location & Address -->
-                    <div v-show="currentStep === 3" class="space-y-6">
+                    <div v-if="currentStep === 3" class="space-y-6">
                         <div>
                             <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Address</Label>
                             <textarea

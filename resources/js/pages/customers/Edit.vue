@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -9,17 +10,37 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import { type BreadcrumbItem } from '@/types';
 import CustomerForm from './Form.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps<{ customer: any, profile_image_url?: string }>();
+
+const page = usePage();
+const isAdmin = computed(() => Array.isArray((page.props as any).auth?.userRoles) && 
+    (page.props as any).auth.userRoles.includes('Admin'));
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Customers', href: '/customers' },
     { title: 'Edit Customer', href: `/customers/${props.customer.id}/edit` },
 ];
+
+// Redirect staff users who try to access edit page
+onMounted(() => {
+    if (!isAdmin.value) {
+        Swal.fire({
+            title: 'Access Denied',
+            text: 'You do not have permission to edit customer data.',
+            icon: 'error',
+            confirmButtonText: 'Go Back',
+            confirmButtonColor: '#8f5be8',
+        }).then(() => {
+            router.visit('/customers');
+        });
+    }
+});
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <AppLayout v-if="isAdmin" :breadcrumbs="breadcrumbs">
         <Head title="Edit Customer" />
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-2xl font-bold">Edit Customer</h1>
@@ -36,6 +57,20 @@ const breadcrumbs: BreadcrumbItem[] = [
 						</Link>
 					</template>
 				</CustomerForm>
+            </CardContent>
+        </Card>
+    </AppLayout>
+    <AppLayout v-else :breadcrumbs="breadcrumbs">
+        <Head title="Access Denied" />
+        <Card>
+            <CardContent class="py-12 text-center">
+                <h3 class="text-lg font-semibold mb-2">Access Denied</h3>
+                <p class="text-sm text-muted-foreground mb-6">
+                    You do not have permission to edit customer data.
+                </p>
+                <Link :href="route('customers.index')">
+                    <Button variant="default">Go Back</Button>
+                </Link>
             </CardContent>
         </Card>
     </AppLayout>

@@ -12,6 +12,7 @@ class Order extends Model
         'reference_number',
         'status',
         'delivery_type',
+        'payment_method',
         'notes',
         'subtotal_amount',
         'vat_amount',

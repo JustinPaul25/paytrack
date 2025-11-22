@@ -19,6 +19,7 @@ class Invoice extends Model
         'payment_method', 
         'payment_status',
         'payment_reference', 
+        'invoice_type',
         'notes'
     ];
 
@@ -75,6 +76,16 @@ class Invoice extends Model
     public function deliveries()
     {
         return $this->hasMany(Delivery::class);
+    }
+
+    public function order()
+    {
+        return $this->hasOne(Order::class, 'invoice_id');
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class, 'invoice_id');
     }
 
     // Money accessors (get in dollars, set in cents)

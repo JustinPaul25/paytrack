@@ -84,7 +84,21 @@
 
                     <!-- Prediction Chart -->
                     <div>
-                        <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Sales Forecast Trend</h4>
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100">Sales Forecast Trend</h4>
+                            <div class="flex items-center gap-2">
+                                <BarChart3 class="w-4 h-4 text-muted-foreground" />
+                                <Select
+                                    v-model="forecastPeriod"
+                                    :options="[
+                                        { value: 'monthly', label: 'Monthly' },
+                                        { value: 'yearly', label: 'Yearly' }
+                                    ]"
+                                    placeholder="Select period"
+                                    class="w-32"
+                                />
+                            </div>
+                        </div>
                         <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                             <Line
                                 :data="predictionChartData"
@@ -145,7 +159,8 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { TrendingUp, ChevronDown } from 'lucide-vue-next';
+import { TrendingUp, ChevronDown, BarChart3 } from 'lucide-vue-next';
+import { Select } from '@/components/ui/select';
 
 // Register Chart.js components
 ChartJS.register(
@@ -167,6 +182,9 @@ const props = defineProps<Props>();
 
 // Collapsible state (disabled: content always open)
 const isCollapsed = ref(false);
+
+// Forecast period filter (monthly/yearly)
+const forecastPeriod = ref<'monthly' | 'yearly'>('monthly');
 
 const tomorrow = computed(() => {
     const date = new Date();
@@ -198,96 +216,195 @@ const monthlyGrowth = computed<number>(() => {
 });
 const usingDummy = ref(false);
 
-// Prediction Chart.js data and options
-const predictionChartData = computed(() => ({
-    labels: nextWeekPredictions.value.map((_, index) => {
-        const date = getDateFromIndex(index);
-        return formatDate(date).split(' ')[1];
-    }),
-    datasets: [
-        {
-            label: 'Predicted Sales',
-            data: nextWeekPredictions.value,
-            borderColor: 'rgb(59, 130, 246)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: 'rgb(59, 130, 246)',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2,
-            pointRadius: 5,
-        },
-        {
-            label: 'Confidence Range',
-            data: nextWeekPredictions.value.map(pred => pred * 0.95),
-            borderColor: 'rgba(59, 130, 246, 0.3)',
-            backgroundColor: 'rgba(59, 130, 246, 0.05)',
-            fill: false,
-            tension: 0.4,
-            borderDash: [5, 5],
-            pointRadius: 0,
-        }
-    ]
-}));
-
-const predictionChartOptions = computed(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'top' as const,
-            labels: {
-                usePointStyle: true,
-                padding: 20,
-                font: {
-                    size: 12
-                }
+// Group predictions by month or year based on forecastPeriod
+const groupedPredictions = computed(() => {
+    if (forecastPeriod.value === 'yearly') {
+        // Group by year (for longer forecasts)
+        const grouped = new Map<string, { sales: number; date: string; sortKey: string }>();
+        
+        predictions.value.forEach((pred, index) => {
+            const date = getDateFromIndex(index);
+            const year = date.getFullYear().toString();
+            const sortKey = year;
+            
+            if (grouped.has(year)) {
+                const existing = grouped.get(year)!;
+                existing.sales += pred.predicted_sales;
+            } else {
+                grouped.set(year, {
+                    sales: pred.predicted_sales,
+                    date: year,
+                    sortKey: sortKey
+                });
             }
-        },
-        tooltip: {
-            mode: 'index' as const,
-            intersect: false,
-            callbacks: {
-                label: function(context: any) {
-                    return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                }
+        });
+        
+        return Array.from(grouped.values())
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(item => ({
+                label: item.date,
+                sales: item.sales
+            }));
+    } else {
+        // Group by month
+        const grouped = new Map<string, { sales: number; date: string; sortKey: string }>();
+        
+        predictions.value.forEach((pred, index) => {
+            const date = getDateFromIndex(index);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            
+            if (grouped.has(monthKey)) {
+                const existing = grouped.get(monthKey)!;
+                existing.sales += pred.predicted_sales;
+            } else {
+                grouped.set(monthKey, {
+                    sales: pred.predicted_sales,
+                    date: monthLabel,
+                    sortKey: monthKey
+                });
             }
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: false,
-            min: Math.min(...nextWeekPredictions.value, 0),
-            max: Math.max(...nextWeekPredictions.value, 1) * 1.1,
-            grid: {
-                color: 'rgba(156, 163, 175, 0.1)',
-            },
-            ticks: {
-                callback: function(value: any) {
-                    return formatCurrency(value);
-                },
-                font: {
-                    size: 11
-                }
-            }
-        },
-        x: {
-            grid: {
-                color: 'rgba(156, 163, 175, 0.1)',
-            },
-            ticks: {
-                font: {
-                    size: 11
-                }
-            }
-        }
-    },
-    interaction: {
-        mode: 'nearest' as const,
-        axis: 'x' as const,
-        intersect: false
+        });
+        
+        return Array.from(grouped.values())
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(item => ({
+                label: item.date,
+                sales: item.sales
+            }));
     }
-}));
+});
+
+// Prediction Chart.js data and options
+const predictionChartData = computed(() => {
+    if (forecastPeriod.value === 'yearly' || forecastPeriod.value === 'monthly') {
+        // Use grouped data for monthly/yearly view
+        return {
+            labels: groupedPredictions.value.map(item => item.label),
+            datasets: [
+                {
+                    label: forecastPeriod.value === 'yearly' ? 'Predicted Yearly Sales' : 'Predicted Monthly Sales',
+                    data: groupedPredictions.value.map(item => item.sales),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: 'rgb(59, 130, 246)',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                },
+                {
+                    label: 'Confidence Range',
+                    data: groupedPredictions.value.map(item => item.sales * 0.95),
+                    borderColor: 'rgba(59, 130, 246, 0.3)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                    fill: false,
+                    tension: 0.4,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                }
+            ]
+        };
+    }
+    
+    // Default: daily predictions (next 7 days)
+    return {
+        labels: nextWeekPredictions.value.map((_, index) => {
+            const date = getDateFromIndex(index);
+            return formatDate(date).split(' ')[1];
+        }),
+        datasets: [
+            {
+                label: 'Predicted Sales',
+                data: nextWeekPredictions.value,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: 'rgb(59, 130, 246)',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+            },
+            {
+                label: 'Confidence Range',
+                data: nextWeekPredictions.value.map(pred => pred * 0.95),
+                borderColor: 'rgba(59, 130, 246, 0.3)',
+                backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                fill: false,
+                tension: 0.4,
+                borderDash: [5, 5],
+                pointRadius: 0,
+            }
+        ]
+    };
+});
+
+const predictionChartOptions = computed(() => {
+    const dataValues = forecastPeriod.value === 'yearly' || forecastPeriod.value === 'monthly'
+        ? groupedPredictions.value.map(item => item.sales)
+        : nextWeekPredictions.value;
+    
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top' as const,
+                labels: {
+                    usePointStyle: true,
+                    padding: 20,
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            tooltip: {
+                mode: 'index' as const,
+                intersect: false,
+                callbacks: {
+                    label: function(context: any) {
+                        return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: false,
+                min: Math.min(...dataValues, 0),
+                max: Math.max(...dataValues, 1) * 1.1,
+                grid: {
+                    color: 'rgba(156, 163, 175, 0.1)',
+                },
+                ticks: {
+                    callback: function(value: any) {
+                        return formatCurrency(value);
+                    },
+                    font: {
+                        size: 11
+                    }
+                }
+            },
+            x: {
+                grid: {
+                    color: 'rgba(156, 163, 175, 0.1)',
+                },
+                ticks: {
+                    font: {
+                        size: 11
+                    }
+                }
+            }
+        },
+        interaction: {
+            mode: 'nearest' as const,
+            axis: 'x' as const,
+            intersect: false
+        }
+    };
+});
 
 const maxPrediction = computed(() => Math.max(...nextWeekPredictions.value, 0));
 

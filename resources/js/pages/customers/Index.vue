@@ -46,6 +46,13 @@ const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filter
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
 const showStats = ref(false);
 
+// Check user role
+const isAdmin = computed(() => Array.isArray((page.props as any).auth?.userRoles) && 
+    (page.props as any).auth.userRoles.includes('Admin'));
+const isStaff = computed(() => Array.isArray((page.props as any).auth?.userRoles) && 
+    (page.props as any).auth.userRoles.includes('Staff') && !isAdmin.value);
+const canModifyCustomers = computed(() => isAdmin.value); // Only admins can modify customers
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Customers', href: '/customers' },
 ];
@@ -253,7 +260,7 @@ async function deleteCustomer(id: number) {
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
             </div>
-            <Link :href="route('customers.create')">
+            <Link v-if="canModifyCustomers" :href="route('customers.create')">
                 <Button variant="default">
                     <span class="mr-2">+</span>
                     Add New Customer
@@ -270,7 +277,7 @@ async function deleteCustomer(id: number) {
                         <p class="text-sm text-muted-foreground mb-6">
                             Customers you add will appear here. You can create invoices faster when customers are saved.
                         </p>
-                        <Link :href="route('customers.create')">
+                        <Link v-if="canModifyCustomers" :href="route('customers.create')">
                             <Button variant="default">
                                 Add your first customer
                             </Button>
@@ -308,15 +315,16 @@ async function deleteCustomer(id: number) {
                     <tbody>
                         <tr v-for="customer in (page.props.customers as Paginated<Customer>).data" :key="customer.id" class="hover:bg-muted">
 							<td class="px-4 py-2 font-medium">
-								<Link :href="route('customers.edit', customer.id)" class="underline underline-offset-4">
+								<Link v-if="canModifyCustomers" :href="route('customers.edit', customer.id)" class="underline underline-offset-4">
 									{{ customer.name }}
 								</Link>
+								<span v-else>{{ customer.name }}</span>
 							</td>
                             <td class="px-4 py-2">{{ customer.company_name || '-' }}</td>
                             <td class="px-4 py-2">{{ customer.email }}</td>
                             <td class="px-4 py-2">{{ customer.phone || '-' }}</td>
                             <td class="px-4 py-2">
-                                <div class="flex gap-2">
+                                <div v-if="canModifyCustomers" class="flex gap-2">
                                     <Link :href="route('customers.edit', customer.id)">
                                         <Button variant="ghost" size="sm">
                                             <Icon name="edit" class="h-4 w-4" />
@@ -326,6 +334,7 @@ async function deleteCustomer(id: number) {
                                         <Icon name="trash" class="h-4 w-4" />
                                     </Button>
                                 </div>
+                                <span v-else class="text-sm text-muted-foreground">View only</span>
                             </td>
                         </tr>
                     </tbody>

@@ -53,11 +53,23 @@ class CustomerController extends Controller
 
     public function create()
     {
+        // Only admins can create customers
+        if (!auth()->user()->hasRole('Admin')) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to create customer data.');
+        }
+        
         return Inertia::render('customers/Create');
     }
 
     public function store(CustomerRequest $request)
     {
+        // Only admins can create customers
+        if (!auth()->user()->hasRole('Admin')) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to create customer data.');
+        }
+        
         $data = $request->validated();
         $customer = Customer::create($data);
         if ($request->hasFile('profile_image')) {
@@ -83,6 +95,12 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
+        // Only admins can edit customers
+        if (!auth()->user()->hasRole('Admin')) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to edit customer data.');
+        }
+        
         $customer->load('media');
         return Inertia::render('customers/Edit', [
             'customer' => $customer,
@@ -92,6 +110,12 @@ class CustomerController extends Controller
 
     public function update(CustomerRequest $request, Customer $customer)
     {
+        // Only admins can update customers
+        if (!auth()->user()->hasRole('Admin')) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to modify customer data.');
+        }
+        
         $data = $request->validated();
         $customer->update($data);
         if ($request->hasFile('profile_image')) {
@@ -103,6 +127,12 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
+        // Only admins can delete customers
+        if (!auth()->user()->hasRole('Admin')) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to delete customer data.');
+        }
+        
         // Block delete if related records exist to avoid FK errors
         $hasInvoices = \App\Models\Invoice::where('customer_id', $customer->id)->exists();
         $hasDeliveries = \App\Models\Delivery::where('customer_id', $customer->id)->exists();

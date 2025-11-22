@@ -81,6 +81,7 @@ const props = defineProps<{
 const period = ref(props.filters.period);
 const startDate = ref(props.filters.start_date);
 const endDate = ref(props.filters.end_date);
+const trendPeriod = ref<'monthly' | 'yearly'>('monthly');
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -121,7 +122,12 @@ const isStaff = Array.isArray((page.props as any).auth?.userRoles) &&
 
 onMounted(() => {
     // Show low stock alert for staff users only (not admin)
-    if (isStaff && props.lowStockProducts && props.lowStockProducts.length > 0) {
+    // Check if alert was already shown today
+    const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    const lastAlertDate = localStorage.getItem('lowStockAlertLastShown');
+    
+    // Only show alert if it hasn't been shown today and there are low stock products
+    if (isStaff && props.lowStockProducts && props.lowStockProducts.length > 0 && lastAlertDate !== today) {
         const productList = props.lowStockProducts
             .slice(0, 10) // Show first 10 products
             .map(p => `<li><strong>${p.name}</strong> (${p.category}) - Stock: <span style="color: #dc2626; font-weight: bold;">${p.stock}</span></li>`)
@@ -148,6 +154,9 @@ onMounted(() => {
             cancelButtonColor: '#6b7280',
             width: '600px',
         }).then((result) => {
+            // Save today's date to localStorage when alert is shown
+            localStorage.setItem('lowStockAlertLastShown', today);
+            
             if (result.isConfirmed) {
                 router.visit('/products?low_stock=1');
             }
@@ -155,24 +164,73 @@ onMounted(() => {
     }
 });
 
+// Group sales data by month or year based on trendPeriod
+const groupedSalesData = computed(() => {
+    if (trendPeriod.value === 'yearly') {
+        // Group by year
+        const grouped = new Map<string, { sales: number; invoices: number; date: string; sortKey: string }>();
+        
+        props.salesByDate.forEach(item => {
+            const date = new Date(item.date);
+            const year = date.getFullYear().toString();
+            
+            if (grouped.has(year)) {
+                const existing = grouped.get(year)!;
+                existing.sales += item.sales;
+                existing.invoices += item.invoices;
+            } else {
+                grouped.set(year, {
+                    sales: item.sales,
+                    invoices: item.invoices,
+                    date: year,
+                    sortKey: year
+                });
+            }
+        });
+        
+        return Array.from(grouped.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    } else {
+        // Group by month
+        const grouped = new Map<string, { sales: number; invoices: number; date: string; sortKey: string }>();
+        
+        props.salesByDate.forEach(item => {
+            const date = new Date(item.date);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            
+            if (grouped.has(monthKey)) {
+                const existing = grouped.get(monthKey)!;
+                existing.sales += item.sales;
+                existing.invoices += item.invoices;
+            } else {
+                grouped.set(monthKey, {
+                    sales: item.sales,
+                    invoices: item.invoices,
+                    date: monthLabel,
+                    sortKey: monthKey
+                });
+            }
+        });
+        
+        return Array.from(grouped.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    }
+});
+
 // Chart data computations
 const salesChartData = computed(() => ({
-    labels: props.salesByDate.map(item => {
-        const date = new Date(item.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }),
+    labels: groupedSalesData.value.map(item => item.date),
     datasets: [
         {
-            label: 'Daily Sales',
-            data: props.salesByDate.map(item => item.sales),
+            label: trendPeriod.value === 'yearly' ? 'Yearly Sales' : 'Monthly Sales',
+            data: groupedSalesData.value.map(item => item.sales),
             borderColor: 'rgb(59, 130, 246)',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
             fill: true,
             tension: 0.4,
         },
         {
-            label: 'Invoices',
-            data: props.salesByDate.map(item => item.invoices),
+            label: trendPeriod.value === 'yearly' ? 'Yearly Invoices' : 'Monthly Invoices',
+            data: groupedSalesData.value.map(item => item.invoices),
             borderColor: 'rgb(16, 185, 129)',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
             fill: false,
@@ -217,22 +275,24 @@ const salesChartOptions = computed(() => ({
     },
 }));
 
+// Get top 5 categories sorted by revenue
+const top5Categories = computed(() => {
+    return [...props.salesByCategory]
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, 5);
+});
+
 const categoryChartData = computed(() => ({
-    labels: props.salesByCategory.map(item => item.category_name),
+    labels: top5Categories.value.map(item => item.category_name),
     datasets: [
         {
-            data: props.salesByCategory.map(item => item.total_revenue),
+            data: top5Categories.value.map(item => item.total_revenue),
             backgroundColor: [
                 '#3B82F6',
                 '#10B981',
                 '#F59E0B',
                 '#EF4444',
                 '#8B5CF6',
-                '#06B6D4',
-                '#84CC16',
-                '#F97316',
-                '#EC4899',
-                '#6366F1',
             ],
             borderWidth: 2,
             borderColor: '#ffffff',
@@ -566,9 +626,27 @@ const closeNotifications = () => {
 
                 <!-- Analytics Section -->
                 <div class="analytics-section">
-                    <div class="section-header">
-                        <h2 class="section-title">Sales Trends & Insights</h2>
-                        <p class="section-description">Track how your sales are performing over time</p>
+                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <div>
+                            <h2 class="section-title">Sales Trends & Insights</h2>
+                            <p class="section-description">Track how your sales are performing over time</p>
+                        </div>
+                        <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <label class="filter-label" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--foreground);">
+                                <BarChart3 class="w-4 h-4" />
+                                View Period
+                            </label>
+                            <Select
+                                v-model="trendPeriod"
+                                :options="[
+                                    { value: 'monthly', label: 'Monthly' },
+                                    { value: 'yearly', label: 'Yearly' }
+                                ]"
+                                placeholder="Select period"
+                                class="period-select"
+                                style="min-width: 120px;"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -598,7 +676,7 @@ const closeNotifications = () => {
                                         Your Sales Trend
                                     </CardTitle>
                                     <CardDescription>
-                                        See how your daily sales and number of transactions change over time
+                                        See how your {{ trendPeriod === 'yearly' ? 'yearly' : 'monthly' }} sales and number of transactions change over time
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
@@ -639,13 +717,17 @@ const closeNotifications = () => {
                                 <p class="empty-title">No category data for the selected period</p>
                                 <p class="empty-subtitle">Try expanding the date range or confirming there are paid invoices.</p>
                             </div>
-                            <BaseChart
-                                v-else
-                                type="doughnut"
-                                :data="categoryChartData"
-                                :options="categoryChartOptions"
-                                height="300px"
-                            />
+                            <div v-else>
+                                <BaseChart
+                                    type="doughnut"
+                                    :data="categoryChartData"
+                                    :options="categoryChartOptions"
+                                    height="300px"
+                                />
+                                <p v-if="props.salesByCategory.length > 5" class="text-xs text-muted-foreground text-center mt-2">
+                                    Showing top 5 categories ({{ props.salesByCategory.length }} total)
+                                </p>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>

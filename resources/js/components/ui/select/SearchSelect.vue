@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 interface SelectOption {
     value: string | number | null;
     label: string;
+    description?: string; // For additional info like price and stock
 }
 
 interface Props {
@@ -41,7 +42,11 @@ const selectedOption = computed(() => {
 });
 
 const displayValue = computed(() => {
-    return selectedOption.value?.label || props.placeholder;
+    if (selectedOption.value) {
+        // Only show the label (product name), not the description
+        return selectedOption.value.label;
+    }
+    return props.placeholder;
 });
 
 const filteredOptions = computed(() => {
@@ -188,7 +193,11 @@ onUnmounted(() => {
                             : 'hover:bg-accent hover:text-accent-foreground'
                     ]"
                 >
-                    {{ option.label }}
+                    <div v-if="option.description" class="flex flex-col">
+                        <span class="font-medium">{{ option.label }}</span>
+                        <span class="text-xs text-muted-foreground mt-0.5">{{ option.description }}</span>
+                    </div>
+                    <span v-else>{{ option.label }}</span>
                 </button>
                 
                 <!-- No results message -->

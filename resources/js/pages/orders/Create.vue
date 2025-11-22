@@ -35,6 +35,7 @@ const props = defineProps<{
 const form = useForm({
     customer_id: props.customer_id,
     delivery_type: 'delivery',
+    payment_method: 'cash',
     notes: '',
     order_items: [
         {
@@ -55,7 +56,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
-// Computed total
+// Computed total (VAT already included in product price)
 const totalAmount = computed(() => {
     return form.order_items.reduce((sum, item) => {
         if (item.product_id && item.quantity) {
@@ -66,16 +67,6 @@ const totalAmount = computed(() => {
         }
         return sum;
     }, 0);
-});
-
-// Computed VAT amount (12%)
-const vatAmount = computed(() => {
-    return totalAmount.value * 0.12;
-});
-
-// Computed grand total (subtotal + VAT)
-const grandTotal = computed(() => {
-    return totalAmount.value + vatAmount.value;
 });
 
 // Basic validation to ensure form is ready for submission
@@ -191,13 +182,31 @@ function getFormError(field: string): string | undefined {
     return form.errors[field as keyof typeof form.errors] as string | undefined;
 }
 
+// Format currency helper
+function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2
+    }).format(amount);
+}
+
+// Payment method options
+const paymentMethodOptions = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'bank_transfer', label: 'Bank Transfer' },
+    { value: 'e-wallet', label: 'E-Wallet' },
+    { value: 'other', label: 'Other' }
+];
+
 // Product options
 function getProductOptions() {
     return [
         { value: null, label: 'Select product' },
         ...props.products.map(product => ({
             value: product.id,
-            label: `${product.name} (Stock: ${product.stock})`
+            label: product.name,
+            description: `${formatCurrency(product.selling_price)} • Stock: ${product.stock}`
         }))
     ];
 }
@@ -229,12 +238,6 @@ function getItemTotal(index: number): number {
                     <CardTitle>Order Details</CardTitle>
                 </CardHeader>
                 <CardContent class="space-y-6">
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                        <p class="text-sm text-yellow-800">
-                            <strong>Note:</strong> Your order will be reviewed by staff for product availability before approval. Once approved, an invoice will be automatically generated.
-                        </p>
-                    </div>
-                    
                     <div>
                         <Label for="delivery_type">Delivery Type *</Label>
                         <Select
@@ -248,6 +251,18 @@ function getItemTotal(index: number): number {
                             required
                         />
                         <InputError :message="form.errors.delivery_type" />
+                    </div>
+                    
+                    <div>
+                        <Label for="payment_method">Payment Method *</Label>
+                        <Select
+                            id="payment_method"
+                            v-model="form.payment_method"
+                            :options="paymentMethodOptions"
+                            class="mt-1"
+                            required
+                        />
+                        <InputError :message="form.errors.payment_method" />
                     </div>
                     
                     <div>
@@ -338,10 +353,9 @@ function getItemTotal(index: number): number {
                     <!-- Total Amount -->
                     <div class="mt-4 pt-3 border-t">
                         <div class="flex justify-end">
-                            <div class="text-right space-y-1">
-                                <div class="text-sm text-muted-foreground">Subtotal: ₱{{ totalAmount.toFixed(2) }}</div>
-                                <div class="text-sm text-muted-foreground">VAT (12%): ₱{{ vatAmount.toFixed(2) }}</div>
-                                <div class="text-base font-medium">Total Amount: ₱{{ grandTotal.toFixed(2) }}</div>
+                            <div class="text-right">
+                                <div class="text-base font-medium">Total Amount: ₱{{ totalAmount.toFixed(2) }}</div>
+                                <div class="text-xs text-muted-foreground mt-1">12% VAT is included in price</div>
                             </div>
                         </div>
                     </div>

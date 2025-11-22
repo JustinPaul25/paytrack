@@ -22,16 +22,12 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <Label for="phone">Phone</Label>
-        <Input 
+        <PhoneInput 
           id="phone" 
           v-model="form.phone" 
-          placeholder="09XXXXXXXXX or +639XXXXXXXXX"
-          inputmode="tel"
-          pattern="^(?:\+?63|0)9\d{9}$"
-          maxlength="13"
-          @input="onPhoneInput"
+          placeholder="XXXXXXXXXX"
         />
-        <p class="text-xs text-muted-foreground mt-1">Philippine mobile number format only.</p>
+        <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number.</p>
         <InputError :message="form.errors.phone" />
       </div>
       <div>
@@ -74,16 +70,12 @@
       </div>
       <div>
         <Label for="manager_phone">Manager Phone</Label>
-        <Input 
+        <PhoneInput 
           id="manager_phone" 
           v-model="form.manager_phone" 
-          placeholder="09XXXXXXXXX or +639XXXXXXXXX"
-          inputmode="tel"
-          pattern="^(?:\+?63|0)9\d{9}$"
-          maxlength="13"
-          @input="onManagerPhoneInput"
+          placeholder="XXXXXXXXXX"
         />
-        <p class="text-xs text-muted-foreground mt-1">Philippine mobile number format only.</p>
+        <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number.</p>
         <InputError :message="form.errors.manager_phone" />
       </div>
       <div>
@@ -120,6 +112,7 @@ import { useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import Label from '@/components/ui/label/Label.vue';
 import Input from '@/components/ui/input/Input.vue';
+import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import Select from '@/components/ui/select/Select.vue';
 import { Button } from '@/components/ui/button';
 import LocationInput from '@/components/ui/input/LocationInput.vue';
@@ -187,54 +180,6 @@ function onFileChange(e: Event) {
   }
 }
 
-function filterPhilippinePhone(value: string): string {
-  // Remove all non-digit and non-plus characters
-  let filtered = value.replace(/[^0-9+]/g, '');
-  
-  // If starts with +, ensure it's +63
-  if (filtered.startsWith('+')) {
-    if (filtered.length > 1 && !filtered.startsWith('+63')) {
-      filtered = '+63' + filtered.substring(1).replace(/[^0-9]/g, '');
-    }
-    // Limit to +639XXXXXXXXX (13 chars: +639 + 9 digits)
-    if (filtered.length > 13) {
-      filtered = filtered.substring(0, 13);
-    }
-  } else {
-    // If starts with 0, ensure it's 09
-    if (filtered.length > 0 && filtered[0] === '0' && filtered.length > 1 && filtered[1] !== '9') {
-      filtered = '09' + filtered.substring(2).replace(/[^0-9]/g, '');
-    }
-    // If starts with 63, convert to +63
-    if (filtered.startsWith('63')) {
-      filtered = '+' + filtered;
-    }
-    // Limit to 11 digits for 09XXXXXXXXX format
-    if (filtered.length > 11 && !filtered.startsWith('+')) {
-      filtered = filtered.substring(0, 11);
-    }
-  }
-  
-  return filtered;
-}
-
-function onPhoneInput(e: Event) {
-  const target = e.target as HTMLInputElement;
-  const filtered = filterPhilippinePhone(target.value);
-  if (filtered !== target.value) {
-    target.value = filtered;
-  }
-  form.phone = filtered;
-}
-
-function onManagerPhoneInput(e: Event) {
-  const target = e.target as HTMLInputElement;
-  const filtered = filterPhilippinePhone(target.value);
-  if (filtered !== target.value) {
-    target.value = filtered;
-  }
-  form.manager_phone = filtered;
-}
 
 function submit() {
   if (form.branchId) {

@@ -9,7 +9,7 @@ import CardContent from '@/components/ui/card/CardContent.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import { type BreadcrumbItem } from '@/types';
-import { DollarSign, Receipt, CheckCircle, Clock, BarChart3, CreditCard, AlertCircle, Printer } from 'lucide-vue-next';
+import { Receipt, CheckCircle, Clock, BarChart3, CreditCard, AlertCircle, Printer } from 'lucide-vue-next';
 
 interface Transaction {
   id: string
@@ -329,7 +329,7 @@ const printTransactions = () => {
               </p>
             </div>
             <div class="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
-              <DollarSign class="w-6 h-6 text-green-600" />
+              <span class="text-2xl font-bold text-green-600">₱</span>
             </div>
           </div>
         </CardContent>

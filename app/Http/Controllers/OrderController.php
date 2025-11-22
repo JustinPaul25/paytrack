@@ -122,6 +122,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'delivery_type' => 'required|in:pickup,delivery',
+            'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
             'notes' => 'nullable|string',
             'order_items' => 'required|array|min:1',
             'order_items.*.product_id' => 'required|exists:products,id',
@@ -159,12 +160,12 @@ class OrderController extends Controller
                 ])->withInput();
             }
 
-            // Calculate VAT (12%)
+            // VAT is already included in product prices, so total = subtotal
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / 100);
+            $vatAmount = 0; // VAT already included in product prices
             
-            // Calculate total amount (subtotal + VAT)
-            $totalAmount = $subtotalAmount + $vatAmount;
+            // Total amount equals subtotal (VAT already included)
+            $totalAmount = $subtotalAmount;
 
             // Create order with status 'pending'
             $order = Order::create([
@@ -175,6 +176,7 @@ class OrderController extends Controller
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
                 'delivery_type' => $validated['delivery_type'],
+                'payment_method' => $validated['payment_method'],
                 'notes' => $validated['notes'] ?? null,
             ]);
 
@@ -303,7 +305,7 @@ class OrderController extends Controller
                 'vat_rate' => $order->vat_rate,
                 'total_amount' => $order->total_amount,
                 'status' => 'pending',
-                'payment_method' => 'cash', // Default, can be updated later
+                'payment_method' => $order->payment_method ?? 'cash',
                 'notes' => $order->notes,
             ]);
 

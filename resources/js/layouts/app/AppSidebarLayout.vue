@@ -17,8 +17,9 @@ withDefaults(defineProps<Props>(), {
 
 const page = usePage();
 const isAuthenticated = !!((page.props.auth as any)?.user);
-const isAdmin = Array.isArray((page.props.auth as any)?.userRoles) && (page.props.auth as any).userRoles.includes('Admin');
-const shouldShowNotificationBell = isAuthenticated && !isAdmin;
+// Show notification bell only on dashboard for all authenticated users
+const isDashboard = page.url === '/dashboard' || page.url.startsWith('/dashboard?');
+const shouldShowNotificationBell = isAuthenticated && isDashboard;
 </script>
 
 <template>
@@ -28,7 +29,7 @@ const shouldShowNotificationBell = isAuthenticated && !isAdmin;
             <AppSidebarHeader :breadcrumbs="breadcrumbs" />
             <slot />
         </AppContent>
-        <!-- Floating Notification Bell (hidden for Admin users) -->
+        <!-- Floating Notification Bell (only shown on dashboard for all user roles) -->
         <NotificationBell v-if="shouldShowNotificationBell" />
     </AppShell>
 </template>
