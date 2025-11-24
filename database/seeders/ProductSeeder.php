@@ -35,6 +35,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 1800.00,
                 'selling_price' => 2199.00,
                 'stock' => 15,
+                'unit' => 'pcs',
                 'SKU' => 'MBP14-M3-001'
             ],
             [
@@ -44,6 +45,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 1200.00,
                 'selling_price' => 1499.00,
                 'stock' => 22,
+                'unit' => 'pcs',
                 'SKU' => 'DLL-XPS13-002'
             ],
             [
@@ -53,6 +55,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 950.00,
                 'selling_price' => 1299.00,
                 'stock' => 18,
+                'unit' => 'pcs',
                 'SKU' => 'HP-PAV-GAM-003'
             ],
             
@@ -64,6 +67,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 1100.00,
                 'selling_price' => 1299.00,
                 'stock' => 25,
+                'unit' => 'pcs',
                 'SKU' => 'IPH15-PRO-004'
             ],
             [
@@ -73,6 +77,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 1050.00,
                 'selling_price' => 1249.00,
                 'stock' => 20,
+                'unit' => 'pcs',
                 'SKU' => 'SMS-GAL-S24-005'
             ],
             [
@@ -82,6 +87,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 180.00,
                 'selling_price' => 249.00,
                 'stock' => 45,
+                'unit' => 'pcs',
                 'SKU' => 'AIR-PRO-2-006'
             ],
             
@@ -93,6 +99,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 280.00,
                 'selling_price' => 399.00,
                 'stock' => 30,
+                'unit' => 'pcs',
                 'SKU' => 'SNY-WH1000-007'
             ],
             [
@@ -102,6 +109,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 1200.00,
                 'selling_price' => 1599.00,
                 'stock' => 12,
+                'unit' => 'pcs',
                 'SKU' => 'SMS-65QLED-008'
             ],
             
@@ -113,6 +121,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 120.00,
                 'selling_price' => 170.00,
                 'stock' => 35,
+                'unit' => 'pcs',
                 'SKU' => 'NKE-AJ1-CHI-009'
             ],
             [
@@ -122,6 +131,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 45.00,
                 'selling_price' => 69.00,
                 'stock' => 60,
+                'unit' => 'pcs',
                 'SKU' => 'LVS-501-ORG-010'
             ],
             
@@ -133,6 +143,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 85.00,
                 'selling_price' => 129.00,
                 'stock' => 28,
+                'unit' => 'pcs',
                 'SKU' => 'ZRA-BLZ-OVR-011'
             ],
             [
@@ -142,6 +153,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 35.00,
                 'selling_price' => 49.00,
                 'stock' => 42,
+                'unit' => 'pcs',
                 'SKU' => 'HM-DRS-SUM-012'
             ],
             
@@ -153,6 +165,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 180.00,
                 'selling_price' => 249.00,
                 'stock' => 15,
+                'unit' => 'pcs',
                 'SKU' => 'IKE-MALM-BED-013'
             ],
             [
@@ -162,6 +175,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 800.00,
                 'selling_price' => 1199.00,
                 'stock' => 8,
+                'unit' => 'pcs',
                 'SKU' => 'WST-ELM-SOF-014'
             ],
             
@@ -173,6 +187,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 280.00,
                 'selling_price' => 399.00,
                 'stock' => 20,
+                'unit' => 'pcs',
                 'SKU' => 'KIT-STD-MIX-015'
             ],
             [
@@ -182,6 +197,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 220.00,
                 'selling_price' => 299.00,
                 'stock' => 18,
+                'unit' => 'pcs',
                 'SKU' => 'LCR-DUT-OVN-016'
             ],
             
@@ -193,6 +209,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 280.00,
                 'selling_price' => 350.00,
                 'stock' => 25,
+                'unit' => 'pcs',
                 'SKU' => 'LMR-MOI-CRM-017'
             ],
             [
@@ -202,6 +219,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 8.00,
                 'selling_price' => 12.00,
                 'stock' => 80,
+                'unit' => 'pcs',
                 'SKU' => 'ORD-NIA-SER-018'
             ],
             
@@ -213,6 +231,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 15.00,
                 'selling_price' => 19.00,
                 'stock' => 55,
+                'unit' => 'pcs',
                 'SKU' => 'MAC-RUB-WOO-019'
             ],
             [
@@ -222,6 +241,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 45.00,
                 'selling_price' => 54.00,
                 'stock' => 30,
+                'unit' => 'set',
                 'SKU' => 'URB-NAK-PAL-020'
             ],
             
@@ -233,6 +253,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 2400.00,
                 'selling_price' => 2995.00,
                 'stock' => 10,
+                'unit' => 'pcs',
                 'SKU' => 'PEL-BIK-PLS-021'
             ],
             [
@@ -242,6 +263,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 75.00,
                 'selling_price' => 98.00,
                 'stock' => 40,
+                'unit' => 'pcs',
                 'SKU' => 'LUL-ALN-LEG-022'
             ],
             
@@ -253,6 +275,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 12.00,
                 'selling_price' => 16.99,
                 'stock' => 65,
+                'unit' => 'pcs',
                 'SKU' => 'BOK-SEV-HUS-023'
             ],
             [
@@ -262,6 +285,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 15.00,
                 'selling_price' => 19.99,
                 'stock' => 50,
+                'unit' => 'pcs',
                 'SKU' => 'BOK-ATM-HAB-024'
             ],
             
@@ -273,6 +297,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 180.00,
                 'selling_price' => 245.00,
                 'stock' => 25,
+                'unit' => 'pcs',
                 'SKU' => 'MCL-PLT-SPT-025'
             ],
             [
@@ -282,6 +307,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 25.00,
                 'selling_price' => 34.99,
                 'stock' => 45,
+                'unit' => 'set',
                 'SKU' => 'BSC-PRM-WIP-026'
             ],
             
@@ -293,6 +319,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 35.00,
                 'selling_price' => 44.99,
                 'stock' => 30,
+                'unit' => 'set',
                 'SKU' => 'TOY-CAT-BRD-027'
             ],
             [
@@ -302,6 +329,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 650.00,
                 'selling_price' => 799.99,
                 'stock' => 8,
+                'unit' => 'set',
                 'SKU' => 'LGO-MIL-FAL-028'
             ],
             
@@ -313,6 +341,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 12.00,
                 'selling_price' => 15.99,
                 'stock' => 75,
+                'unit' => 'box',
                 'SKU' => 'SBX-PIK-PLC-029'
             ],
             [
@@ -322,6 +351,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 8.00,
                 'selling_price' => 11.99,
                 'stock' => 60,
+                'unit' => 'box',
                 'SKU' => 'TWN-ENG-BRK-030'
             ],
             
@@ -333,6 +363,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 900.00,
                 'selling_price' => 1099.00,
                 'stock' => 20,
+                'unit' => 'pcs',
                 'SKU' => 'APP-IPD-PRO-031'
             ],
             [
@@ -342,6 +373,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 2200.00,
                 'selling_price' => 2499.00,
                 'stock' => 12,
+                'unit' => 'pcs',
                 'SKU' => 'CNN-EOS-R6-032'
             ],
             
@@ -353,6 +385,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 12.00,
                 'selling_price' => 16.99,
                 'stock' => 40,
+                'unit' => 'pcs',
                 'SKU' => 'KNG-CLS-DOG-033'
             ],
             [
@@ -362,6 +395,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 45.00,
                 'selling_price' => 59.99,
                 'stock' => 35,
+                'unit' => 'box',
                 'SKU' => 'RCL-CAN-DOG-034'
             ],
             
@@ -373,6 +407,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 25.00,
                 'selling_price' => 34.99,
                 'stock' => 30,
+                'unit' => 'set',
                 'SKU' => 'PHL-AVT-BTL-035'
             ],
             [
@@ -382,6 +417,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 35.00,
                 'selling_price' => 44.99,
                 'stock' => 50,
+                'unit' => 'box',
                 'SKU' => 'HUG-DIA-SZ4-036'
             ],
             
@@ -393,6 +429,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 85.00,
                 'selling_price' => 119.99,
                 'stock' => 25,
+                'unit' => 'set',
                 'SKU' => 'WNS-NWT-PNT-037'
             ],
             [
@@ -402,6 +439,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 15.00,
                 'selling_price' => 22.99,
                 'stock' => 40,
+                'unit' => 'pcs',
                 'SKU' => 'CSN-XL-PPR-038'
             ],
             
@@ -413,6 +451,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 650.00,
                 'selling_price' => 799.99,
                 'stock' => 15,
+                'unit' => 'pcs',
                 'SKU' => 'FND-STR-ELC-039'
             ],
             [
@@ -422,6 +461,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 180.00,
                 'selling_price' => 229.99,
                 'stock' => 25,
+                'unit' => 'pcs',
                 'SKU' => 'YAM-FG8-ACO-040'
             ],
             
@@ -433,6 +473,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 450.00,
                 'selling_price' => 499.99,
                 'stock' => 18,
+                'unit' => 'pcs',
                 'SKU' => 'PS5-CON-SYS-041'
             ],
             [
@@ -442,6 +483,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 280.00,
                 'selling_price' => 349.99,
                 'stock' => 22,
+                'unit' => 'pcs',
                 'SKU' => 'NIN-SWT-OLD-042'
             ],
             
@@ -453,6 +495,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 6500.00,
                 'selling_price' => 7999.99,
                 'stock' => 5,
+                'unit' => 'pcs',
                 'SKU' => 'CRT-LOV-BRC-043'
             ],
             [
@@ -462,6 +505,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 350.00,
                 'selling_price' => 399.99,
                 'stock' => 30,
+                'unit' => 'pcs',
                 'SKU' => 'APP-WCH-S9-044'
             ],
             
@@ -473,6 +517,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 450.00,
                 'selling_price' => 599.99,
                 'stock' => 12,
+                'unit' => 'pcs',
                 'SKU' => 'WBR-SPR-GAS-045'
             ],
             [
@@ -482,6 +527,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 12.00,
                 'selling_price' => 16.99,
                 'stock' => 45,
+                'unit' => 'box',
                 'SKU' => 'MIR-GRO-POT-046'
             ],
             
@@ -493,6 +539,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 85.00,
                 'selling_price' => 119.99,
                 'stock' => 35,
+                'unit' => 'pcs',
                 'SKU' => 'PHL-SNC-TBR-047'
             ],
             [
@@ -502,6 +549,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 350.00,
                 'selling_price' => 429.99,
                 'stock' => 20,
+                'unit' => 'pcs',
                 'SKU' => 'DYS-SUP-HDR-048'
             ],
             
@@ -513,6 +561,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 18.00,
                 'selling_price' => 24.99,
                 'stock' => 55,
+                'unit' => 'box',
                 'SKU' => 'LND-LIN-TRF-049'
             ],
             [
@@ -522,6 +571,7 @@ class ProductSeeder extends Seeder
                 'purchase_price' => 2.50,
                 'selling_price' => 3.99,
                 'stock' => 100,
+                'unit' => 'box',
                 'SKU' => 'PRN-ORG-CHP-050'
             ]
         ];
