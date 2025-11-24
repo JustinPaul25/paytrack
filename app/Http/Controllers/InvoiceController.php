@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Category;
 use App\Models\RefundRequest;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
@@ -74,28 +75,33 @@ class InvoiceController extends Controller
 
     public function create()
     {
-        // Only Admin|Staff can create
-        if (auth()->user()?->hasRole('Customer')) {
+        // Only Staff can create (Admin and Customer cannot)
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
         $customers = Customer::all(['id', 'name', 'company_name']);
-        $products = Product::all(['id', 'name', 'selling_price', 'stock']);
+        $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
+        $categories = Category::all(['id', 'name']);
         
         return inertia('invoices/Create', [
             'customers' => $customers,
             'products' => $products,
+            'categories' => $categories,
         ]);
     }
 
     public function store(Request $request)
     {
-        if (auth()->user()?->hasRole('Customer')) {
+        // Only Staff can store (Admin and Customer cannot)
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
-            'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
+            'payment_method' => 'required|string|in:cash,credit',
             'invoice_type' => 'required|string|in:walk_in,delivery',
             'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
@@ -227,11 +233,14 @@ class InvoiceController extends Controller
 
     public function edit(Invoice $invoice)
     {
-        if (auth()->user()?->hasRole('Customer')) {
+        // Only Staff can edit (Admin and Customer cannot)
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
         $customers = Customer::all(['id', 'name', 'company_name']);
-        $products = Product::all(['id', 'name', 'selling_price', 'stock']);
+        $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
+        $categories = Category::all(['id', 'name']);
         $invoice->load(['invoiceItems.product']);
         
         return inertia('invoices/Edit', [
@@ -243,13 +252,15 @@ class InvoiceController extends Controller
 
     public function update(Request $request, Invoice $invoice)
     {
-        if (auth()->user()?->hasRole('Customer')) {
+        // Only Staff can update (Admin and Customer cannot)
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
-            'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
+            'payment_method' => 'required|string|in:cash,credit',
             'invoice_type' => 'required|string|in:walk_in,delivery',
             'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
@@ -324,7 +335,9 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
-        if (auth()->user()?->hasRole('Customer')) {
+        // Only Staff can delete (Admin and Customer cannot)
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
         DB::beginTransaction();
@@ -340,7 +353,9 @@ class InvoiceController extends Controller
 
     public function markPaid(Invoice $invoice)
     {
-        if (auth()->user()?->hasRole('Customer')) {
+        // Only Staff can mark as paid (Admin and Customer cannot)
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
         

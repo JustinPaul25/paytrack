@@ -20,17 +20,28 @@ interface Product {
     name: string;
     selling_price: number;
     stock: number;
+    unit: string;
+    category_id: number;
+}
+
+interface Category {
+    id: number;
+    name: string;
 }
 
 interface OrderItem {
+    category_id: number | null;
     product_id: number | null;
     quantity: number;
 }
 
-const props = defineProps<{ 
+const props = withDefaults(defineProps<{ 
     customer_id: number;
     products: Product[];
-}>();
+    categories?: Category[];
+}>(), {
+    categories: () => []
+});
 
 const form = useForm({
     customer_id: props.customer_id,
@@ -40,6 +51,7 @@ const form = useForm({
     notes: '',
     order_items: [
         {
+            category_id: null,
             product_id: null,
             quantity: 1,
         }
@@ -81,6 +93,7 @@ const canSubmit = computed(() => {
 // Add new order item
 function addOrderItem() {
     form.order_items.push({
+        category_id: null,
         product_id: null,
         quantity: 1,
     });
@@ -91,6 +104,13 @@ function removeOrderItem(index: number) {
     if (form.order_items.length > 1) {
         form.order_items.splice(index, 1);
     }
+}
+
+// Handle category change - reset product when category changes
+function onCategoryChange(index: number) {
+    const item = form.order_items[index];
+    // Reset product when category changes
+    item.product_id = null;
 }
 
 // Auto-adjust quantity when product is selected
@@ -195,19 +215,32 @@ function formatCurrency(amount: number): string {
 // Payment method options
 const paymentMethodOptions = [
     { value: 'cash', label: 'Cash' },
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'e-wallet', label: 'E-Wallet' },
-    { value: 'other', label: 'Other' }
+    { value: 'credit', label: 'Credit' }
 ];
 
-// Product options
-function getProductOptions() {
+// Category options
+const categoryOptions = computed(() => [
+    { value: null, label: 'Select category' },
+    ...(props.categories || []).map(category => ({
+        value: category.id,
+        label: category.name
+    }))
+]);
+
+// Product options - filtered by selected category
+function getProductOptions(index: number) {
+    const item = form.order_items[index];
+    const allProducts = props.products || [];
+    const filteredProducts = item.category_id 
+        ? allProducts.filter(p => p.category_id === item.category_id)
+        : allProducts;
+    
     return [
         { value: null, label: 'Select product' },
-        ...props.products.map(product => ({
+        ...filteredProducts.map(product => ({
             value: product.id,
             label: product.name,
-            description: `${formatCurrency(product.selling_price)} • Stock: ${product.stock}`
+            description: `${formatCurrency(product.selling_price)}/${product.unit.toUpperCase()} • Stock: ${product.stock}`
         }))
     ];
 }
@@ -266,7 +299,7 @@ function getItemTotal(index: number): number {
                         <InputError :message="form.errors.payment_method" />
                     </div>
                     
-                    <div v-if="form.payment_method !== 'cash'">
+                    <div v-if="form.payment_method === 'credit'">
                         <Label for="credit_term_days">Credit Term (Days)</Label>
                         <input
                             v-model.number="form.credit_term_days"
@@ -325,12 +358,25 @@ function getItemTotal(index: number): number {
                                 </Button>
                             </div>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                <div>
+                                    <Label :for="`category_id_${index}`" class="text-xs">Category</Label>
+                                    <SearchSelect
+                                        v-model="item.category_id"
+                                        :options="categoryOptions"
+                                        placeholder="Select category"
+                                        search-placeholder="Search categories..."
+                                        class="mt-1 h-8"
+                                        @update:model-value="onCategoryChange(index)"
+                                    />
+                                    <InputError :message="getFormError(`order_items.${index}.category_id`)" />
+                                </div>
+                                
                                 <div>
                                     <Label :for="`product_id_${index}`" class="text-xs">Product</Label>
                                     <SearchSelect
                                         v-model="item.product_id"
-                                        :options="getProductOptions()"
+                                        :options="getProductOptions(index)"
                                         placeholder="Select product"
                                         search-placeholder="Search products..."
                                         class="mt-1 h-8"

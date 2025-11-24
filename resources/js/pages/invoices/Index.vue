@@ -45,7 +45,13 @@ interface InvoiceStats {
 }
 
 const page = usePage();
-const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
+const userRoles = Array.isArray((page.props as any).auth?.userRoles) ? (page.props as any).auth.userRoles : [];
+const isCustomer = userRoles.includes('Customer');
+const isAdmin = userRoles.includes('Admin');
+const isStaff = userRoles.includes('Staff');
+const canCreateInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can create invoices
+const canEditInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can edit invoices
+const canDeleteInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can delete invoices
 const filters = ref<{ search?: string; status?: string }>(
     page.props.filters ? (page.props.filters as { search?: string; status?: string }) : {}
 );
@@ -260,7 +266,7 @@ function formatDateFriendly(dateString: string) {
                 >
                     Unpaid
                 </Button>
-            <Link v-if="!isCustomer" :href="route('invoices.create')">
+            <Link v-if="canCreateInvoice" :href="route('invoices.create')">
                 <Button variant="default">
                     <span class="mr-2">+</span>
                     Add New Invoice
@@ -281,7 +287,7 @@ function formatDateFriendly(dateString: string) {
                         </p>
                         <div class="flex items-center justify-center gap-2">
                             <Button variant="outline" @click="search = ''; status = ''">Clear search</Button>
-                            <Link v-if="!isCustomer" :href="route('invoices.create')">
+                            <Link v-if="canCreateInvoice" :href="route('invoices.create')">
                                 <Button variant="default">
                                     <span class="mr-2">+</span>
                                     Create Invoice
@@ -292,8 +298,8 @@ function formatDateFriendly(dateString: string) {
                     <!-- Otherwise, show empty state for first use -->
                     <div v-else class="py-12 text-center">
                         <div class="text-xl font-semibold mb-2">No invoices yet</div>
-                        <p class="text-sm text-gray-600 mb-6" v-if="!isCustomer">Create your first invoice to get started.</p>
-                        <Link v-if="!isCustomer" :href="route('invoices.create')">
+                        <p class="text-sm text-gray-600 mb-6" v-if="canCreateInvoice">Create your first invoice to get started.</p>
+                        <Link v-if="canCreateInvoice" :href="route('invoices.create')">
                             <Button variant="default">
                                 <span class="mr-2">+</span>
                                 Create Invoice
@@ -343,17 +349,17 @@ function formatDateFriendly(dateString: string) {
                                                 <span class="ml-1">View</span>
                                             </Button>
                                         </Link>
-                                        <Link v-if="!isCustomer" :href="route('invoices.edit', invoice.id)">
+                                        <Link v-if="canEditInvoice" :href="route('invoices.edit', invoice.id)">
                                             <Button variant="ghost" size="sm">
                                                 <Icon name="edit" class="h-4 w-4" />
                                                 <span class="ml-1">Edit</span>
                                             </Button>
                                         </Link>
-                                        <Button v-if="!isCustomer && invoice.status === 'pending'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
+                                        <Button v-if="canEditInvoice && invoice.status === 'pending'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
                                             <Icon name="check" class="h-4 w-4" />
                                             <span class="ml-1">Mark as Paid</span>
                                         </Button>
-                                        <Button v-if="!isCustomer" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)">
+                                        <Button v-if="canDeleteInvoice" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)">
                                             <Icon name="trash" class="h-4 w-4" />
                                             <span class="ml-1">Delete</span>
                                         </Button>

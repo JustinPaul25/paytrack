@@ -114,7 +114,7 @@ class CustomerSeeder extends Seeder
             if (!$products->isEmpty() && $user) {
                 // Create 2-3 invoices per customer with different statuses
                 $statuses = ['completed', 'pending', 'draft'];
-                $paymentMethods = ['cash', 'bank_transfer', 'e-wallet'];
+                $paymentMethods = ['cash', 'credit'];
                 
                 // Randomly select 2-3 invoices per customer
                 $invoiceCount = rand(2, 3);

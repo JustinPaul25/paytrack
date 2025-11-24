@@ -26,19 +26,29 @@ interface Product {
     name: string;
     selling_price: number;
     stock: number;
+    unit: string;
 }
 
 interface InvoiceItem {
+    category_id: number | null;
     product_id: number | null;
     quantity: number;
     price: number;
     total: number;
 }
 
-const props = defineProps<{ 
+interface Category {
+    id: number;
+    name: string;
+}
+
+const props = withDefaults(defineProps<{ 
     customers: Customer[];
     products: Product[];
-}>();
+    categories?: Category[];
+}>(), {
+    categories: () => []
+});
 
 const form = useForm({
     customer_id: null as number | null,
@@ -49,6 +59,7 @@ const form = useForm({
     notes: '',
     invoice_items: [
         {
+            category_id: null,
             product_id: null,
             quantity: 1,
             price: 0,
@@ -84,6 +95,7 @@ const canSubmit = computed(() => {
 // Add new invoice item
 function addInvoiceItem() {
     form.invoice_items.push({
+        category_id: null,
         product_id: null,
         quantity: 1,
         price: 0,
@@ -106,6 +118,15 @@ function updateItemTotal(index: number) {
     } else {
         item.total = 0;
     }
+}
+
+// Handle category change - reset product when category changes
+function onCategoryChange(index: number) {
+    const item = form.invoice_items[index];
+    // Reset product when category changes
+    item.product_id = null;
+    item.price = 0;
+    item.total = 0;
 }
 
 // Auto-fill price when product is selected
@@ -213,9 +234,7 @@ const statusOptions = [
 // Payment method options
 const paymentMethodOptions = [
     { value: 'cash', label: 'Cash' },
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'e-wallet', label: 'E-Wallet' },
-    { value: 'other', label: 'Other' }
+    { value: 'credit', label: 'Credit' }
 ];
 
 // Invoice type options
@@ -224,13 +243,38 @@ const invoiceTypeOptions = [
     { value: 'delivery', label: 'Delivery' }
 ];
 
-// Product options for each item
-function getProductOptions() {
+// Format currency helper
+function formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2
+    }).format(amount);
+}
+
+// Category options
+const categoryOptions = computed(() => [
+    { value: null, label: 'Select category' },
+    ...(props.categories || []).map(category => ({
+        value: category.id,
+        label: category.name
+    }))
+]);
+
+// Product options for each item - filtered by selected category
+function getProductOptions(index: number) {
+    const item = form.invoice_items[index];
+    const allProducts = props.products || [];
+    const filteredProducts = item.category_id 
+        ? allProducts.filter(p => p.category_id === item.category_id)
+        : allProducts;
+    
     return [
         { value: null, label: 'Select product' },
-        ...props.products.map(product => ({
+        ...filteredProducts.map(product => ({
             value: product.id,
-            label: `${product.name}`
+            label: product.name,
+            description: `${formatCurrency(product.selling_price)}/${product.unit.toUpperCase()} • Stock: ${product.stock}`
         }))
     ];
 }
@@ -291,7 +335,7 @@ function getProductOptions() {
                                 required
                             />
                             <div class="text-[11px] text-gray-500 mt-1">
-                                Pick how the customer will pay (e.g. Cash, Bank Transfer, E‑Wallet).
+                                Pick how the customer will pay (Cash or Credit).
                             </div>
                             <InputError :message="form.errors.payment_method" />
                         </div>
@@ -312,7 +356,7 @@ function getProductOptions() {
                         </div>
                     </div>
                     
-                    <div v-if="form.payment_method !== 'cash'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-if="form.payment_method === 'credit'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <Label for="credit_term_days">Credit Term (Days)</Label>
                             <input
@@ -372,12 +416,25 @@ function getProductOptions() {
                                 </Button>
                             </div>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                <div>
+                                    <Label :for="`category_id_${index}`" class="text-xs">Category</Label>
+                                    <SearchSelect
+                                        v-model="item.category_id"
+                                        :options="categoryOptions"
+                                        placeholder="Select category"
+                                        search-placeholder="Search categories..."
+                                        class="mt-1 h-8"
+                                        @update:model-value="onCategoryChange(index)"
+                                    />
+                                    <InputError :message="getFormError(`invoice_items.${index}.category_id`)" />
+                                </div>
+                                
                                 <div>
                                     <Label :for="`product_id_${index}`" class="text-xs">Product</Label>
                                     <SearchSelect
                                         v-model="item.product_id"
-                                        :options="getProductOptions()"
+                                        :options="getProductOptions(index)"
                                         placeholder="Select product"
                                         search-placeholder="Search products..."
                                         class="mt-1 h-8"

@@ -41,7 +41,7 @@ class HistoricalInvoicesSeeder extends Seeder
 
                 // Weighted statuses: completed most frequently
                 $status = Arr::random(['completed', 'completed', 'completed', 'pending', 'cancelled']);
-                $paymentMethod = Arr::random(['cash', 'bank_transfer', 'e-wallet']);
+                $paymentMethod = Arr::random(['cash', 'credit']);
 
                 // 1–4 products
                 $chosen = $products->random(min($products->count(), rand(1, 4)));

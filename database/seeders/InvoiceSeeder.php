@@ -33,8 +33,8 @@ class InvoiceSeeder extends Seeder
             // For each customer create three invoices with different statuses
             $statusSets = [
                 ['status' => 'completed', 'payment_method' => 'cash', 'payment_reference' => 'SEED-CASH-'.uniqid()],
-                ['status' => 'pending', 'payment_method' => 'bank_transfer', 'payment_reference' => 'SEED-BANK-'.uniqid()],
-                ['status' => 'cancelled', 'payment_method' => 'e-wallet', 'payment_reference' => 'SEED-EWALLET-'.uniqid()],
+                ['status' => 'pending', 'payment_method' => 'credit', 'payment_reference' => 'SEED-CREDIT-'.uniqid()],
+                ['status' => 'cancelled', 'payment_method' => 'credit', 'payment_reference' => 'SEED-CREDIT-'.uniqid()],
             ];
 
             foreach ($statusSets as $meta) {

@@ -26,6 +26,7 @@ interface Product {
     name: string;
     selling_price: number;
     stock: number;
+    unit: string;
 }
 
 interface InvoiceItem {
@@ -183,9 +184,7 @@ const statusOptions = [
 // Payment method options
 const paymentMethodOptions = [
     { value: 'cash', label: 'Cash' },
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'e-wallet', label: 'E-Wallet' },
-    { value: 'other', label: 'Other' }
+    { value: 'credit', label: 'Credit' }
 ];
 
 // Invoice type options
@@ -261,7 +260,7 @@ function getProductOptions() {
                                 required
                             />
                             <div class="text-[11px] text-gray-500 mt-1">
-                                Pick how the customer will pay (e.g. Cash, Bank Transfer, E‑Wallet).
+                                Pick how the customer will pay (Cash or Credit).
                             </div>
                             <InputError :message="form.errors.payment_method" />
                         </div>

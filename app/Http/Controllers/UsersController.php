@@ -177,7 +177,8 @@ class UsersController extends Controller
 
     public function create()
     {
-        $roles = Role::all(['id', 'name']);
+        // Exclude Customer role from available roles (Admin can only assign Admin or Staff)
+        $roles = Role::where('name', '!=', 'Customer')->get(['id', 'name']);
         return Inertia::render('users/Create', [
             'roles' => $roles,
         ]);
@@ -214,7 +215,8 @@ class UsersController extends Controller
 
     public function edit(User $user)
     {
-        $roles = Role::all(['id', 'name']);
+        // Exclude Customer role from available roles (Admin can only assign Admin or Staff)
+        $roles = Role::where('name', '!=', 'Customer')->get(['id', 'name']);
         $userRoles = $user->roles->pluck('id')->toArray();
         return Inertia::render('users/Edit', [
             'user' => $user,

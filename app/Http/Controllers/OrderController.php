@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\OrderComment;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Category;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\StockMovement;
@@ -101,11 +102,13 @@ class OrderController extends Controller
             abort(403, 'Customer record not found.');
         }
 
-        $products = Product::all(['id', 'name', 'selling_price', 'stock']);
+        $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
+        $categories = Category::all(['id', 'name']);
         
         return inertia('orders/Create', [
             'customer_id' => $customerId,
             'products' => $products,
+            'categories' => $categories,
         ]);
     }
 
@@ -122,7 +125,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'delivery_type' => 'required|in:pickup,delivery',
-            'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
+            'payment_method' => 'required|string|in:cash,credit',
             'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
             'order_items' => 'required|array|min:1',
