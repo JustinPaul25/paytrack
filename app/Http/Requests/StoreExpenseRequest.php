@@ -26,6 +26,7 @@ class StoreExpenseRequest extends FormRequest
             'expense_type' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
             'date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:date'],
             'branch_id' => ['nullable', 'exists:branches,id'],
         ];
     }

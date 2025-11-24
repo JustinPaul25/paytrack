@@ -20,7 +20,13 @@ class Invoice extends Model
         'payment_status',
         'payment_reference', 
         'invoice_type',
-        'notes'
+        'notes',
+        'credit_term_days',
+        'due_date'
+    ];
+
+    protected $casts = [
+        'due_date' => 'date',
     ];
 
     protected static function boot()
@@ -30,6 +36,25 @@ class Invoice extends Model
         static::creating(function ($invoice) {
             if (empty($invoice->reference_number)) {
                 $invoice->reference_number = self::generateReferenceNumber();
+            }
+            
+            // Calculate due_date based on credit_term_days
+            if (empty($invoice->due_date) && !empty($invoice->credit_term_days)) {
+                $invoice->due_date = now()->addDays($invoice->credit_term_days)->toDateString();
+            } elseif (empty($invoice->due_date) && empty($invoice->credit_term_days)) {
+                // Default to 30 days if no credit term specified
+                $invoice->credit_term_days = 30;
+                $invoice->due_date = now()->addDays(30)->toDateString();
+            }
+        });
+        
+        static::updating(function ($invoice) {
+            // Recalculate due_date if credit_term_days changed
+            if ($invoice->isDirty('credit_term_days') && !empty($invoice->credit_term_days)) {
+                $baseDate = $invoice->getOriginal('created_at') 
+                    ? \Carbon\Carbon::parse($invoice->getOriginal('created_at'))
+                    : now();
+                $invoice->due_date = $baseDate->copy()->addDays($invoice->credit_term_days)->toDateString();
             }
         });
     }

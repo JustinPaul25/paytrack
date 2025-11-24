@@ -45,6 +45,7 @@ const form = useForm({
     status: 'draft',
     payment_method: 'cash',
     invoice_type: 'walk_in',
+    credit_term_days: null as number | null,
     notes: '',
     invoice_items: [
         {
@@ -308,6 +309,25 @@ function getProductOptions() {
                                 Walk-in: Customer purchases in-store. Delivery: Items will be delivered.
                             </div>
                             <InputError :message="form.errors.invoice_type" />
+                        </div>
+                    </div>
+                    
+                    <div v-if="form.payment_method !== 'cash'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label for="credit_term_days">Credit Term (Days)</Label>
+                            <input
+                                v-model.number="form.credit_term_days"
+                                type="number"
+                                id="credit_term_days"
+                                min="0"
+                                max="365"
+                                class="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                placeholder="e.g., 30"
+                            />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                Number of days until payment is due (default: 30 days).
+                            </div>
+                            <InputError :message="form.errors.credit_term_days" />
                         </div>
                     </div>
                     

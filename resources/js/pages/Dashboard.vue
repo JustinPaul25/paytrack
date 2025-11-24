@@ -128,31 +128,54 @@ onMounted(() => {
     
     // Only show alert if it hasn't been shown today and there are low stock products
     if (isStaff && props.lowStockProducts && props.lowStockProducts.length > 0 && lastAlertDate !== today) {
-        const productList = props.lowStockProducts
-            .slice(0, 10) // Show first 10 products
-            .map(p => `<li><strong>${p.name}</strong> (${p.category}) - Stock: <span style="color: #dc2626; font-weight: bold;">${p.stock}</span></li>`)
+        const productsToShow = props.lowStockProducts.slice(0, 10); // Show first 10 products
+        const moreCount = props.lowStockProducts.length > 10 ? props.lowStockProducts.length - 10 : 0;
+        
+        // Build table rows
+        const tableRows = productsToShow
+            .map(p => `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 8px 12px; font-weight: 600;">${p.name}</td>
+                    <td style="padding: 8px 12px; color: #6b7280;">${p.category}</td>
+                    <td style="padding: 8px 12px; color: #6b7280;">${p.SKU || 'N/A'}</td>
+                    <td style="padding: 8px 12px; text-align: center;">
+                        <span style="color: #dc2626; font-weight: bold; font-size: 14px;">${p.stock}</span>
+                    </td>
+                </tr>
+            `)
             .join('');
         
-        const moreCount = props.lowStockProducts.length > 10 ? props.lowStockProducts.length - 10 : 0;
-        const moreText = moreCount > 0 ? `<br><br><strong>And ${moreCount} more product(s) with low stock.</strong>` : '';
+        const moreText = moreCount > 0 ? `<p style="margin-top: 10px; text-align: center; color: #6b7280;"><strong>And ${moreCount} more product(s) with low stock.</strong></p>` : '';
         
         Swal.fire({
             icon: 'warning',
             title: 'Low Stock Alert',
             html: `
-                <p>There are <strong>${props.lowStockProducts.length}</strong> product(s) with low stock (≤10 units):</p>
-                <ul style="text-align: left; margin: 15px 0; padding-left: 20px;">
-                    ${productList}
-                </ul>
+                <p style="margin-bottom: 15px;">There are <strong>${props.lowStockProducts.length}</strong> product(s) with low stock (≤10 units):</p>
+                <div style="max-height: 400px; overflow-y: auto; margin: 15px 0;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr style="background-color: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #374151;">Product Name</th>
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #374151;">Category</th>
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #374151;">SKU</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #374151;">Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
                 ${moreText}
-                <p style="margin-top: 15px;">Please review and restock these items soon.</p>
+                <p style="margin-top: 15px; color: #6b7280;">Please review and restock these items soon.</p>
             `,
             confirmButtonText: 'View Products',
             confirmButtonColor: '#8f5be8',
             showCancelButton: true,
             cancelButtonText: 'Dismiss',
             cancelButtonColor: '#6b7280',
-            width: '600px',
+            width: '700px',
         }).then((result) => {
             // Save today's date to localStorage when alert is shown
             localStorage.setItem('lowStockAlertLastShown', today);

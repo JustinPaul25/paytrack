@@ -15,6 +15,7 @@ class Expense extends Model
         'expense_type',
         'description',
         'date',
+        'due_date',
         'user_id',
         'branch_id',
     ];
@@ -22,6 +23,7 @@ class Expense extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'date' => 'date',
+        'due_date' => 'date',
     ];
 
     /**

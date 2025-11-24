@@ -37,6 +37,7 @@ const form = useForm({
     expense_type: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
+    due_date: null as string | null,
 });
 
 function submit() {
@@ -116,19 +117,31 @@ function submit() {
                             <InputError :message="form.errors.date" />
                         </div>
                         
-                        <div>
-                            <Label for="description">Description</Label>
+                        <div v-if="form.expense_type === 'Bills'">
+                            <Label for="due_date">Due Date</Label>
                             <input
-                                v-model="form.description"
-                                type="text"
-                                id="description"
+                                v-model="form.due_date"
+                                type="date"
+                                id="due_date"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="e.g., Electricity bill for March"
-                                required
                             />
-                            <div class="text-[11px] text-gray-500 mt-1">Brief, clear note (e.g., vendor or bill name).</div>
-                            <InputError :message="form.errors.description" />
+                            <div class="text-[11px] text-gray-500 mt-1">When is this bill due? (e.g., water, electricity, internet)</div>
+                            <InputError :message="form.errors.due_date" />
                         </div>
+                    </div>
+                    
+                    <div>
+                        <Label for="description">Description</Label>
+                        <input
+                            v-model="form.description"
+                            type="text"
+                            id="description"
+                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                            placeholder="e.g., Electricity bill for March"
+                            required
+                        />
+                        <div class="text-[11px] text-gray-500 mt-1">Brief, clear note (e.g., vendor or bill name).</div>
+                        <InputError :message="form.errors.description" />
                     </div>
                 </CardContent>
             </Card>

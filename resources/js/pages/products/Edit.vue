@@ -8,7 +8,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import Label from '@/components/ui/label/Label.vue';
-import { SearchSelect } from '@/components/ui/select';
+import { SearchSelect, Select } from '@/components/ui/select';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
 import InputError from '@/components/InputError.vue';
@@ -34,8 +34,15 @@ const form = useForm({
     purchase_price: props.product.purchase_price,
     selling_price: props.product.selling_price,
     stock: props.product.stock,
+    unit: props.product.unit || 'pcs',
     image: null as File | null,
 });
+
+const unitOptions = [
+    { value: 'pcs', label: 'Pcs' },
+    { value: 'set', label: 'Set' },
+    { value: 'box', label: 'Box' },
+];
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -136,6 +143,17 @@ function submit() {
                             <Label for="stock">Stock</Label>
 							<input id="stock" v-model="form.stock" type="number" min="0" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 100" />
                             <InputError :message="form.errors.stock" />
+                        </div>
+                        <div class="flex-1">
+                            <Label for="unit">Unit</Label>
+                            <Select
+                                v-model="form.unit"
+                                :options="unitOptions"
+                                placeholder="Select unit"
+                                class="mt-1"
+                                required
+                            />
+                            <InputError :message="form.errors.unit" />
                         </div>
                     </div>
                     <div class="flex gap-4">

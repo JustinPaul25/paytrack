@@ -123,6 +123,7 @@ class OrderController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'delivery_type' => 'required|in:pickup,delivery',
             'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
+            'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
             'order_items' => 'required|array|min:1',
             'order_items.*.product_id' => 'required|exists:products,id',
@@ -177,6 +178,7 @@ class OrderController extends Controller
                 'status' => 'pending',
                 'delivery_type' => $validated['delivery_type'],
                 'payment_method' => $validated['payment_method'],
+                'credit_term_days' => $validated['credit_term_days'] ?? null,
                 'notes' => $validated['notes'] ?? null,
             ]);
 

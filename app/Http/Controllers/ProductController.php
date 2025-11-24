@@ -66,6 +66,7 @@ class ProductController extends Controller
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
+            'unit' => 'required|string|in:pcs,set,box',
             'SKU' => 'nullable|string|max:255|unique:products,SKU,NULL,id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);
@@ -102,6 +103,7 @@ class ProductController extends Controller
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
+            'unit' => 'required|string|in:pcs,set,box',
             'SKU' => 'nullable|string|max:255|unique:products,SKU,' . $product->id . ',id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);

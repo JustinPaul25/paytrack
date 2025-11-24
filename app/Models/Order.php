@@ -21,10 +21,13 @@ class Order extends Model
         'approved_by',
         'approved_at',
         'rejection_reason',
+        'credit_term_days',
+        'due_date',
     ];
 
     protected $casts = [
         'approved_at' => 'datetime',
+        'due_date' => 'date',
     ];
 
     protected static function boot()
@@ -34,6 +37,25 @@ class Order extends Model
         static::creating(function ($order) {
             if (empty($order->reference_number)) {
                 $order->reference_number = self::generateReferenceNumber();
+            }
+            
+            // Calculate due_date based on credit_term_days
+            if (empty($order->due_date) && !empty($order->credit_term_days)) {
+                $order->due_date = now()->addDays($order->credit_term_days)->toDateString();
+            } elseif (empty($order->due_date) && empty($order->credit_term_days)) {
+                // Default to 30 days if no credit term specified
+                $order->credit_term_days = 30;
+                $order->due_date = now()->addDays(30)->toDateString();
+            }
+        });
+        
+        static::updating(function ($order) {
+            // Recalculate due_date if credit_term_days changed
+            if ($order->isDirty('credit_term_days') && !empty($order->credit_term_days)) {
+                $baseDate = $order->getOriginal('created_at')
+                    ? \Carbon\Carbon::parse($order->getOriginal('created_at'))
+                    : now();
+                $order->due_date = $baseDate->copy()->addDays($order->credit_term_days)->toDateString();
             }
         });
     }

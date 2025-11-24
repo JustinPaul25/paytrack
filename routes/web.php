@@ -37,6 +37,11 @@ Route::middleware(['auth'])->group(function () {
     // Users management - Admin only
     Route::middleware('role:Admin')->group(function () {
         Route::get('users', [UsersController::class, 'index'])->name('users.index');
+        Route::get('users/staff', [UsersController::class, 'staff'])->name('users.staff');
+        Route::get('users/customers', [UsersController::class, 'customers'])->name('users.customers');
+        Route::get('users/archives', [UsersController::class, 'archives'])->name('users.archives');
+        Route::post('users/{id}/restore', [UsersController::class, 'restore'])->name('users.restore');
+        Route::delete('users/{id}/force-delete', [UsersController::class, 'forceDelete'])->name('users.forceDelete');
         Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
         Route::post('users', [UsersController::class, 'store'])->name('users.store');
         Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
@@ -160,6 +165,22 @@ Route::middleware(['auth'])->group(function () {
         Route::get('finance/cash-flow', [CashFlowController::class, 'index'])->name('finance.cash-flow');
         Route::get('finance/reports', [FinancialReportController::class, 'index'])->name('finance.reports');
         Route::get('finance/reports/export', [FinancialReportController::class, 'export'])->name('finance.reports.export');
+    });
+
+    // Reports (Admin only)
+    Route::middleware('role:Admin')->group(function () {
+        Route::get('reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+    });
+
+    // Reminders (Admin|Staff)
+    Route::middleware('role:Admin|Staff')->group(function () {
+        Route::get('reminders', [\App\Http\Controllers\ReminderController::class, 'index'])->name('reminders.index');
+        Route::get('reminders/create', [\App\Http\Controllers\ReminderController::class, 'create'])->name('reminders.create');
+        Route::post('reminders', [\App\Http\Controllers\ReminderController::class, 'store'])->name('reminders.store');
+        Route::post('reminders/{reminder}/mark-read', [\App\Http\Controllers\ReminderController::class, 'markAsRead'])->name('reminders.mark-read');
+        Route::post('reminders/{reminder}/mark-completed', [\App\Http\Controllers\ReminderController::class, 'markAsCompleted'])->name('reminders.mark-completed');
+        Route::post('reminders/{reminder}/dismiss', [\App\Http\Controllers\ReminderController::class, 'dismiss'])->name('reminders.dismiss');
+        Route::post('reminders/mark-all-read', [\App\Http\Controllers\ReminderController::class, 'markAllAsRead'])->name('reminders.mark-all-read');
     });
 
 });

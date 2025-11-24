@@ -68,4 +68,12 @@ class Customer extends Model implements HasMedia
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * Get the invoices for the customer.
+     */
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
 }

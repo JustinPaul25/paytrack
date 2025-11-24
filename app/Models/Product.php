@@ -14,7 +14,7 @@ class Product extends Model implements HasMedia
     use SoftDeletes;
 
     protected $fillable = [
-        'name', 'description', 'category_id', 'purchase_price', 'selling_price', 'stock', 'SKU'
+        'name', 'description', 'category_id', 'purchase_price', 'selling_price', 'stock', 'SKU', 'unit'
     ];
 
     // Money accessors (get in dollars, set in cents)

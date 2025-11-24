@@ -19,6 +19,7 @@ interface Product {
     purchase_price: number;
     selling_price: number;
     stock: number;
+    unit?: string;
     SKU: string;
     updated_at: string;
 }
@@ -231,6 +232,7 @@ async function deleteProduct(id: number) {
                             <th class="px-4 py-2 text-left">Category</th>
                             <th class="px-4 py-2 text-left">Selling Price</th>
                             <th class="px-4 py-2 text-left">Stock</th>
+                            <th class="px-4 py-2 text-left">Unit</th>
                             <th class="px-4 py-2 text-left">SKU</th>
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
@@ -250,6 +252,7 @@ async function deleteProduct(id: number) {
                                     {{ product.stock }}
                                 </span>
                             </td>
+                            <td class="px-4 py-2 text-sm text-gray-500 uppercase">{{ product.unit || 'pcs' }}</td>
                             <td class="px-4 py-2 text-sm text-gray-500">{{ product.SKU }}</td>
                             <td class="px-4 py-2">
                                 <div class="flex gap-2">

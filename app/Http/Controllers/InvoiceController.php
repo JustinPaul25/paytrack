@@ -96,6 +96,8 @@ class InvoiceController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
+            'invoice_type' => 'required|string|in:walk_in,delivery',
+            'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
             'invoice_items' => 'required|array|min:1',
             'invoice_items.*.product_id' => 'required|exists:products,id',
@@ -129,7 +131,8 @@ class InvoiceController extends Controller
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
                 'invoice_type' => $validated['invoice_type'],
-                'notes' => $validated['notes'],
+                'credit_term_days' => $validated['credit_term_days'] ?? null,
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             // Create invoice items
@@ -248,6 +251,7 @@ class InvoiceController extends Controller
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,bank_transfer,e-wallet,other',
             'invoice_type' => 'required|string|in:walk_in,delivery',
+            'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
             'invoice_items' => 'required|array|min:1',
             'invoice_items.*.product_id' => 'required|exists:products,id',
@@ -287,7 +291,8 @@ class InvoiceController extends Controller
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
                 'invoice_type' => $validated['invoice_type'],
-                'notes' => $validated['notes'],
+                'credit_term_days' => $validated['credit_term_days'] ?? null,
+                'notes' => $validated['notes'] ?? null,
             ]);
 
             // Delete existing invoice items

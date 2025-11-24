@@ -208,12 +208,6 @@ async function deleteDelivery(id: number) {
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
             </div>
-            <Link :href="route('deliveries.create')">
-                <Button variant="default">
-                    <span class="mr-2">+</span>
-                    Add New Delivery
-                </Button>
-            </Link>
         </div>
 
         <Card>

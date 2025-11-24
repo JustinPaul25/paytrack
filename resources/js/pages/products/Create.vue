@@ -32,8 +32,15 @@ const form = useForm({
     purchase_price: '',
     selling_price: '',
     stock: '',
+    unit: 'pcs',
     image: null as File | null,
 });
+
+const unitOptions = [
+    { value: 'pcs', label: 'Pcs' },
+    { value: 'set', label: 'Set' },
+    { value: 'box', label: 'Box' },
+];
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -134,6 +141,17 @@ function submit() {
                             <Label for="stock">Stock</Label>
 							<input id="stock" v-model="form.stock" type="number" min="0" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 100" />
                             <InputError :message="form.errors.stock" />
+                        </div>
+                        <div class="flex-1">
+                            <Label for="unit">Unit</Label>
+                            <Select
+                                v-model="form.unit"
+                                :options="unitOptions"
+                                placeholder="Select unit"
+                                class="mt-1"
+                                required
+                            />
+                            <InputError :message="form.errors.unit" />
                         </div>
                     </div>
                     <div class="flex gap-4">
