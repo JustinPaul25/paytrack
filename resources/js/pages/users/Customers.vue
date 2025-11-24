@@ -9,7 +9,7 @@ import CardContent from '@/components/ui/card/CardContent.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import { type BreadcrumbItem } from '@/types';
-import { MapPin, ShoppingBag, DollarSign, Package } from 'lucide-vue-next';
+import { MapPin, ShoppingBag, Package } from 'lucide-vue-next';
 
 const page = usePage();
 
@@ -68,9 +68,9 @@ function updateFilters() {
 }
 
 function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'PHP',
         minimumFractionDigits: 2
     }).format(amount);
 }
@@ -184,7 +184,7 @@ function goToPage(pageNum: number) {
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="bg-blue-50 p-3 rounded-lg">
                                 <div class="flex items-center gap-2 mb-1">
-                                    <DollarSign class="h-4 w-4 text-blue-600" />
+                                    <span class="text-blue-600 font-semibold">₱</span>
                                     <span class="text-xs text-gray-600">Total Purchases</span>
                                 </div>
                                 <p class="text-lg font-bold text-blue-600">{{ formatCurrency(customer.total_purchases) }}</p>
@@ -198,7 +198,7 @@ function goToPage(pageNum: number) {
                             </div>
                             <div class="bg-green-50 p-3 rounded-lg">
                                 <div class="flex items-center gap-2 mb-1">
-                                    <DollarSign class="h-4 w-4 text-green-600" />
+                                    <span class="text-green-600 font-semibold">₱</span>
                                     <span class="text-xs text-gray-600">Average Order</span>
                                 </div>
                                 <p class="text-lg font-bold text-green-600">
