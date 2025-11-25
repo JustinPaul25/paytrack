@@ -311,6 +311,7 @@ class OrderController extends Controller
                 'total_amount' => $order->total_amount,
                 'status' => 'pending',
                 'payment_method' => $order->payment_method ?? 'cash',
+                'invoice_type' => $order->delivery_type === 'delivery' ? 'delivery' : 'walk_in',
                 'notes' => $order->notes,
             ]);
 
@@ -351,6 +352,12 @@ class OrderController extends Controller
             
             // Broadcast order update for real-time updates
             broadcast(new OrderUpdated($order))->toOthers();
+            
+            // If order is delivery type, redirect to delivery form
+            if ($order->delivery_type === 'delivery') {
+                return redirect()->route('deliveries.create', ['invoice_id' => $invoice->id])
+                    ->with('success', 'Order approved and invoice created. Please fill in the delivery details.');
+            }
             
             return redirect()->route('orders.show', $order)->with('success', 'Order approved and invoice created successfully.');
         } catch (\Exception $e) {

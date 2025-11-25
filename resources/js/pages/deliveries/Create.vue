@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select, SearchSelect } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -35,6 +35,7 @@ interface Invoice {
 const props = defineProps<{ 
     customers: Customer[];
     invoices: Invoice[];
+    preselectedInvoiceId?: number | null;
 }>();
 
 const form = useForm({
@@ -104,6 +105,19 @@ const customerOptions = computed(() => [
 // Invoice options (filtered by selected customer)
 const invoiceOptions = computed(() => {
     if (!form.customer_id) {
+        // If there's a preselected invoice, show it even without customer selected
+        if (props.preselectedInvoiceId) {
+            const preselectedInvoice = props.invoices.find(inv => inv.id === props.preselectedInvoiceId);
+            if (preselectedInvoice) {
+                return [
+                    { value: null, label: 'Select invoice' },
+                    {
+                        value: preselectedInvoice.id,
+                        label: `${preselectedInvoice.reference_number}`
+                    }
+                ];
+            }
+        }
         return [{ value: null, label: 'Select invoice (select customer first)' }];
     }
     
@@ -184,6 +198,28 @@ const selectedCustomerLocation = computed(() => {
 const selectedCustomer = computed(() => {
     if (!form.customer_id) return null;
     return props.customers.find(c => c.id === form.customer_id) || null;
+});
+
+// Pre-fill form when invoice is preselected
+onMounted(() => {
+    if (props.preselectedInvoiceId) {
+        const invoice = props.invoices.find(inv => inv.id === props.preselectedInvoiceId);
+        if (invoice) {
+            form.invoice_id = invoice.id;
+            form.customer_id = invoice.customer_id;
+            
+            // Auto-fill customer details
+            const customer = props.customers.find(c => c.id === invoice.customer_id);
+            if (customer) {
+                if (customer.address && !form.delivery_address) {
+                    form.delivery_address = customer.address;
+                }
+                if (customer.name && !form.contact_person) {
+                    form.contact_person = customer.name;
+                }
+            }
+        }
+    }
 });
 
 // Auto-fill delivery address when customer is selected

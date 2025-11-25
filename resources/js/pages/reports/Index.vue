@@ -258,6 +258,30 @@ function formatCurrency(amount: number | null | undefined) {
 function printReport() {
     window.print();
 }
+
+function printAllReports() {
+    const params: any = {};
+    
+    if (filterType.value !== 'all') {
+        params.filter_type = filterType.value;
+        
+        if (filterType.value === 'month' && filterMonth.value) {
+            params.filter_month = filterMonth.value;
+        } else if (filterType.value === 'year' && filterYear.value) {
+            params.filter_year = filterYear.value;
+        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
+            params.start_date = startDate.value;
+            params.end_date = endDate.value;
+        }
+    }
+    
+    // Build query string
+    const queryString = new URLSearchParams(params).toString();
+    const url = `/reports/print-all${queryString ? '?' + queryString : ''}`;
+    
+    // Open in new window for printing
+    window.open(url, '_blank');
+}
 </script>
 
 <template>
@@ -266,10 +290,16 @@ function printReport() {
         
         <div class="no-print flex items-center justify-between mb-6">
             <h1 class="text-2xl font-bold">Comprehensive Reports</h1>
-            <Button @click="printReport" variant="default">
-                <Printer class="h-4 w-4 mr-2" />
-                Print Report
-            </Button>
+            <div class="flex gap-2">
+                <Button @click="printAllReports" variant="default">
+                    <Printer class="h-4 w-4 mr-2" />
+                    Print All Reports
+                </Button>
+                <Button @click="printReport" variant="outline">
+                    <Printer class="h-4 w-4 mr-2" />
+                    Print Current Tab
+                </Button>
+            </div>
         </div>
 
         <!-- Filters -->

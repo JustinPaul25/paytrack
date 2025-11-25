@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select, SearchSelect } from '@/components/ui/select';
 import { Trash2 } from 'lucide-vue-next';
@@ -19,6 +19,7 @@ interface Customer {
     id: number;
     name: string;
     company_name?: string;
+    is_walk_in?: boolean;
 }
 
 interface Product {
@@ -50,8 +51,14 @@ const props = withDefaults(defineProps<{
     categories: () => []
 });
 
+const isWalkInCustomer = ref(false);
+
 const form = useForm({
     customer_id: null as number | null,
+    walk_in_customer: {
+        name: '',
+        phone: ''
+    },
     status: 'draft',
     payment_method: 'cash',
     invoice_type: 'walk_in',
@@ -86,7 +93,13 @@ const totalAmount = computed(() => {
 
 // Basic validation to ensure form is ready for submission
 const canSubmit = computed(() => {
-    if (!form.customer_id) return false;
+    // Must have either customer_id or walk-in customer info
+    if (isWalkInCustomer.value) {
+        if (!form.walk_in_customer.name || form.walk_in_customer.name.trim() === '') return false;
+    } else {
+        if (!form.customer_id) return false;
+    }
+    
     if (!form.invoice_items.length) return false;
     // At least one valid line item
     return form.invoice_items.some(it => !!it.product_id && it.quantity > 0 && it.price >= 0);
@@ -193,7 +206,17 @@ function submit() {
         }
     }
     
-    form.post(route('invoices.store'), {
+    // Prepare form data based on customer type
+    const formData = { ...form.data() };
+    if (isWalkInCustomer.value) {
+        // Clear customer_id when using walk-in customer
+        formData.customer_id = null;
+    } else {
+        // Clear walk_in_customer when using existing customer
+        formData.walk_in_customer = null;
+    }
+    
+    form.transform(() => formData).post(route('invoices.store'), {
         preserveScroll: true,
         onSuccess: () => {
             Swal.fire({
@@ -219,7 +242,7 @@ const customerOptions = computed(() => [
     { value: null, label: 'Select customer' },
     ...props.customers.map(customer => ({
         value: customer.id,
-        label: `${customer.name}${customer.company_name ? ` (${customer.company_name})` : ''}`
+        label: `${customer.name}${customer.company_name ? ` (${customer.company_name})` : ''}${customer.is_walk_in ? ' [Walk-in]' : ''}`
     }))
 ]);
 
@@ -278,6 +301,19 @@ function getProductOptions(index: number) {
         }))
     ];
 }
+
+// Watch for customer type changes and clear the opposite field
+watch(isWalkInCustomer, (newValue) => {
+    if (newValue) {
+        // Switching to walk-in: clear customer_id and auto-select walk_in invoice type
+        form.customer_id = null;
+        form.invoice_type = 'walk_in';
+    } else {
+        // Switching to registered: clear walk-in customer fields
+        form.walk_in_customer.name = '';
+        form.walk_in_customer.phone = '';
+    }
+});
 </script>
 
 <template>
@@ -294,8 +330,33 @@ function getProductOptions(index: number) {
                     <CardTitle>Invoice Details</CardTitle>
                 </CardHeader>
                 <CardContent class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                    <!-- Customer Selection -->
+                    <div>
+                        <div class="flex items-center gap-4 mb-4">
+                            <Label class="text-base font-medium">Customer Type</Label>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        :value="false" 
+                                        v-model="isWalkInCustomer"
+                                        class="w-4 h-4"
+                                    />
+                                    <span>Registered Customer</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="radio" 
+                                        :value="true" 
+                                        v-model="isWalkInCustomer"
+                                        class="w-4 h-4"
+                                    />
+                                    <span>Walk-in Customer</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div v-if="!isWalkInCustomer" class="mb-4">
                             <Label for="customer_id">Customer</Label>
                             <SearchSelect
                                 v-model="form.customer_id"
@@ -303,11 +364,44 @@ function getProductOptions(index: number) {
                                 placeholder="Select customer"
                                 search-placeholder="Search customers..."
                                 class="mt-1"
-                                required
                             />
                             <InputError :message="form.errors.customer_id" />
                         </div>
                         
+                        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <Label for="walk_in_name">Customer Name *</Label>
+                                <input
+                                    id="walk_in_name"
+                                    v-model="form.walk_in_customer.name"
+                                    type="text"
+                                    class="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="Enter customer name"
+                                    required
+                                />
+                                <div class="text-[11px] text-gray-500 mt-1">
+                                    Name of the walk-in customer
+                                </div>
+                                <InputError :message="form.errors['walk_in_customer.name']" />
+                            </div>
+                            <div>
+                                <Label for="walk_in_phone">Phone (Optional)</Label>
+                                <input
+                                    id="walk_in_phone"
+                                    v-model="form.walk_in_customer.phone"
+                                    type="text"
+                                    class="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    placeholder="Enter phone number"
+                                />
+                                <div class="text-[11px] text-gray-500 mt-1">
+                                    Optional phone number for walk-in customer
+                                </div>
+                                <InputError :message="form.errors['walk_in_customer.phone']" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <Label for="status">Status</Label>
                             <Select
@@ -322,9 +416,7 @@ function getProductOptions(index: number) {
                             </div>
                             <InputError :message="form.errors.status" />
                         </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
                         <div>
                             <Label for="payment_method">Payment Method</Label>
                             <Select
@@ -338,21 +430,6 @@ function getProductOptions(index: number) {
                                 Pick how the customer will pay (Cash or Credit).
                             </div>
                             <InputError :message="form.errors.payment_method" />
-                        </div>
-                        
-                        <div>
-                            <Label for="invoice_type">Invoice Type</Label>
-                            <Select
-                                v-model="form.invoice_type"
-                                :options="invoiceTypeOptions"
-                                placeholder="Select invoice type"
-                                class="mt-1"
-                                required
-                            />
-                            <div class="text-[11px] text-gray-500 mt-1">
-                                Walk-in: Customer purchases in-store. Delivery: Items will be delivered.
-                            </div>
-                            <InputError :message="form.errors.invoice_type" />
                         </div>
                     </div>
                     
@@ -494,6 +571,24 @@ function getProductOptions(index: number) {
                                 <div class="text-xs text-muted-foreground mt-1">12% VAT is included in price</div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Invoice Type -->
+                    <div class="mt-4 pt-3 border-t">
+                        <Label for="invoice_type">Invoice Type</Label>
+                        <Select
+                            v-model="form.invoice_type"
+                            :options="invoiceTypeOptions"
+                            placeholder="Select invoice type"
+                            class="mt-1"
+                            :disabled="isWalkInCustomer"
+                            required
+                        />
+                        <div class="text-[11px] text-gray-500 mt-1">
+                            Walk-in: Customer purchases in-store. Delivery: Items will be delivered.
+                            <span v-if="isWalkInCustomer" class="block text-blue-600 font-medium">(Locked to Walk-in for walk-in customers)</span>
+                        </div>
+                        <InputError :message="form.errors.invoice_type" />
                     </div>
                 </CardContent>
             </Card>

@@ -271,5 +271,81 @@ class ReportsController extends Controller
             'totals' => $totals,
         ];
     }
+    
+    /**
+     * Print all reports in one document
+     */
+    public function printAll(Request $request)
+    {
+        $filterType = $request->input('filter_type', 'all');
+        $filterMonth = $request->input('filter_month');
+        $filterYear = $request->input('filter_year');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        
+        // Calculate date range based on filter
+        $dateRange = $this->getDateRange($filterType, $filterMonth, $filterYear, $startDate, $endDate);
+        
+        // Get all report data
+        $salesReport = $this->getSalesReport($dateRange);
+        $transactions = $this->getTransactions($dateRange);
+        $financialReport = $this->getFinancialReport($dateRange);
+        $deliveries = $this->getDeliveries($dateRange);
+        
+        // Calculate total fee - deliveries is a collection of arrays with delivery_fee already in dollars
+        $totalFee = collect($deliveries)->sum('delivery_fee');
+        
+        $deliverySummary = [
+            'total' => $deliveries->count(),
+            'pending' => collect($deliveries)->where('status', 'pending')->count(),
+            'completed' => collect($deliveries)->where('status', 'completed')->count(),
+            'cancelled' => collect($deliveries)->where('status', 'cancelled')->count(),
+            'total_fee' => $totalFee,
+        ];
+        
+        // Format date range for display
+        $dateRangeText = $this->getDateRangeText($filterType, $filterMonth, $filterYear, $startDate, $endDate, $dateRange);
+        
+        return view('reports.print-all', [
+            'salesReport' => $salesReport,
+            'transactions' => $transactions,
+            'financialReport' => $financialReport,
+            'deliveries' => $deliveries,
+            'deliverySummary' => $deliverySummary,
+            'dateRangeText' => $dateRangeText,
+            'generatedAt' => Carbon::now()->format('F d, Y h:i A'),
+        ]);
+    }
+    
+    private function getDateRangeText($filterType, $filterMonth, $filterYear, $startDate, $endDate, $dateRange)
+    {
+        switch ($filterType) {
+            case 'month':
+                if ($filterMonth) {
+                    try {
+                        $date = Carbon::createFromFormat('Y-m', $filterMonth);
+                        return $date->format('F Y');
+                    } catch (\Exception $e) {
+                        // Fall through
+                    }
+                }
+                return Carbon::now()->format('F Y');
+                
+            case 'year':
+                if ($filterYear) {
+                    return $filterYear;
+                }
+                return Carbon::now()->format('Y');
+                
+            case 'date_range':
+                if ($startDate && $endDate) {
+                    return Carbon::parse($startDate)->format('M d, Y') . ' - ' . Carbon::parse($endDate)->format('M d, Y');
+                }
+                break;
+        }
+        
+        // Default: all time
+        return 'All Time';
+    }
 }
 

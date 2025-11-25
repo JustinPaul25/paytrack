@@ -262,12 +262,6 @@ function formatDateFriendly(dateString: string) {
                     <div v-else class="py-12 text-center">
                         <div class="text-xl font-semibold mb-2">No orders yet</div>
                         <p class="text-sm text-gray-600 mb-6" v-if="isCustomer">Create your first order to get started.</p>
-                        <Link v-if="isCustomer" :href="route('orders.create')">
-                            <Button variant="default">
-                                <span class="mr-2">+</span>
-                                Create Order
-                            </Button>
-                        </Link>
                     </div>
                 </div>
                 <div v-else>

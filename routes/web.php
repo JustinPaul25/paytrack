@@ -154,8 +154,8 @@ Route::middleware(['auth'])->group(function () {
     // Sales Prediction routes
     Route::get('sales/predictions', [\App\Http\Controllers\SalesPredictionController::class, 'getPredictions'])->name('sales.predictions');
 
-    // Expenses routes (Admin|Staff)
-    Route::middleware('role:Admin|Staff')->group(function () {
+    // Expenses routes (Admin only)
+    Route::middleware('role:Admin')->group(function () {
         Route::resource('expenses', \App\Http\Controllers\ExpenseController::class)->except(['update']);
         Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
     });
@@ -170,6 +170,7 @@ Route::middleware(['auth'])->group(function () {
     // Reports (Admin only)
     Route::middleware('role:Admin')->group(function () {
         Route::get('reports', [\App\Http\Controllers\ReportsController::class, 'index'])->name('reports.index');
+        Route::get('reports/print-all', [\App\Http\Controllers\ReportsController::class, 'printAll'])->name('reports.print-all');
     });
 
     // Reminders (Admin|Staff)

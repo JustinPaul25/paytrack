@@ -48,16 +48,19 @@ class DeliveryController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location']);
         $invoices = Invoice::with('customer')
             ->where('status', 'pending')
             ->get(['id', 'customer_id', 'total_amount', 'reference_number']);
         
+        $preselectedInvoiceId = $request->query('invoice_id');
+        
         return inertia('deliveries/Create', [
             'customers' => $customers,
             'invoices' => $invoices,
+            'preselectedInvoiceId' => $preselectedInvoiceId ? (int) $preselectedInvoiceId : null,
         ]);
     }
 

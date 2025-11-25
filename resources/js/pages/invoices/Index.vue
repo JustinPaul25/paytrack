@@ -2,6 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, watch, watchEffect } from 'vue';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
@@ -72,6 +73,15 @@ watchEffect(() => {
         : '';
 });
 
+// Status filter options
+const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
+];
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
@@ -81,6 +91,13 @@ watch(search, (val) => {
             status: status.value || undefined,
         }, { preserveState: true, replace: true });
     }, 400);
+});
+
+watch(status, (val) => {
+    router.get('/invoices', {
+        search: search.value || undefined,
+        status: val || undefined,
+    }, { preserveState: true, replace: true });
 });
 
 function goToPage(pageNum: number) {
@@ -144,16 +161,6 @@ function formatCurrency(amount: number) {
     }).format(amount);
 }
 
-function togglePendingFilter() {
-    status.value = status.value === 'pending' ? '' : 'pending';
-    router.get('/invoices', {
-        search: search.value || undefined,
-        status: status.value || undefined,
-    }, {
-        preserveState: true,
-        replace: true,
-    });
-}
 
 function formatDateFriendly(dateString: string) {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -257,15 +264,15 @@ function formatDateFriendly(dateString: string) {
                     placeholder="Search by customer name" 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
+                <div class="w-48">
+                    <Select
+                        v-model="status"
+                        :options="statusOptions"
+                        placeholder="Filter by status"
+                    />
+                </div>
             </div>
             <div class="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    :class="status === 'pending' ? 'border-yellow-400 text-yellow-600 bg-yellow-50' : ''"
-                    @click="togglePendingFilter"
-                >
-                    Unpaid
-                </Button>
             <Link v-if="canCreateInvoice" :href="route('invoices.create')">
                 <Button variant="default">
                     <span class="mr-2">+</span>

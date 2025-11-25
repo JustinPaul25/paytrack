@@ -135,14 +135,6 @@ const isFinancialOpen = ref(true);
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
-                                        <Link href="/expenses">
-                                            <TrendingDown />
-                                            <span>Expenses</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
                                         <Link href="/sales/transactions">
                                             <CreditCard />
                                             <span>Transactions</span>
@@ -154,14 +146,6 @@ const isFinancialOpen = ref(true);
                                         <Link :href="route('finance.cash-flow')">
                                             <BarChart3 />
                                             <span>Cash Flow</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('finance.reports')">
-                                            <FileSpreadsheet />
-                                            <span>Financial Reports</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
@@ -308,14 +292,6 @@ const isFinancialOpen = ref(true);
                                         <Link :href="route('finance.cash-flow')">
                                             <BarChart3 />
                                             <span>Cash Flow</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('finance.reports')">
-                                            <FileSpreadsheet />
-                                            <span>Financial Report</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

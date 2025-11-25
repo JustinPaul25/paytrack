@@ -23,6 +23,7 @@ class Customer extends Model implements HasMedia
         'phone',
         'address',
         'location',
+        'is_walk_in',
     ];
 
     /**
@@ -34,6 +35,7 @@ class Customer extends Model implements HasMedia
     {
         return [
             'location' => 'array',
+            'is_walk_in' => 'boolean',
         ];
     }
 

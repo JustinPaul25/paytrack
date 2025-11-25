@@ -80,7 +80,7 @@ class InvoiceController extends Controller
         if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
-        $customers = Customer::all(['id', 'name', 'company_name']);
+        $customers = Customer::all(['id', 'name', 'company_name', 'is_walk_in']);
         $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
         $categories = Category::all(['id', 'name']);
         
@@ -99,7 +99,10 @@ class InvoiceController extends Controller
             abort(403);
         }
         $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'walk_in_customer' => 'nullable|array',
+            'walk_in_customer.name' => 'required_with:walk_in_customer|string|max:255',
+            'walk_in_customer.phone' => 'nullable|string|max:50',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,credit',
             'invoice_type' => 'required|string|in:walk_in,delivery',
@@ -111,8 +114,32 @@ class InvoiceController extends Controller
             'invoice_items.*.price' => 'required|numeric|min:0',
         ]);
 
+        // Validate that either customer_id or walk_in_customer is provided
+        if (!$validated['customer_id'] && !$validated['walk_in_customer']) {
+            return redirect()->back()->withErrors([
+                'customer_id' => 'Please select a customer or provide walk-in customer information.'
+            ])->withInput();
+        }
+
         DB::beginTransaction();
         try {
+            // Create walk-in customer if provided
+            $customerId = $validated['customer_id'];
+            if (!$customerId && isset($validated['walk_in_customer'])) {
+                $walkInData = $validated['walk_in_customer'];
+                // Generate unique email for walk-in customer
+                $uniqueEmail = 'walkin-' . time() . '-' . uniqid() . '@walkin.local';
+                
+                $walkInCustomer = Customer::create([
+                    'name' => $walkInData['name'],
+                    'phone' => $walkInData['phone'] ?? null,
+                    'email' => $uniqueEmail,
+                    'is_walk_in' => true,
+                ]);
+                
+                $customerId = $walkInCustomer->id;
+            }
+
             // Calculate subtotal amount
             $subtotalAmount = 0;
             foreach ($validated['invoice_items'] as $item) {
@@ -128,7 +155,7 @@ class InvoiceController extends Controller
 
             // Create invoice
             $invoice = Invoice::create([
-                'customer_id' => $validated['customer_id'],
+                'customer_id' => $customerId,
                 'user_id' => auth()->id(),
                 'subtotal_amount' => $subtotalAmount,
                 'vat_amount' => $vatAmount,
@@ -238,7 +265,7 @@ class InvoiceController extends Controller
         if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
-        $customers = Customer::all(['id', 'name', 'company_name']);
+        $customers = Customer::all(['id', 'name', 'company_name', 'is_walk_in']);
         $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
         $categories = Category::all(['id', 'name']);
         $invoice->load(['invoiceItems.product']);
