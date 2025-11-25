@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Mail\InvoiceDueDateReminder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class SendInvoiceDueDateNotifications extends Command
@@ -60,13 +61,21 @@ class SendInvoiceDueDateNotifications extends Command
             // Only send notification if due within 7 days (including overdue)
             if ($daysUntilDue <= 7) {
                 try {
-                    Mail::to($invoice->customer->email)->send(
+                    // Queue the email to prevent timeout issues
+                    Mail::to($invoice->customer->email)->queue(
                         new InvoiceDueDateReminder($invoice, $daysUntilDue)
                     );
                     $sentCount++;
-                    $this->info("Sent reminder for invoice {$invoice->reference_number} to {$invoice->customer->email}");
+                    $this->info("Queued reminder for invoice {$invoice->reference_number} to {$invoice->customer->email}");
                 } catch (\Exception $e) {
-                    $this->error("Failed to send email for invoice {$invoice->reference_number}: {$e->getMessage()}");
+                    $this->error("Failed to queue email for invoice {$invoice->reference_number}: {$e->getMessage()}");
+                    \Log::error('Failed to queue invoice reminder', [
+                        'invoice_id' => $invoice->id,
+                        'invoice_reference' => $invoice->reference_number,
+                        'customer_email' => $invoice->customer->email,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
                     $skippedCount++;
                 }
             }

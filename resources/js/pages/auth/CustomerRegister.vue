@@ -5,9 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle, Eye, EyeOff, ChevronRight, ChevronLeft, Check } from 'lucide-vue-next';
-import { ref, defineAsyncComponent } from 'vue';
+import { LoaderCircle, Eye, EyeOff, ChevronRight, ChevronLeft, Check, AlertCircle } from 'lucide-vue-next';
+import { ref, defineAsyncComponent, watch, computed } from 'vue';
 
 // Dynamically import LocationInput to prevent initialization when not needed
 const LocationInput = defineAsyncComponent(() => import('@/components/ui/input/LocationInput.vue'));
@@ -36,6 +45,22 @@ const totalSteps = 4;
 const showPassword = ref(false);
 const showPasswordConfirmation = ref(false);
 const profileImageUrl = ref<string | null>(null);
+const showErrorDialog = ref(false);
+
+// Watch for form errors and show dialog when errors occur
+watch(() => form.errors, (errors) => {
+    if (Object.keys(errors).length > 0) {
+        showErrorDialog.value = true;
+    }
+}, { deep: true });
+
+// Get all error messages as an array
+const errorMessages = computed(() => {
+    return Object.entries(form.errors).map(([field, message]) => ({
+        field,
+        message: Array.isArray(message) ? message[0] : message
+    }));
+});
 
 const steps = [
     { number: 1, title: 'Basic Information' },
@@ -108,7 +133,14 @@ const submit = () => {
     form.post(route('customer.register'), {
         forceFormData: true,
         onFinish: () => form.reset('password', 'password_confirmation', 'profile_image'),
+        onError: () => {
+            showErrorDialog.value = true;
+        },
     });
+};
+
+const closeErrorDialog = () => {
+    showErrorDialog.value = false;
 };
 </script>
 
@@ -294,7 +326,6 @@ const submit = () => {
                             <textarea
                                 id="address"
                                 v-model="form.address"
-                                placeholder="Street, city, state"
                                 class="w-full rounded border px-3 py-2 mt-1"
                                 rows="3"
                             />
@@ -371,6 +402,37 @@ const submit = () => {
                         <TextLink :href="route('login')" class="underline underline-offset-4">Log in</TextLink>
                     </div>
                 </form>
+
+                <!-- Error Dialog -->
+                <Dialog :open="showErrorDialog" @update:open="showErrorDialog = $event">
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle class="flex items-center gap-2">
+                                <AlertCircle class="h-5 w-5 text-destructive" />
+                                Validation Errors
+                            </DialogTitle>
+                            <DialogDescription>
+                                Please fix the following errors before continuing:
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div class="max-h-96 overflow-y-auto">
+                            <ul class="space-y-2 list-disc list-inside">
+                                <li
+                                    v-for="(error, index) in errorMessages"
+                                    :key="index"
+                                    class="text-sm text-destructive"
+                                >
+                                    <strong class="capitalize">{{ error.field.replace(/_/g, ' ') }}:</strong> {{ error.message }}
+                                </li>
+                            </ul>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose as-child>
+                                <Button @click="closeErrorDialog">Close</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
 

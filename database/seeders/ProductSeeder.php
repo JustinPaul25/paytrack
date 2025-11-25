@@ -31,7 +31,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Ballpoint Pen - Blue (Pack of 10)',
                 'description' => 'Smooth writing ballpoint pens, blue ink, retractable design, pack of 10 pens. Perfect for everyday writing and school work.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pens'),
                 'purchase_price' => 2.50,
                 'selling_price' => 4.99,
                 'stock' => 150,
@@ -41,7 +41,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Ballpoint Pen - Black (Pack of 10)',
                 'description' => 'Smooth writing ballpoint pens, black ink, retractable design, pack of 10 pens. Essential for school and office use.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pens'),
                 'purchase_price' => 2.50,
                 'selling_price' => 4.99,
                 'stock' => 150,
@@ -51,7 +51,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Red Pen (Pack of 5)',
                 'description' => 'Fine point red pens for corrections and grading, pack of 5 pens.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pens'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 120,
@@ -61,7 +61,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Pencil HB #2 (Pack of 12)',
                 'description' => 'Standard HB #2 pencils, pre-sharpened, pack of 12. Ideal for tests and everyday writing.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pencils'),
                 'purchase_price' => 1.20,
                 'selling_price' => 2.49,
                 'stock' => 200,
@@ -71,7 +71,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Mechanical Pencil 0.7mm',
                 'description' => 'Durable mechanical pencil with 0.7mm lead, includes eraser and extra leads. Perfect for precise writing.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pencils'),
                 'purchase_price' => 1.80,
                 'selling_price' => 3.99,
                 'stock' => 100,
@@ -83,7 +83,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Spiral Notebook - Wide Ruled (70 sheets)',
                 'description' => 'Single subject spiral notebook, wide ruled, 70 sheets, 8.5 x 11 inches. Durable cover.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Notebooks'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 180,
@@ -93,7 +93,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Spiral Notebook - College Ruled (70 sheets)',
                 'description' => 'Single subject spiral notebook, college ruled, 70 sheets, 8.5 x 11 inches. Perfect for detailed notes.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Notebooks'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 180,
@@ -103,7 +103,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Composition Notebook (100 sheets)',
                 'description' => 'Marbled composition notebook, 100 sheets, sewn binding, durable cover. Classic school notebook.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Notebooks'),
                 'purchase_price' => 2.00,
                 'selling_price' => 3.99,
                 'stock' => 150,
@@ -113,7 +113,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Lined Paper (Pack of 100 sheets)',
                 'description' => 'Wide ruled lined paper, 100 sheets per pack, 8.5 x 11 inches. Loose leaf paper for binders.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Notebooks'),
                 'purchase_price' => 1.80,
                 'selling_price' => 3.49,
                 'stock' => 200,
@@ -123,7 +123,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Graph Paper (Pack of 50 sheets)',
                 'description' => '1/4 inch grid graph paper, 50 sheets per pack, perfect for math and science classes.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Notebooks'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 120,
@@ -135,7 +135,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Pocket Folder with Prongs (2-pocket)',
                 'description' => 'Two-pocket folder with three-hole prongs, assorted colors. Keep papers organized.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Binders & Folders'),
                 'purchase_price' => 0.80,
                 'selling_price' => 1.99,
                 'stock' => 250,
@@ -145,7 +145,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => '3-Ring Binder (1 inch)',
                 'description' => 'Durable 3-ring binder, 1 inch capacity, clear view cover with pockets. Available in various colors.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Binders & Folders'),
                 'purchase_price' => 2.50,
                 'selling_price' => 4.99,
                 'stock' => 150,
@@ -155,7 +155,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => '3-Ring Binder (2 inch)',
                 'description' => 'Heavy-duty 3-ring binder, 2 inch capacity, D-ring design. Perfect for multiple subjects.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Binders & Folders'),
                 'purchase_price' => 3.50,
                 'selling_price' => 6.99,
                 'stock' => 100,
@@ -167,7 +167,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Pink Eraser (Pack of 4)',
                 'description' => 'Soft pink erasers, pack of 4. Clean erasing without smudging.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Erasers'),
                 'purchase_price' => 0.80,
                 'selling_price' => 1.49,
                 'stock' => 200,
@@ -177,7 +177,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Correction Tape',
                 'description' => 'White correction tape, dry and non-smearing, easy to use. Perfect for neat corrections.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Erasers'),
                 'purchase_price' => 1.20,
                 'selling_price' => 2.49,
                 'stock' => 120,
@@ -189,7 +189,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => '12-Inch Ruler (Wooden)',
                 'description' => 'Standard 12-inch wooden ruler with both inch and centimeter markings. Durable and accurate.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Rulers & Measuring Tools'),
                 'purchase_price' => 0.60,
                 'selling_price' => 1.49,
                 'stock' => 180,
@@ -199,7 +199,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => '6-Inch Ruler (Plastic)',
                 'description' => 'Compact 6-inch plastic ruler, clear design, inch and metric measurements. Perfect for pencil cases.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Rulers & Measuring Tools'),
                 'purchase_price' => 0.40,
                 'selling_price' => 0.99,
                 'stock' => 200,
@@ -209,7 +209,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Protractor (180 degrees)',
                 'description' => 'Semi-circle protractor, 180 degrees, clear plastic, degree markings. Essential for geometry class.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Rulers & Measuring Tools'),
                 'purchase_price' => 0.80,
                 'selling_price' => 1.99,
                 'stock' => 150,
@@ -221,7 +221,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Highlighter Set (4 colors)',
                 'description' => 'Chisel-tip highlighters, 4 assorted colors (yellow, pink, green, blue). Bright, non-bleeding ink.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Markers & Highlighters'),
                 'purchase_price' => 2.00,
                 'selling_price' => 3.99,
                 'stock' => 150,
@@ -231,7 +231,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Yellow Highlighter (Pack of 3)',
                 'description' => 'Classic yellow highlighters, chisel tip, pack of 3. Perfect for marking important text.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Markers & Highlighters'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 180,
@@ -241,7 +241,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Washable Markers (8 colors)',
                 'description' => 'Broad tip washable markers, 8 vibrant colors, safe and non-toxic. Great for school projects.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Markers & Highlighters'),
                 'purchase_price' => 3.00,
                 'selling_price' => 5.99,
                 'stock' => 120,
@@ -253,7 +253,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'School Scissors (5 inch)',
                 'description' => 'Safety scissors with rounded tips, 5 inch blades, comfortable handles. Safe for children.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Scissors'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 150,
@@ -263,7 +263,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Colored Pencils (12 pack)',
                 'description' => 'Vibrant colored pencils, 12 assorted colors, smooth coloring. Perfect for art projects and assignments.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pencils'),
                 'purchase_price' => 2.50,
                 'selling_price' => 4.99,
                 'stock' => 130,
@@ -273,7 +273,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Crayons (24 pack)',
                 'description' => 'Classic crayons, 24 colors, non-toxic and washable. Essential for elementary school.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Art Supplies'),
                 'purchase_price' => 2.00,
                 'selling_price' => 3.99,
                 'stock' => 140,
@@ -285,7 +285,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Elmer\'s White School Glue (4oz)',
                 'description' => 'Washable white school glue, 4oz bottle, safe and non-toxic. Perfect for art and crafts.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Glue & Adhesives'),
                 'purchase_price' => 0.80,
                 'selling_price' => 1.99,
                 'stock' => 200,
@@ -295,7 +295,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Glue Sticks (4 pack)',
                 'description' => 'Washable glue sticks, 4 pack, smooth application, no mess. Convenient for school projects.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Glue & Adhesives'),
                 'purchase_price' => 1.20,
                 'selling_price' => 2.49,
                 'stock' => 180,
@@ -307,7 +307,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Index Cards (3x5 inches, Pack of 100)',
                 'description' => 'Lined index cards, 3x5 inches, 100 cards per pack. Perfect for flashcards and study notes.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Index Cards & Sticky Notes'),
                 'purchase_price' => 1.00,
                 'selling_price' => 1.99,
                 'stock' => 200,
@@ -317,7 +317,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Sticky Notes (3x3 inches, Pack of 5)',
                 'description' => 'Yellow sticky notes, 3x3 inches, 5 pads per pack. Great for reminders and bookmarks.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Index Cards & Sticky Notes'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 150,
@@ -329,7 +329,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Student Backpack (Medium)',
                 'description' => 'Durable student backpack with padded straps, multiple compartments, water-resistant material. Various colors available.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Backpacks & Bags'),
                 'purchase_price' => 15.00,
                 'selling_price' => 24.99,
                 'stock' => 80,
@@ -339,7 +339,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Pencil Case (Zipper)',
                 'description' => 'Durable zipper pencil case with multiple compartments, fits pens, pencils, and small supplies.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Backpacks & Bags'),
                 'purchase_price' => 2.00,
                 'selling_price' => 3.99,
                 'stock' => 180,
@@ -351,7 +351,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Basic Calculator',
                 'description' => '8-digit display calculator, basic math functions, solar powered with battery backup.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Calculators'),
                 'purchase_price' => 3.00,
                 'selling_price' => 5.99,
                 'stock' => 120,
@@ -361,7 +361,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Scientific Calculator',
                 'description' => 'Advanced scientific calculator with 300+ functions, LCD display, perfect for high school math and science.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Calculators'),
                 'purchase_price' => 12.00,
                 'selling_price' => 19.99,
                 'stock' => 60,
@@ -373,7 +373,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Watercolor Paint Set (12 colors)',
                 'description' => 'Non-toxic watercolor paint set, 12 vibrant colors, includes brush. Perfect for art class projects.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Art Supplies'),
                 'purchase_price' => 4.50,
                 'selling_price' => 7.99,
                 'stock' => 100,
@@ -383,7 +383,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Paint Brushes Set (5 brushes)',
                 'description' => 'Assorted paint brushes, 5 different sizes, synthetic bristles. Versatile for various painting techniques.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Art Supplies'),
                 'purchase_price' => 2.50,
                 'selling_price' => 4.99,
                 'stock' => 110,
@@ -395,7 +395,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Stapler',
                 'description' => 'Compact desktop stapler, holds up to 50 staples, durable metal construction.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Staplers & Paper Clips'),
                 'purchase_price' => 3.50,
                 'selling_price' => 5.99,
                 'stock' => 100,
@@ -405,7 +405,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Staples (1000 count)',
                 'description' => 'Standard staples for staplers, 1000 count box, size 26/6.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Staplers & Paper Clips'),
                 'purchase_price' => 1.00,
                 'selling_price' => 1.99,
                 'stock' => 200,
@@ -415,7 +415,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Paper Clips (100 count)',
                 'description' => 'Jumbo paper clips, 100 count box, assorted colors. Great for organizing papers.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Staplers & Paper Clips'),
                 'purchase_price' => 0.80,
                 'selling_price' => 1.49,
                 'stock' => 250,
@@ -425,7 +425,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Binder Dividers (5 tabs)',
                 'description' => 'Set of 5 binder dividers with tabs, clear pockets, numbered tabs. Keep subjects organized.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Binders & Folders'),
                 'purchase_price' => 1.50,
                 'selling_price' => 2.99,
                 'stock' => 150,
@@ -435,7 +435,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Pencil Sharpener (Manual)',
                 'description' => 'Compact manual pencil sharpener with cover, dual hole design for standard and jumbo pencils.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pencils'),
                 'purchase_price' => 0.60,
                 'selling_price' => 1.49,
                 'stock' => 180,
@@ -445,7 +445,7 @@ class ProductSeeder extends Seeder
             [
                 'name' => 'Pencil Sharpener (Electric)',
                 'description' => 'Electric pencil sharpener, auto-stop feature, large shavings receptacle. Fast and efficient.',
-                'category_id' => $getCategoryId('School Supply'),
+                'category_id' => $getCategoryId('Pencils'),
                 'purchase_price' => 8.00,
                 'selling_price' => 12.99,
                 'stock' => 50,
