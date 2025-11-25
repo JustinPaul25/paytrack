@@ -107,6 +107,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class)->except(['update']);
     Route::post('invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->name('invoices.update');
     Route::post('invoices/{invoice}/mark-paid', [\App\Http\Controllers\InvoiceController::class, 'markPaid'])->name('invoices.markPaid');
+    Route::post('invoices/{invoice}/send-payment-reminder', [\App\Http\Controllers\InvoiceController::class, 'sendPaymentReminder'])->name('invoices.sendPaymentReminder');
 
     // Refund Requests (Admin, Staff, and Customer)
     Route::get('refund-requests', [\App\Http\Controllers\RefundRequestController::class, 'index'])

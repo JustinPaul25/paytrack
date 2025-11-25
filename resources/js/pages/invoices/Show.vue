@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -12,6 +12,7 @@ import AvatarImage from '@/components/ui/avatar/AvatarImage.vue';
 import AvatarFallback from '@/components/ui/avatar/AvatarFallback.vue';
 import { type BreadcrumbItem } from '@/types';
 import DeliveryFormModal from '@/components/DeliveryFormModal.vue';
+import Swal from 'sweetalert2';
 
 interface Product {
     id: number;
@@ -65,7 +66,9 @@ interface Invoice {
     vat_rate: number;
     status: string;
     payment_method: string;
+    payment_status?: string;
     payment_reference?: string;
+    due_date?: string;
     notes?: string;
     created_at: string;
     updated_at: string;
@@ -95,9 +98,18 @@ const props = defineProps<{
 
 const page = usePage();
 const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
+const isStaff = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Staff');
 const hasPendingRefundRequest = computed(() => {
     return Array.isArray((props as any).refundRequests) && (props as any).refundRequests.some((r: any) => r.status === 'pending');
 });
+const canSendReminder = computed(() => {
+    // Show button for staff if customer has email and invoice is not paid
+    // Backend will validate if due_date exists
+    return isStaff && 
+           props.invoice.customer?.email && 
+           props.invoice.payment_status !== 'paid';
+});
+const isSendingReminder = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -147,6 +159,14 @@ function formatDate(dateString: string) {
     });
 }
 
+function formatDateOnly(dateString: string) {
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
 function printPage() {
     // Use global print safely
     // eslint-disable-next-line no-restricted-globals
@@ -176,6 +196,72 @@ function getCustomerInitials(customer: Customer) {
 }
 
 const showDeliveryModal = ref(false);
+
+function sendPaymentReminder() {
+    if (!canSendReminder.value || isSendingReminder.value) {
+        return;
+    }
+    
+    isSendingReminder.value = true;
+    router.post(route('invoices.sendPaymentReminder', props.invoice.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            const flash = (page.props as any).flash;
+            if (flash?.success) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: flash.success,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+            }
+        },
+        onError: (errors) => {
+            const flash = (page.props as any).flash;
+            const errorMessage = flash?.error || 'Failed to send payment reminder. Please try again.';
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: errorMessage,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        },
+        onFinish: () => {
+            isSendingReminder.value = false;
+        },
+    });
+}
+
+// Watch for flash messages (only after navigation)
+watch(() => (page.props as any).flash, (flash) => {
+    if (flash?.success) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: flash.success,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+        });
+    } else if (flash?.error) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: flash.error,
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+        });
+    }
+});
 </script>
 
 <template>
@@ -187,6 +273,15 @@ const showDeliveryModal = ref(false);
             <div class="flex gap-2">
                 <Button variant="outline" @click="printPage">Download PDF</Button>
                 <Button variant="outline" @click="printPage">Print</Button>
+                <template v-if="canSendReminder">
+                    <Button 
+                        variant="default" 
+                        @click="sendPaymentReminder"
+                        :disabled="isSendingReminder"
+                    >
+                        {{ isSendingReminder ? 'Sending...' : 'Send Payment Reminder' }}
+                    </Button>
+                </template>
                 <template v-if="!isCustomer && props.invoice.status !== 'completed'">
                     <Button variant="default" @click="showDeliveryModal = true">Out for Delivery</Button>
                 </template>
@@ -231,6 +326,20 @@ const showDeliveryModal = ref(false);
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Payment Method</label>
                                 <p>{{ props.invoice.payment_method.replace('_', ' ') }}</p>
+                            </div>
+                            <div v-if="props.invoice.payment_status">
+                                <label class="text-sm font-medium text-gray-500">Payment Status</label>
+                                <span :class="['px-2 py-1 rounded-full text-xs font-medium', 
+                                    props.invoice.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                    props.invoice.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                ]">
+                                    {{ props.invoice.payment_status }}
+                                </span>
+                            </div>
+                            <div v-if="props.invoice.due_date">
+                                <label class="text-sm font-medium text-gray-500">Due Date</label>
+                                <p>{{ formatDateOnly(props.invoice.due_date) }}</p>
                             </div>
                             <div v-if="props.invoice.payment_reference">
                                 <label class="text-sm font-medium text-gray-500">Payment Reference</label>

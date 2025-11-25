@@ -84,19 +84,24 @@ class DeliveryController extends Controller
         try {
             $delivery = Delivery::create($validated);
             
-            // If delivery is created as completed, also mark the associated invoice as completed and paid
+            // If delivery is created as completed, also mark the associated invoice as completed
+            // Only mark as paid if payment method is NOT credit (credit invoices must be manually marked as paid by staff)
             if ($validated['status'] === 'completed' && $validated['invoice_id']) {
                 $invoice = Invoice::find($validated['invoice_id']);
                 if ($invoice && $invoice->status !== 'completed') {
-                    $invoice->update([
-                        'status' => 'completed',
-                        'payment_status' => 'paid',
-                    ]);
+                    $updateData = ['status' => 'completed'];
+                    // Only auto-mark as paid if payment method is not credit
+                    if ($invoice->payment_method !== 'credit') {
+                        $updateData['payment_status'] = 'paid';
+                    }
+                    $invoice->update($updateData);
                     // Deduct stock for the invoice if not already done
                     $this->deductStockForInvoice($invoice);
                 } elseif ($invoice && $invoice->status === 'completed') {
-                    // If invoice is already completed, just update payment status
-                    $invoice->update(['payment_status' => 'paid']);
+                    // If invoice is already completed, only update payment status if not credit
+                    if ($invoice->payment_method !== 'credit') {
+                        $invoice->update(['payment_status' => 'paid']);
+                    }
                 }
             }
             
@@ -154,20 +159,25 @@ class DeliveryController extends Controller
             $delivery->update($validated);
             $delivery->refresh(); // Refresh to get the latest data
             
-            // If delivery is being marked as completed, also mark the associated invoice as completed and paid
+            // If delivery is being marked as completed, also mark the associated invoice as completed
+            // Only mark as paid if payment method is NOT credit (credit invoices must be manually marked as paid by staff)
             $invoiceId = $validated['invoice_id'] ?? $delivery->invoice_id;
             if ($newStatus === 'completed' && $oldStatus !== 'completed' && $invoiceId) {
                 $invoice = Invoice::find($invoiceId);
                 if ($invoice && $invoice->status !== 'completed') {
-                    $invoice->update([
-                        'status' => 'completed',
-                        'payment_status' => 'paid',
-                    ]);
+                    $updateData = ['status' => 'completed'];
+                    // Only auto-mark as paid if payment method is not credit
+                    if ($invoice->payment_method !== 'credit') {
+                        $updateData['payment_status'] = 'paid';
+                    }
+                    $invoice->update($updateData);
                     // Deduct stock for the invoice if not already done
                     $this->deductStockForInvoice($invoice);
                 } elseif ($invoice && $invoice->status === 'completed') {
-                    // If invoice is already completed, just update payment status
-                    $invoice->update(['payment_status' => 'paid']);
+                    // If invoice is already completed, only update payment status if not credit
+                    if ($invoice->payment_method !== 'credit') {
+                        $invoice->update(['payment_status' => 'paid']);
+                    }
                 }
             }
             

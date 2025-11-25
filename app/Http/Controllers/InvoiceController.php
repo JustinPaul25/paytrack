@@ -9,8 +9,11 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\RefundRequest;
 use App\Models\StockMovement;
+use App\Mail\InvoiceDueDateReminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
 
 class InvoiceController extends Controller
 {
@@ -388,12 +391,14 @@ class InvoiceController extends Controller
         
         DB::beginTransaction();
         try {
-            // Allow quick status update without requiring full invoice payload
+            // Update invoice status and payment status
+            $updateData = ['payment_status' => 'paid'];
             if ($invoice->status !== 'completed') {
-                $invoice->update(['status' => 'completed']);
+                $updateData['status'] = 'completed';
                 // Deduct stock when marking as paid/completed
                 $this->deductStockForInvoice($invoice);
             }
+            $invoice->update($updateData);
             
             DB::commit();
         } catch (\Exception $e) {
@@ -402,6 +407,46 @@ class InvoiceController extends Controller
         }
 
         return redirect()->back();
+    }
+
+    public function sendPaymentReminder(Invoice $invoice)
+    {
+        // Only Staff can send payment reminders
+        $user = auth()->user();
+        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
+            abort(403);
+        }
+
+        // Check if invoice has a due date
+        if (!$invoice->due_date) {
+            return redirect()->back()->with('error', 'This invoice does not have a due date.');
+        }
+
+        // Check if customer has an email
+        $invoice->load('customer');
+        if (!$invoice->customer || empty($invoice->customer->email)) {
+            return redirect()->back()->with('error', 'Customer does not have an email address.');
+        }
+
+        // Check if invoice is already paid
+        if ($invoice->payment_status === 'paid') {
+            return redirect()->back()->with('error', 'This invoice has already been paid.');
+        }
+
+        try {
+            // Calculate days until due (negative if overdue)
+            $today = Carbon::today();
+            $daysUntilDue = Carbon::parse($invoice->due_date)->diffInDays($today, false);
+
+            // Send the email
+            Mail::to($invoice->customer->email)->send(
+                new InvoiceDueDateReminder($invoice, $daysUntilDue)
+            );
+
+            return redirect()->back()->with('success', 'Payment reminder sent successfully to ' . $invoice->customer->email);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to send payment reminder: ' . $e->getMessage());
+        }
     }
 
     /**

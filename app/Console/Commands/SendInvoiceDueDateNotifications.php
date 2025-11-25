@@ -32,7 +32,8 @@ class SendInvoiceDueDateNotifications extends Command
         $today = Carbon::today();
         
         // Get unpaid invoices that are due today, overdue, or due within 7 days
-        $invoices = Invoice::whereIn('status', ['pending', 'draft'])
+        $invoices = Invoice::where('payment_status', 'pending')
+            ->where('status', '!=', 'cancelled')
             ->whereNotNull('due_date')
             ->whereNotNull('customer_id')
             ->where(function ($query) use ($today) {

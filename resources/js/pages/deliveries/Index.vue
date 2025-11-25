@@ -14,7 +14,7 @@ import { type BreadcrumbItem } from '@/types';
 interface Delivery {
     id: number;
     customer: { id: number; name: string; company_name?: string };
-    invoice?: { id: number; total_amount: number };
+    invoice?: { id: number; total_amount: number; reference_number?: string };
     delivery_address: string;
     contact_person: string;
     contact_phone: string;
@@ -220,6 +220,7 @@ async function deleteDelivery(id: number) {
                             <th class="px-4 py-2 text-left">Delivery Date</th>
                             <th class="px-4 py-2 text-left">Status</th>
                             <th class="px-4 py-2 text-left">Delivery Fee</th>
+                            <th class="px-4 py-2 text-left">Invoice</th>
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
@@ -250,6 +251,12 @@ async function deleteDelivery(id: number) {
                             </td>
                             <td class="px-4 py-2 font-medium">{{ formatCurrency(delivery.delivery_fee) }}</td>
                             <td class="px-4 py-2">
+                                <Link v-if="delivery.invoice" :href="route('invoices.show', delivery.invoice.id)" class="text-blue-500 hover:underline font-medium">
+                                    {{ delivery.invoice.reference_number || `#${delivery.invoice.id}` }}
+                                </Link>
+                                <span v-else class="text-gray-400">N/A</span>
+                            </td>
+                            <td class="px-4 py-2">
                                 <div class="flex gap-2">
                                     <Button variant="ghost" size="sm" as-child>
                                         <Link :href="route('deliveries.show', delivery.id)">
@@ -270,7 +277,7 @@ async function deleteDelivery(id: number) {
                     </tbody>
                     <tbody v-else>
                         <tr>
-                            <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">
+                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
                                 No deliveries found.
                                 <button v-if="(search && search.toString().trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
                                     Clear search
