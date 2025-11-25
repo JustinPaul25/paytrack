@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { LMap, LTileLayer, LMarker, LPolyline } from '@vue-leaflet/vue-leaflet'
+import { usePage } from '@inertiajs/vue3'
 import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet's default icon path issues in Vite
@@ -26,6 +27,16 @@ const props = withDefaults(defineProps<Props>(), {
   mapHeight: '400px',
   class: ''
 })
+
+const page = usePage()
+const deliveryOriginLocation = computed(() => {
+  const origin = (page.props as any).deliveryOriginLocation
+  if (origin && typeof origin.lat === 'number' && typeof origin.lng === 'number') {
+    return { lat: origin.lat, lng: origin.lng }
+  }
+  return null
+})
+const deliveryOriginAddress = computed(() => (page.props as any).deliveryOriginAddress || '')
 
 const currentLocation = ref<{ lat: number; lng: number } | null>(null)
 const routeCoordinates = ref<[number, number][]>([])
@@ -188,17 +199,37 @@ watch(() => props.customerLocation, async (newLocation) => {
 // Initialize current location on mount
 onMounted(async () => {
   try {
-    currentLocation.value = await getCurrentLocation()
-    mapCenter.value = [currentLocation.value.lat, currentLocation.value.lng]
-    zoom.value = 13
-    
-    // If customer location is already available, calculate route
-    if (props.customerLocation) {
-      await calculateRoute(currentLocation.value, props.customerLocation)
+    // First, try to use the delivery origin location from admin settings
+    if (deliveryOriginLocation.value) {
+      currentLocation.value = {
+        lat: deliveryOriginLocation.value.lat,
+        lng: deliveryOriginLocation.value.lng
+      }
+      mapCenter.value = [currentLocation.value.lat, currentLocation.value.lng]
+      zoom.value = 13
+      
+      // If customer location is already available, calculate route
+      if (props.customerLocation) {
+        await calculateRoute(currentLocation.value, props.customerLocation)
+      }
+    } else {
+      // Fallback to GPS if no origin location is set in admin settings
+      currentLocation.value = await getCurrentLocation()
+      mapCenter.value = [currentLocation.value.lat, currentLocation.value.lng]
+      zoom.value = 13
+      
+      // If customer location is already available, calculate route
+      if (props.customerLocation) {
+        await calculateRoute(currentLocation.value, props.customerLocation)
+      }
     }
   } catch (err) {
     console.error('Failed to get current location:', err)
-    error.value = 'Unable to get your current location. Please enable location services.'
+    if (!deliveryOriginLocation.value) {
+      error.value = 'Unable to get your current location. Please set the delivery origin address in Admin Settings or enable location services.'
+    } else {
+      error.value = 'Failed to load delivery origin location. Please check admin settings.'
+    }
   }
 })
 
@@ -248,13 +279,29 @@ async function retryGetLocation() {
   isLoading.value = true
   
   try {
-    currentLocation.value = await getCurrentLocation()
-    mapCenter.value = [currentLocation.value.lat, currentLocation.value.lng]
-    zoom.value = 13
-    
-    // If customer location is available, calculate route
-    if (props.customerLocation) {
-      await calculateRoute(currentLocation.value, props.customerLocation)
+    // First, try to use the delivery origin location from admin settings
+    if (deliveryOriginLocation.value) {
+      currentLocation.value = {
+        lat: deliveryOriginLocation.value.lat,
+        lng: deliveryOriginLocation.value.lng
+      }
+      mapCenter.value = [currentLocation.value.lat, currentLocation.value.lng]
+      zoom.value = 13
+      
+      // If customer location is available, calculate route
+      if (props.customerLocation) {
+        await calculateRoute(currentLocation.value, props.customerLocation)
+      }
+    } else {
+      // Fallback to GPS if no origin location is set
+      currentLocation.value = await getCurrentLocation()
+      mapCenter.value = [currentLocation.value.lat, currentLocation.value.lng]
+      zoom.value = 13
+      
+      // If customer location is available, calculate route
+      if (props.customerLocation) {
+        await calculateRoute(currentLocation.value, props.customerLocation)
+      }
     }
   } catch (err) {
     console.error('Failed to get current location:', err)
@@ -296,6 +343,7 @@ async function retryGetLocation() {
           <template #popup>
             <div class="text-center">
               <div class="font-semibold text-blue-600">Current Location</div>
+              <div v-if="deliveryOriginAddress" class="text-xs text-gray-500 mb-1">{{ deliveryOriginAddress }}</div>
               <div class="text-sm text-gray-600">{{ Number(currentLocation.lat).toFixed(6) }}, {{ Number(currentLocation.lng).toFixed(6) }}</div>
             </div>
           </template>
@@ -344,6 +392,9 @@ async function retryGetLocation() {
     
     <!-- Route Information -->
     <div v-if="currentLocation && customerLocation" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div class="mb-2 text-sm text-gray-600">
+        <strong>Origin:</strong> {{ deliveryOriginAddress || 'Delivery Origin (from admin settings)' }}
+      </div>
       <div class="flex items-center justify-between">
         <div>
           <h3 class="font-semibold text-gray-900 dark:text-gray-100">Route Information</h3>
@@ -377,8 +428,8 @@ async function retryGetLocation() {
         <span class="text-sm text-red-700 dark:text-red-400">{{ error }}</span>
       </div>
       
-      <!-- Action Buttons -->
-      <div class="flex gap-2">
+      <!-- Action Buttons - Only show if origin location is not set in admin settings -->
+      <div v-if="!deliveryOriginLocation" class="flex gap-2">
         <button
           type="button"
           @click="retryGetLocation"
@@ -395,8 +446,8 @@ async function retryGetLocation() {
         </button>
       </div>
       
-      <!-- Manual Location Input -->
-      <div v-if="showManualLocationInput" class="mt-3 p-3 bg-white dark:bg-gray-700 rounded border">
+      <!-- Manual Location Input - Only show if origin location is not set in admin settings -->
+      <div v-if="showManualLocationInput && !deliveryOriginLocation" class="mt-3 p-3 bg-white dark:bg-gray-700 rounded border">
         <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
           Enter your current location coordinates:
         </div>
@@ -430,8 +481,11 @@ async function retryGetLocation() {
     </div>
     
     <!-- No Location Message -->
-    <div v-if="!currentLocation && !customerLocation" class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-      <div class="flex items-center gap-2">
+    <div v-if="!currentLocation && !customerLocation && !deliveryOriginLocation" class="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+      <p class="text-sm text-yellow-800 dark:text-yellow-200">
+        <strong>Note:</strong> Please set the delivery origin address and location in <strong>Admin Settings</strong> to enable route calculation.
+      </p>
+      <div class="flex items-center gap-2 mt-2">
         <div class="w-5 h-5 text-yellow-500">
           <svg fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -442,7 +496,7 @@ async function retryGetLocation() {
     </div>
     
     <!-- Location Access Help -->
-    <div v-if="!currentLocation" class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+    <div v-if="!currentLocation && !deliveryOriginLocation" class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
       <div class="flex items-start gap-2">
         <div class="w-5 h-5 text-blue-500 mt-0.5">
           <svg fill="currentColor" viewBox="0 0 20 20">

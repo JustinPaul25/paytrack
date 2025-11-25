@@ -8,6 +8,7 @@ use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
 use App\Models\RefundRequest;
 use App\Models\Order;
+use App\Models\Setting;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -64,6 +65,16 @@ class HandleInertiaRequests extends Middleware
             'pendingOrderCount' => fn () => ($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))
                 ? Order::where('status', 'pending')->count()
                 : 0,
+            'deliveryOriginLocation' => function () {
+                $location = Setting::get('delivery_origin_location', null);
+                if (is_string($location)) {
+                    $location = json_decode($location, true);
+                }
+                return $location && is_array($location) && isset($location['lat']) && isset($location['lng'])
+                    ? ['lat' => (float) $location['lat'], 'lng' => (float) $location['lng']]
+                    : null;
+            },
+            'deliveryOriginAddress' => fn () => Setting::get('delivery_origin_address', ''),
         ];
     }
 }

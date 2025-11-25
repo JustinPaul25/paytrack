@@ -85,3 +85,5 @@ When a refund is approved for a credit invoice:
 3. **Medium**: Update UI to show net balance prominently
 4. **Low**: Add notifications when credit invoice is auto-settled
 
+
+

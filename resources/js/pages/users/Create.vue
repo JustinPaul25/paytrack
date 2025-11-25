@@ -11,17 +11,18 @@ import Label from '@/components/ui/label/Label.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
 import { ref } from 'vue';
-
-const props = defineProps<{ roles: Array<{ id: number; name: string }> }>();
+import { Eye, EyeOff } from 'lucide-vue-next';
 
 const form = useForm({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
-    roles: [] as number[],
     profile_image: null as File | null, // Allow File or null
 });
+
+const showPassword = ref(false);
+const showConfirmPassword = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -96,12 +97,44 @@ function submit() {
                     <div class="flex gap-4">
                         <div class="flex-1">
                             <Label for="password">Password</Label>
-                            <input id="password" type="password" v-model="form.password" class="w-full rounded border px-3 py-2 mt-1" required />
+                            <div class="relative">
+                                <input 
+                                    id="password" 
+                                    :type="showPassword ? 'text' : 'password'" 
+                                    v-model="form.password" 
+                                    class="w-full rounded border px-3 py-2 mt-1 pr-10" 
+                                    required 
+                                />
+                                <button
+                                    type="button"
+                                    @click="showPassword = !showPassword"
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors mt-1"
+                                >
+                                    <Eye v-if="!showPassword" class="h-5 w-5" />
+                                    <EyeOff v-else class="h-5 w-5" />
+                                </button>
+                            </div>
                             <div v-if="form.errors.password" class="text-red-500 text-xs mt-1">{{ form.errors.password }}</div>
                         </div>
                         <div class="flex-1">
                             <Label for="password_confirmation">Confirm Password</Label>
-                            <input id="password_confirmation" type="password" v-model="form.password_confirmation" class="w-full rounded border px-3 py-2 mt-1" required />
+                            <div class="relative">
+                                <input 
+                                    id="password_confirmation" 
+                                    :type="showConfirmPassword ? 'text' : 'password'" 
+                                    v-model="form.password_confirmation" 
+                                    class="w-full rounded border px-3 py-2 mt-1 pr-10" 
+                                    required 
+                                />
+                                <button
+                                    type="button"
+                                    @click="showConfirmPassword = !showConfirmPassword"
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors mt-1"
+                                >
+                                    <Eye v-if="!showConfirmPassword" class="h-5 w-5" />
+                                    <EyeOff v-else class="h-5 w-5" />
+                                </button>
+                            </div>
                             <div v-if="form.errors.password_confirmation" class="text-red-500 text-xs mt-1">{{ form.errors.password_confirmation }}</div>
                         </div>
                     </div>
@@ -114,16 +147,6 @@ function submit() {
                             </div>
                             <div v-if="form.errors.profile_image" class="text-red-500 text-xs mt-1">{{ form.errors.profile_image }}</div>
                         </div>
-                    </div>
-                    <div>
-                        <Label>Roles</Label>
-                        <div class="flex flex-wrap gap-2 mt-2">
-                            <label v-for="role in props.roles" :key="role.id" class="flex items-center gap-2">
-                                <input type="checkbox" :value="role.id" v-model="form.roles" />
-                                {{ role.name }}
-                            </label>
-                        </div>
-                        <div v-if="form.errors.roles" class="text-red-500 text-xs mt-1">{{ form.errors.roles }}</div>
                     </div>
                     <CardFooter class="flex gap-2 justify-end">
                         <Button type="submit" variant="default">Create</Button>

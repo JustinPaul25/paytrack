@@ -177,11 +177,8 @@ class UsersController extends Controller
 
     public function create()
     {
-        // Exclude Customer role from available roles (Admin can only assign Admin or Staff)
-        $roles = Role::where('name', '!=', 'Customer')->get(['id', 'name']);
-        return Inertia::render('users/Create', [
-            'roles' => $roles,
-        ]);
+        // No roles needed since we automatically assign Staff role
+        return Inertia::render('users/Create');
     }
 
     public function store(Request $request)
@@ -190,8 +187,6 @@ class UsersController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'roles' => 'array',
-            'roles.*' => 'integer|exists:roles,id',
             'profile_image' => 'nullable|image|max:20480',
         ]);
         
@@ -200,10 +195,10 @@ class UsersController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
-        if (!empty($validated['roles'])) {
-            $roleNames = \Spatie\Permission\Models\Role::whereIn('id', $validated['roles'])->pluck('name')->toArray();
-            $user->syncRoles($roleNames);
-        }
+        
+        // Automatically assign Staff role
+        $user->assignRole('Staff');
+        
         if ($request->hasFile('profile_image')) {
             $user->addMediaFromRequest('profile_image')->toMediaCollection('profile');
         }

@@ -50,7 +50,7 @@ class DeliveryController extends Controller
 
     public function create(Request $request)
     {
-        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location']);
+        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location', 'phone']);
         $invoices = Invoice::with('customer')
             ->where('status', 'pending')
             ->get(['id', 'customer_id', 'total_amount', 'reference_number']);

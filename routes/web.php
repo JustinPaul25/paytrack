@@ -11,6 +11,7 @@ use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\SalesAnalyticsController;
 use App\Http\Controllers\SalesTransactionController;
+use App\Http\Controllers\Admin\AdminSettingsController;
 
 
 Route::get('/', function () {
@@ -47,6 +48,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
         Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [UsersController::class, 'destroy'])->name('users.destroy');
+        
+        // Admin Settings
+        Route::get('admin/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings.edit');
+        Route::post('admin/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
     });
 
     // Category CRUD routes (Admin|Staff)

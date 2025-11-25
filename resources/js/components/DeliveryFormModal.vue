@@ -22,6 +22,7 @@ interface Customer {
     name: string;
     company_name?: string;
     address?: string;
+    phone?: string;
     location?: { lat: number; lng: number } | null;
 }
 
@@ -49,7 +50,7 @@ const form = useForm({
     invoice_id: props.invoice.id,
     delivery_address: props.invoice.customer?.address || '',
     contact_person: props.invoice.customer?.name || '',
-    contact_phone: '',
+    contact_phone: normalizePhoneNumber(props.invoice.customer?.phone) || '',
     delivery_date: '',
     delivery_time: '',
     status: 'pending',
@@ -59,6 +60,33 @@ const form = useForm({
 
 // Set minimum date to today
 const today = new Date().toISOString().split('T')[0];
+
+// Helper function to normalize phone number to +63XXXXXXXXXX format
+function normalizePhoneNumber(phone: string | null | undefined): string {
+    if (!phone) return '';
+    
+    // Remove all non-digit characters
+    let digits = phone.replace(/[^0-9]/g, '');
+    
+    // Handle different formats:
+    // - If starts with 63, remove it (country code)
+    // - If starts with 0, remove it (local format)
+    if (digits.startsWith('63')) {
+        digits = digits.substring(2);
+    } else if (digits.startsWith('0')) {
+        digits = digits.substring(1);
+    }
+    
+    // Ensure we have exactly 10 digits
+    digits = digits.substring(0, 10);
+    
+    // Return in +63XXXXXXXXXX format if we have 10 digits
+    if (digits.length === 10) {
+        return '+63' + digits;
+    }
+    
+    return phone; // Return original if can't normalize
+}
 
 // Customer options
 const customerOptions = computed(() => [
@@ -143,6 +171,7 @@ watch(() => props.open, (isOpen) => {
         form.invoice_id = props.invoice.id;
         form.delivery_address = props.invoice.customer?.address || '';
         form.contact_person = props.invoice.customer?.name || '';
+        form.contact_phone = normalizePhoneNumber(props.invoice.customer?.phone) || '';
         form.clearErrors();
     }
 });
@@ -150,6 +179,11 @@ watch(() => props.open, (isOpen) => {
 
 
 function submit() {
+    // Normalize phone number before validation
+    if (form.contact_phone) {
+        form.contact_phone = normalizePhoneNumber(form.contact_phone);
+    }
+    
     // Validate Philippine mobile format on the client-side (10 digits after +63)
     const phMobileRegex = /^\+63\d{10}$/;
     if (form.contact_phone && !phMobileRegex.test(form.contact_phone)) {

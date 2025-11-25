@@ -25,554 +25,432 @@ class ProductSeeder extends Seeder
             return $category->id;
         };
         
-        // Product data with realistic information
+        // Product data - School Supplies only
         $products = [
-            // Electronics - Computers & Laptops
+            // Writing Supplies
             [
-                'name' => 'MacBook Pro 14" M3 Chip',
-                'description' => 'Latest MacBook Pro with M3 chip, 14-inch Retina display, 16GB RAM, 512GB SSD. Perfect for professionals and creatives.',
-                'category_id' => $getCategoryId('Computers & Laptops'),
-                'purchase_price' => 1800.00,
-                'selling_price' => 2199.00,
-                'stock' => 15,
-                'unit' => 'pcs',
-                'SKU' => 'MBP14-M3-001'
-            ],
-            [
-                'name' => 'Dell XPS 13 Laptop',
-                'description' => '13.4-inch InfinityEdge display, Intel Core i7, 16GB RAM, 512GB SSD. Ultra-thin and lightweight design.',
-                'category_id' => $getCategoryId('Computers & Laptops'),
-                'purchase_price' => 1200.00,
-                'selling_price' => 1499.00,
-                'stock' => 22,
-                'unit' => 'pcs',
-                'SKU' => 'DLL-XPS13-002'
-            ],
-            [
-                'name' => 'HP Pavilion Gaming Laptop',
-                'description' => '15.6-inch gaming laptop with NVIDIA RTX 3060, AMD Ryzen 7, 16GB RAM, 1TB SSD. Perfect for gaming and content creation.',
-                'category_id' => $getCategoryId('Computers & Laptops'),
-                'purchase_price' => 950.00,
-                'selling_price' => 1299.00,
-                'stock' => 18,
-                'unit' => 'pcs',
-                'SKU' => 'HP-PAV-GAM-003'
-            ],
-            
-            // Electronics - Smartphones & Accessories
-            [
-                'name' => 'iPhone 15 Pro Max',
-                'description' => '6.7-inch Super Retina XDR display, A17 Pro chip, 48MP camera system, 256GB storage. Latest iPhone with advanced features.',
-                'category_id' => $getCategoryId('Smartphones & Accessories'),
-                'purchase_price' => 1100.00,
-                'selling_price' => 1299.00,
-                'stock' => 25,
-                'unit' => 'pcs',
-                'SKU' => 'IPH15-PRO-004'
-            ],
-            [
-                'name' => 'Samsung Galaxy S24 Ultra',
-                'description' => '6.8-inch Dynamic AMOLED display, Snapdragon 8 Gen 3, 200MP camera, S Pen included, 256GB storage.',
-                'category_id' => $getCategoryId('Smartphones & Accessories'),
-                'purchase_price' => 1050.00,
-                'selling_price' => 1249.00,
-                'stock' => 20,
-                'unit' => 'pcs',
-                'SKU' => 'SMS-GAL-S24-005'
-            ],
-            [
-                'name' => 'AirPods Pro 2nd Generation',
-                'description' => 'Active noise cancellation, spatial audio, sweat and water resistant, up to 6 hours listening time.',
-                'category_id' => $getCategoryId('Smartphones & Accessories'),
-                'purchase_price' => 180.00,
-                'selling_price' => 249.00,
-                'stock' => 45,
-                'unit' => 'pcs',
-                'SKU' => 'AIR-PRO-2-006'
-            ],
-            
-            // Electronics - Audio & Video
-            [
-                'name' => 'Sony WH-1000XM5 Headphones',
-                'description' => 'Industry-leading noise cancellation, 30-hour battery life, premium comfort, exceptional sound quality.',
-                'category_id' => $getCategoryId( 'Audio & Video'),
-                'purchase_price' => 280.00,
-                'selling_price' => 399.00,
-                'stock' => 30,
-                'unit' => 'pcs',
-                'SKU' => 'SNY-WH1000-007'
-            ],
-            [
-                'name' => 'Samsung 65" QLED 4K TV',
-                'description' => '65-inch QLED 4K UHD Smart TV with Quantum HDR, Alexa Built-in, Gaming Hub, and Ambient Mode.',
-                'category_id' => $getCategoryId( 'Audio & Video'),
-                'purchase_price' => 1200.00,
-                'selling_price' => 1599.00,
-                'stock' => 12,
-                'unit' => 'pcs',
-                'SKU' => 'SMS-65QLED-008'
-            ],
-            
-            // Fashion - Men's Clothing
-            [
-                'name' => 'Nike Air Jordan 1 Retro High',
-                'description' => 'Classic Air Jordan 1 in Chicago colorway, premium leather upper, Air-Sole unit for lightweight cushioning.',
-                'category_id' => $getCategoryId( 'Men\'s Clothing'),
-                'purchase_price' => 120.00,
-                'selling_price' => 170.00,
-                'stock' => 35,
-                'unit' => 'pcs',
-                'SKU' => 'NKE-AJ1-CHI-009'
-            ],
-            [
-                'name' => 'Levi\'s 501 Original Jeans',
-                'description' => 'Classic straight fit jeans, 100% cotton denim, button fly, timeless style for everyday wear.',
-                'category_id' => $getCategoryId( 'Men\'s Clothing'),
-                'purchase_price' => 45.00,
-                'selling_price' => 69.00,
-                'stock' => 60,
-                'unit' => 'pcs',
-                'SKU' => 'LVS-501-ORG-010'
-            ],
-            
-            // Fashion - Women's Clothing
-            [
-                'name' => 'Zara Oversized Blazer',
-                'description' => 'Contemporary oversized blazer in wool blend, perfect for office wear or casual styling.',
-                'category_id' => $getCategoryId( 'Women\'s Clothing'),
-                'purchase_price' => 85.00,
-                'selling_price' => 129.00,
-                'stock' => 28,
-                'unit' => 'pcs',
-                'SKU' => 'ZRA-BLZ-OVR-011'
-            ],
-            [
-                'name' => 'H&M Summer Dress',
-                'description' => 'Floral print summer dress, lightweight fabric, adjustable straps, perfect for warm weather.',
-                'category_id' => $getCategoryId( 'Women\'s Clothing'),
-                'purchase_price' => 35.00,
-                'selling_price' => 49.00,
-                'stock' => 42,
-                'unit' => 'pcs',
-                'SKU' => 'HM-DRS-SUM-012'
-            ],
-            
-            // Home & Garden - Furniture
-            [
-                'name' => 'IKEA MALM Bed Frame',
-                'description' => 'Queen-size bed frame in white, clean lines, under-bed storage, easy assembly.',
-                'category_id' => $getCategoryId( 'Furniture'),
-                'purchase_price' => 180.00,
-                'selling_price' => 249.00,
-                'stock' => 15,
-                'unit' => 'pcs',
-                'SKU' => 'IKE-MALM-BED-013'
-            ],
-            [
-                'name' => 'West Elm Sofa',
-                'description' => 'Modern 3-seater sofa in gray fabric, comfortable cushions, sturdy frame, perfect for living room.',
-                'category_id' => $getCategoryId( 'Furniture'),
-                'purchase_price' => 800.00,
-                'selling_price' => 1199.00,
-                'stock' => 8,
-                'unit' => 'pcs',
-                'SKU' => 'WST-ELM-SOF-014'
-            ],
-            
-            // Home & Garden - Kitchen & Dining
-            [
-                'name' => 'KitchenAid Stand Mixer',
-                'description' => 'Professional 5-quart stand mixer in red, 10-speed motor, includes flat beater, dough hook, and wire whip.',
-                'category_id' => $getCategoryId( 'Kitchen & Dining'),
-                'purchase_price' => 280.00,
-                'selling_price' => 399.00,
-                'stock' => 20,
-                'unit' => 'pcs',
-                'SKU' => 'KIT-STD-MIX-015'
-            ],
-            [
-                'name' => 'Le Creuset Dutch Oven',
-                'description' => '5.5-quart round Dutch oven in blue, enameled cast iron, perfect for braising, stewing, and baking.',
-                'category_id' => $getCategoryId( 'Kitchen & Dining'),
-                'purchase_price' => 220.00,
-                'selling_price' => 299.00,
-                'stock' => 18,
-                'unit' => 'pcs',
-                'SKU' => 'LCR-DUT-OVN-016'
-            ],
-            
-            // Health & Beauty - Skincare
-            [
-                'name' => 'La Mer Moisturizing Cream',
-                'description' => 'Luxury moisturizing cream with Miracle Broth, intensely hydrating, suitable for all skin types.',
-                'category_id' => $getCategoryId( 'Skincare'),
-                'purchase_price' => 280.00,
-                'selling_price' => 350.00,
-                'stock' => 25,
-                'unit' => 'pcs',
-                'SKU' => 'LMR-MOI-CRM-017'
-            ],
-            [
-                'name' => 'The Ordinary Niacinamide Serum',
-                'description' => '10% Niacinamide + 1% Zinc serum, reduces blemishes and regulates sebum production.',
-                'category_id' => $getCategoryId( 'Skincare'),
-                'purchase_price' => 8.00,
-                'selling_price' => 12.00,
-                'stock' => 80,
-                'unit' => 'pcs',
-                'SKU' => 'ORD-NIA-SER-018'
-            ],
-            
-            // Health & Beauty - Makeup
-            [
-                'name' => 'MAC Ruby Woo Lipstick',
-                'description' => 'Iconic matte red lipstick, long-wearing formula, suits all skin tones, classic MAC shade.',
-                'category_id' => $getCategoryId( 'Makeup'),
-                'purchase_price' => 15.00,
-                'selling_price' => 19.00,
-                'stock' => 55,
-                'unit' => 'pcs',
-                'SKU' => 'MAC-RUB-WOO-019'
-            ],
-            [
-                'name' => 'Urban Decay Naked Palette',
-                'description' => '12 neutral eyeshadows in warm tones, highly pigmented, perfect for everyday and evening looks.',
-                'category_id' => $getCategoryId( 'Makeup'),
-                'purchase_price' => 45.00,
-                'selling_price' => 54.00,
-                'stock' => 30,
-                'unit' => 'set',
-                'SKU' => 'URB-NAK-PAL-020'
-            ],
-            
-            // Sports & Outdoors - Fitness & Exercise
-            [
-                'name' => 'Peloton Bike+',
-                'description' => 'Premium indoor cycling bike with 24" HD rotating touchscreen, live classes, and performance tracking.',
-                'category_id' => $getCategoryId( 'Fitness & Exercise'),
-                'purchase_price' => 2400.00,
-                'selling_price' => 2995.00,
-                'stock' => 10,
-                'unit' => 'pcs',
-                'SKU' => 'PEL-BIK-PLS-021'
-            ],
-            [
-                'name' => 'Lululemon Align Leggings',
-                'description' => 'Ultra-soft Nulu fabric, high-rise fit, perfect for yoga and low-impact activities.',
-                'category_id' => $getCategoryId( 'Fitness & Exercise'),
-                'purchase_price' => 75.00,
-                'selling_price' => 98.00,
-                'stock' => 40,
-                'unit' => 'pcs',
-                'SKU' => 'LUL-ALN-LEG-022'
-            ],
-            
-            // Books & Media - Books
-            [
-                'name' => 'The Seven Husbands of Evelyn Hugo',
-                'description' => 'Bestselling novel by Taylor Jenkins Reid, compelling story of Hollywood glamour and secrets.',
-                'category_id' => $getCategoryId( 'Books'),
-                'purchase_price' => 12.00,
-                'selling_price' => 16.99,
-                'stock' => 65,
-                'unit' => 'pcs',
-                'SKU' => 'BOK-SEV-HUS-023'
-            ],
-            [
-                'name' => 'Atomic Habits by James Clear',
-                'description' => 'International bestseller about building good habits and breaking bad ones, practical strategies.',
-                'category_id' => $getCategoryId( 'Books'),
-                'purchase_price' => 15.00,
-                'selling_price' => 19.99,
-                'stock' => 50,
-                'unit' => 'pcs',
-                'SKU' => 'BOK-ATM-HAB-024'
-            ],
-            
-            // Automotive - Car Parts
-            [
-                'name' => 'Michelin Pilot Sport 4S Tires',
-                'description' => 'High-performance summer tires, excellent grip and handling, 245/40R18 size.',
-                'category_id' => $getCategoryId( 'Car Parts'),
-                'purchase_price' => 180.00,
-                'selling_price' => 245.00,
-                'stock' => 25,
-                'unit' => 'pcs',
-                'SKU' => 'MCL-PLT-SPT-025'
-            ],
-            [
-                'name' => 'Bosch Premium Wiper Blades',
-                'description' => 'Premium windshield wiper blades, all-weather performance, easy installation.',
-                'category_id' => $getCategoryId( 'Car Parts'),
-                'purchase_price' => 25.00,
-                'selling_price' => 34.99,
-                'stock' => 45,
-                'unit' => 'set',
-                'SKU' => 'BSC-PRM-WIP-026'
-            ],
-            
-            // Toys & Games - Board Games
-            [
-                'name' => 'Catan Board Game',
-                'description' => 'Classic strategy board game, build settlements, trade resources, 3-4 players, ages 10+.',
-                'category_id' => $getCategoryId( 'Board Games'),
-                'purchase_price' => 35.00,
-                'selling_price' => 44.99,
-                'stock' => 30,
-                'unit' => 'set',
-                'SKU' => 'TOY-CAT-BRD-027'
-            ],
-            [
-                'name' => 'LEGO Star Wars Millennium Falcon',
-                'description' => 'Ultimate Collector Series Millennium Falcon, 7,500+ pieces, detailed replica, display model.',
-                'category_id' => $getCategoryId( 'Building Sets'),
-                'purchase_price' => 650.00,
-                'selling_price' => 799.99,
-                'stock' => 8,
-                'unit' => 'set',
-                'SKU' => 'LGO-MIL-FAL-028'
-            ],
-            
-            // Food & Beverages - Coffee & Tea
-            [
-                'name' => 'Starbucks Pike Place Roast',
-                'description' => 'Medium roast coffee beans, smooth and balanced flavor, 1lb bag, whole bean.',
-                'category_id' => $getCategoryId( 'Coffee & Tea'),
-                'purchase_price' => 12.00,
-                'selling_price' => 15.99,
-                'stock' => 75,
-                'unit' => 'box',
-                'SKU' => 'SBX-PIK-PLC-029'
-            ],
-            [
-                'name' => 'Twinings English Breakfast Tea',
-                'description' => 'Classic black tea blend, 100 tea bags, rich and full-bodied flavor.',
-                'category_id' => $getCategoryId( 'Coffee & Tea'),
-                'purchase_price' => 8.00,
-                'selling_price' => 11.99,
-                'stock' => 60,
-                'unit' => 'box',
-                'SKU' => 'TWN-ENG-BRK-030'
-            ],
-            
-            // Office & Business - Office Supplies
-            [
-                'name' => 'Apple iPad Pro 12.9"',
-                'description' => '12.9-inch Liquid Retina XDR display, M2 chip, 256GB storage, perfect for creative professionals.',
-                'category_id' => $getCategoryId( 'Technology'),
-                'purchase_price' => 900.00,
-                'selling_price' => 1099.00,
-                'stock' => 20,
-                'unit' => 'pcs',
-                'SKU' => 'APP-IPD-PRO-031'
-            ],
-            [
-                'name' => 'Canon EOS R6 Mark II',
-                'description' => 'Full-frame mirrorless camera, 24.2MP sensor, 4K video, advanced autofocus system.',
-                'category_id' => $getCategoryId( 'Cameras & Photography'),
-                'purchase_price' => 2200.00,
-                'selling_price' => 2499.00,
-                'stock' => 12,
-                'unit' => 'pcs',
-                'SKU' => 'CNN-EOS-R6-032'
-            ],
-            
-            // Pet Supplies - Dog Supplies
-            [
-                'name' => 'Kong Classic Dog Toy',
-                'description' => 'Durable rubber dog toy, stuffable design, promotes chewing and mental stimulation.',
-                'category_id' => $getCategoryId( 'Dog Supplies'),
-                'purchase_price' => 12.00,
-                'selling_price' => 16.99,
-                'stock' => 40,
-                'unit' => 'pcs',
-                'SKU' => 'KNG-CLS-DOG-033'
-            ],
-            [
-                'name' => 'Royal Canin Dog Food',
-                'description' => 'Premium adult dog food, chicken flavor, 30lb bag, balanced nutrition for all breeds.',
-                'category_id' => $getCategoryId( 'Dog Supplies'),
-                'purchase_price' => 45.00,
-                'selling_price' => 59.99,
-                'stock' => 35,
-                'unit' => 'box',
-                'SKU' => 'RCL-CAN-DOG-034'
-            ],
-            
-            // Baby & Kids - Baby Care
-            [
-                'name' => 'Philips Avent Baby Bottles',
-                'description' => 'Natural baby bottles, BPA-free, anti-colic system, 4-pack, 8oz size.',
-                'category_id' => $getCategoryId( 'Baby Care'),
-                'purchase_price' => 25.00,
-                'selling_price' => 34.99,
-                'stock' => 30,
-                'unit' => 'set',
-                'SKU' => 'PHL-AVT-BTL-035'
-            ],
-            [
-                'name' => 'Huggies Diapers Size 4',
-                'description' => 'Premium diapers, 22-37 lbs, 120 count, hypoallergenic, comfortable fit.',
-                'category_id' => $getCategoryId( 'Diapers & Wipes'),
-                'purchase_price' => 35.00,
-                'selling_price' => 44.99,
-                'stock' => 50,
-                'unit' => 'box',
-                'SKU' => 'HUG-DIA-SZ4-036'
-            ],
-            
-            // Art & Crafts - Drawing & Painting
-            [
-                'name' => 'Winsor & Newton Professional Paint Set',
-                'description' => '24-tube watercolor paint set, professional quality, vibrant colors, perfect for artists.',
-                'category_id' => $getCategoryId( 'Drawing & Painting'),
-                'purchase_price' => 85.00,
-                'selling_price' => 119.99,
-                'stock' => 25,
-                'unit' => 'set',
-                'SKU' => 'WNS-NWT-PNT-037'
-            ],
-            [
-                'name' => 'Canson XL Watercolor Paper',
-                'description' => '140lb cold-pressed watercolor paper, 9x12 inches, 30 sheets, acid-free.',
-                'category_id' => $getCategoryId( 'Drawing & Painting'),
-                'purchase_price' => 15.00,
-                'selling_price' => 22.99,
-                'stock' => 40,
-                'unit' => 'pcs',
-                'SKU' => 'CSN-XL-PPR-038'
-            ],
-            
-            // Musical Instruments - Guitars
-            [
-                'name' => 'Fender Stratocaster Electric Guitar',
-                'description' => 'Classic electric guitar, maple neck, alder body, 3 single-coil pickups, iconic sound.',
-                'category_id' => $getCategoryId( 'Guitars'),
-                'purchase_price' => 650.00,
-                'selling_price' => 799.99,
-                'stock' => 15,
-                'unit' => 'pcs',
-                'SKU' => 'FND-STR-ELC-039'
-            ],
-            [
-                'name' => 'Yamaha FG800 Acoustic Guitar',
-                'description' => 'Dreadnought acoustic guitar, solid spruce top, mahogany back and sides, great for beginners.',
-                'category_id' => $getCategoryId( 'Guitars'),
-                'purchase_price' => 180.00,
-                'selling_price' => 229.99,
-                'stock' => 25,
-                'unit' => 'pcs',
-                'SKU' => 'YAM-FG8-ACO-040'
-            ],
-            
-            // Gaming & Consoles
-            [
-                'name' => 'PlayStation 5 Console',
-                'description' => 'Next-gen gaming console, 4K graphics, ultra-high speed SSD, DualSense controller included.',
-                'category_id' => $getCategoryId( 'Gaming & Consoles'),
-                'purchase_price' => 450.00,
-                'selling_price' => 499.99,
-                'stock' => 18,
-                'unit' => 'pcs',
-                'SKU' => 'PS5-CON-SYS-041'
-            ],
-            [
-                'name' => 'Nintendo Switch OLED',
-                'description' => '7-inch OLED screen, enhanced audio, 64GB storage, perfect for gaming on the go.',
-                'category_id' => $getCategoryId( 'Gaming & Consoles'),
-                'purchase_price' => 280.00,
-                'selling_price' => 349.99,
-                'stock' => 22,
-                'unit' => 'pcs',
-                'SKU' => 'NIN-SWT-OLD-042'
-            ],
-            
-            // Jewelry & Watches
-            [
-                'name' => 'Cartier Love Bracelet',
-                'description' => '18k yellow gold bracelet, iconic screw design, 17cm size, luxury jewelry piece.',
-                'category_id' => $getCategoryId( 'Jewelry & Watches'),
-                'purchase_price' => 6500.00,
-                'selling_price' => 7999.99,
-                'stock' => 5,
-                'unit' => 'pcs',
-                'SKU' => 'CRT-LOV-BRC-043'
-            ],
-            [
-                'name' => 'Apple Watch Series 9',
-                'description' => 'Latest Apple Watch, 45mm GPS, aluminum case, always-on display, health monitoring.',
-                'category_id' => $getCategoryId( 'Jewelry & Watches'),
-                'purchase_price' => 350.00,
-                'selling_price' => 399.99,
-                'stock' => 30,
-                'unit' => 'pcs',
-                'SKU' => 'APP-WCH-S9-044'
-            ],
-            
-            // Garden & Outdoor
-            [
-                'name' => 'Weber Spirit II Gas Grill',
-                'description' => '3-burner gas grill, 529 sq in cooking area, porcelain-enameled grates, perfect for outdoor cooking.',
-                'category_id' => $getCategoryId( 'Garden & Outdoor'),
-                'purchase_price' => 450.00,
-                'selling_price' => 599.99,
-                'stock' => 12,
-                'unit' => 'pcs',
-                'SKU' => 'WBR-SPR-GAS-045'
-            ],
-            [
-                'name' => 'Miracle-Gro Potting Mix',
-                'description' => 'Premium potting soil, 16qt bag, enriched with plant food, perfect for indoor and outdoor plants.',
-                'category_id' => $getCategoryId( 'Garden & Outdoor'),
-                'purchase_price' => 12.00,
-                'selling_price' => 16.99,
-                'stock' => 45,
-                'unit' => 'box',
-                'SKU' => 'MIR-GRO-POT-046'
-            ],
-            
-            // Personal Care
-            [
-                'name' => 'Philips Sonicare Electric Toothbrush',
-                'description' => 'Advanced electric toothbrush, sonic technology, pressure sensor, 2-minute timer.',
-                'category_id' => $getCategoryId( 'Personal Care'),
-                'purchase_price' => 85.00,
-                'selling_price' => 119.99,
-                'stock' => 35,
-                'unit' => 'pcs',
-                'SKU' => 'PHL-SNC-TBR-047'
-            ],
-            [
-                'name' => 'Dyson Supersonic Hair Dryer',
-                'description' => 'Professional hair dryer, intelligent heat control, fast drying, reduces heat damage.',
-                'category_id' => $getCategoryId( 'Personal Care'),
-                'purchase_price' => 350.00,
-                'selling_price' => 429.99,
-                'stock' => 20,
-                'unit' => 'pcs',
-                'SKU' => 'DYS-SUP-HDR-048'
-            ],
-            
-            // Snacks & Candy
-            [
-                'name' => 'Lindt Lindor Truffles',
-                'description' => 'Premium chocolate truffles, assorted flavors, 60-count box, smooth and creamy center.',
-                'category_id' => $getCategoryId( 'Snacks & Candy'),
-                'purchase_price' => 18.00,
-                'selling_price' => 24.99,
-                'stock' => 55,
-                'unit' => 'box',
-                'SKU' => 'LND-LIN-TRF-049'
-            ],
-            [
-                'name' => 'Pringles Original Chips',
-                'description' => 'Classic potato chips, original flavor, stackable design, 5.2oz can, perfect snack.',
-                'category_id' => $getCategoryId( 'Snacks & Candy'),
+                'name' => 'Ballpoint Pen - Blue (Pack of 10)',
+                'description' => 'Smooth writing ballpoint pens, blue ink, retractable design, pack of 10 pens. Perfect for everyday writing and school work.',
+                'category_id' => $getCategoryId('School Supply'),
                 'purchase_price' => 2.50,
+                'selling_price' => 4.99,
+                'stock' => 150,
+                'unit' => 'pack',
+                'SKU' => 'SCH-BLP-PEN-001'
+            ],
+            [
+                'name' => 'Ballpoint Pen - Black (Pack of 10)',
+                'description' => 'Smooth writing ballpoint pens, black ink, retractable design, pack of 10 pens. Essential for school and office use.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.50,
+                'selling_price' => 4.99,
+                'stock' => 150,
+                'unit' => 'pack',
+                'SKU' => 'SCH-BLP-BLK-002'
+            ],
+            [
+                'name' => 'Red Pen (Pack of 5)',
+                'description' => 'Fine point red pens for corrections and grading, pack of 5 pens.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 120,
+                'unit' => 'pack',
+                'SKU' => 'SCH-RED-PEN-003'
+            ],
+            [
+                'name' => 'Pencil HB #2 (Pack of 12)',
+                'description' => 'Standard HB #2 pencils, pre-sharpened, pack of 12. Ideal for tests and everyday writing.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.20,
+                'selling_price' => 2.49,
+                'stock' => 200,
+                'unit' => 'pack',
+                'SKU' => 'SCH-PCL-HB-004'
+            ],
+            [
+                'name' => 'Mechanical Pencil 0.7mm',
+                'description' => 'Durable mechanical pencil with 0.7mm lead, includes eraser and extra leads. Perfect for precise writing.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.80,
                 'selling_price' => 3.99,
                 'stock' => 100,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-MCH-PCL-005'
+            ],
+            
+            // Paper & Notebooks
+            [
+                'name' => 'Spiral Notebook - Wide Ruled (70 sheets)',
+                'description' => 'Single subject spiral notebook, wide ruled, 70 sheets, 8.5 x 11 inches. Durable cover.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 180,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-SPR-WR-006'
+            ],
+            [
+                'name' => 'Spiral Notebook - College Ruled (70 sheets)',
+                'description' => 'Single subject spiral notebook, college ruled, 70 sheets, 8.5 x 11 inches. Perfect for detailed notes.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 180,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-SPR-CR-007'
+            ],
+            [
+                'name' => 'Composition Notebook (100 sheets)',
+                'description' => 'Marbled composition notebook, 100 sheets, sewn binding, durable cover. Classic school notebook.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.00,
+                'selling_price' => 3.99,
+                'stock' => 150,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-COMP-NB-008'
+            ],
+            [
+                'name' => 'Lined Paper (Pack of 100 sheets)',
+                'description' => 'Wide ruled lined paper, 100 sheets per pack, 8.5 x 11 inches. Loose leaf paper for binders.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.80,
+                'selling_price' => 3.49,
+                'stock' => 200,
+                'unit' => 'pack',
+                'SKU' => 'SCH-LIN-PPR-009'
+            ],
+            [
+                'name' => 'Graph Paper (Pack of 50 sheets)',
+                'description' => '1/4 inch grid graph paper, 50 sheets per pack, perfect for math and science classes.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 120,
+                'unit' => 'pack',
+                'SKU' => 'SCH-GRF-PPR-010'
+            ],
+            
+            // Folders & Organizers
+            [
+                'name' => 'Pocket Folder with Prongs (2-pocket)',
+                'description' => 'Two-pocket folder with three-hole prongs, assorted colors. Keep papers organized.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.80,
+                'selling_price' => 1.99,
+                'stock' => 250,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-FLD-2PK-011'
+            ],
+            [
+                'name' => '3-Ring Binder (1 inch)',
+                'description' => 'Durable 3-ring binder, 1 inch capacity, clear view cover with pockets. Available in various colors.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.50,
+                'selling_price' => 4.99,
+                'stock' => 150,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-BND-1IN-012'
+            ],
+            [
+                'name' => '3-Ring Binder (2 inch)',
+                'description' => 'Heavy-duty 3-ring binder, 2 inch capacity, D-ring design. Perfect for multiple subjects.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 3.50,
+                'selling_price' => 6.99,
+                'stock' => 100,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-BND-2IN-013'
+            ],
+            
+            // Erasers & Correction Supplies
+            [
+                'name' => 'Pink Eraser (Pack of 4)',
+                'description' => 'Soft pink erasers, pack of 4. Clean erasing without smudging.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.80,
+                'selling_price' => 1.49,
+                'stock' => 200,
+                'unit' => 'pack',
+                'SKU' => 'SCH-ERS-PNK-014'
+            ],
+            [
+                'name' => 'Correction Tape',
+                'description' => 'White correction tape, dry and non-smearing, easy to use. Perfect for neat corrections.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.20,
+                'selling_price' => 2.49,
+                'stock' => 120,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-COR-TAP-015'
+            ],
+            
+            // Rulers & Measuring Tools
+            [
+                'name' => '12-Inch Ruler (Wooden)',
+                'description' => 'Standard 12-inch wooden ruler with both inch and centimeter markings. Durable and accurate.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.60,
+                'selling_price' => 1.49,
+                'stock' => 180,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-RUL-12-016'
+            ],
+            [
+                'name' => '6-Inch Ruler (Plastic)',
+                'description' => 'Compact 6-inch plastic ruler, clear design, inch and metric measurements. Perfect for pencil cases.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.40,
+                'selling_price' => 0.99,
+                'stock' => 200,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-RUL-6-017'
+            ],
+            [
+                'name' => 'Protractor (180 degrees)',
+                'description' => 'Semi-circle protractor, 180 degrees, clear plastic, degree markings. Essential for geometry class.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.80,
+                'selling_price' => 1.99,
+                'stock' => 150,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-PRT-180-018'
+            ],
+            
+            // Highlighters & Markers
+            [
+                'name' => 'Highlighter Set (4 colors)',
+                'description' => 'Chisel-tip highlighters, 4 assorted colors (yellow, pink, green, blue). Bright, non-bleeding ink.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.00,
+                'selling_price' => 3.99,
+                'stock' => 150,
+                'unit' => 'set',
+                'SKU' => 'SCH-HLT-4CL-019'
+            ],
+            [
+                'name' => 'Yellow Highlighter (Pack of 3)',
+                'description' => 'Classic yellow highlighters, chisel tip, pack of 3. Perfect for marking important text.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 180,
+                'unit' => 'pack',
+                'SKU' => 'SCH-HLT-YEL-020'
+            ],
+            [
+                'name' => 'Washable Markers (8 colors)',
+                'description' => 'Broad tip washable markers, 8 vibrant colors, safe and non-toxic. Great for school projects.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 3.00,
+                'selling_price' => 5.99,
+                'stock' => 120,
+                'unit' => 'set',
+                'SKU' => 'SCH-MRK-8CL-021'
+            ],
+            
+            // Scissors & Cutting Tools
+            [
+                'name' => 'School Scissors (5 inch)',
+                'description' => 'Safety scissors with rounded tips, 5 inch blades, comfortable handles. Safe for children.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 150,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-SCS-5IN-022'
+            ],
+            [
+                'name' => 'Colored Pencils (12 pack)',
+                'description' => 'Vibrant colored pencils, 12 assorted colors, smooth coloring. Perfect for art projects and assignments.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.50,
+                'selling_price' => 4.99,
+                'stock' => 130,
+                'unit' => 'set',
+                'SKU' => 'SCH-COL-PCL-023'
+            ],
+            [
+                'name' => 'Crayons (24 pack)',
+                'description' => 'Classic crayons, 24 colors, non-toxic and washable. Essential for elementary school.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.00,
+                'selling_price' => 3.99,
+                'stock' => 140,
                 'unit' => 'box',
-                'SKU' => 'PRN-ORG-CHP-050'
+                'SKU' => 'SCH-CRY-24-024'
+            ],
+            
+            // Glue & Adhesives
+            [
+                'name' => 'Elmer\'s White School Glue (4oz)',
+                'description' => 'Washable white school glue, 4oz bottle, safe and non-toxic. Perfect for art and crafts.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.80,
+                'selling_price' => 1.99,
+                'stock' => 200,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-GLU-4OZ-025'
+            ],
+            [
+                'name' => 'Glue Sticks (4 pack)',
+                'description' => 'Washable glue sticks, 4 pack, smooth application, no mess. Convenient for school projects.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.20,
+                'selling_price' => 2.49,
+                'stock' => 180,
+                'unit' => 'pack',
+                'SKU' => 'SCH-GLS-STK-026'
+            ],
+            
+            // Index Cards & Sticky Notes
+            [
+                'name' => 'Index Cards (3x5 inches, Pack of 100)',
+                'description' => 'Lined index cards, 3x5 inches, 100 cards per pack. Perfect for flashcards and study notes.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.00,
+                'selling_price' => 1.99,
+                'stock' => 200,
+                'unit' => 'pack',
+                'SKU' => 'SCH-IDX-3X5-027'
+            ],
+            [
+                'name' => 'Sticky Notes (3x3 inches, Pack of 5)',
+                'description' => 'Yellow sticky notes, 3x3 inches, 5 pads per pack. Great for reminders and bookmarks.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 150,
+                'unit' => 'pack',
+                'SKU' => 'SCH-STK-NTS-028'
+            ],
+            
+            // Backpacks & Bags
+            [
+                'name' => 'Student Backpack (Medium)',
+                'description' => 'Durable student backpack with padded straps, multiple compartments, water-resistant material. Various colors available.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 15.00,
+                'selling_price' => 24.99,
+                'stock' => 80,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-BPK-MED-029'
+            ],
+            [
+                'name' => 'Pencil Case (Zipper)',
+                'description' => 'Durable zipper pencil case with multiple compartments, fits pens, pencils, and small supplies.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.00,
+                'selling_price' => 3.99,
+                'stock' => 180,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-PCL-CSE-030'
+            ],
+            
+            // Calculators
+            [
+                'name' => 'Basic Calculator',
+                'description' => '8-digit display calculator, basic math functions, solar powered with battery backup.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 3.00,
+                'selling_price' => 5.99,
+                'stock' => 120,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-CAL-BAS-031'
+            ],
+            [
+                'name' => 'Scientific Calculator',
+                'description' => 'Advanced scientific calculator with 300+ functions, LCD display, perfect for high school math and science.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 12.00,
+                'selling_price' => 19.99,
+                'stock' => 60,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-CAL-SCI-032'
+            ],
+            
+            // Art Supplies
+            [
+                'name' => 'Watercolor Paint Set (12 colors)',
+                'description' => 'Non-toxic watercolor paint set, 12 vibrant colors, includes brush. Perfect for art class projects.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 4.50,
+                'selling_price' => 7.99,
+                'stock' => 100,
+                'unit' => 'set',
+                'SKU' => 'SCH-WTR-12-033'
+            ],
+            [
+                'name' => 'Paint Brushes Set (5 brushes)',
+                'description' => 'Assorted paint brushes, 5 different sizes, synthetic bristles. Versatile for various painting techniques.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 2.50,
+                'selling_price' => 4.99,
+                'stock' => 110,
+                'unit' => 'set',
+                'SKU' => 'SCH-BRS-5-034'
+            ],
+            
+            // Additional Supplies
+            [
+                'name' => 'Stapler',
+                'description' => 'Compact desktop stapler, holds up to 50 staples, durable metal construction.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 3.50,
+                'selling_price' => 5.99,
+                'stock' => 100,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-STP-001-035'
+            ],
+            [
+                'name' => 'Staples (1000 count)',
+                'description' => 'Standard staples for staplers, 1000 count box, size 26/6.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.00,
+                'selling_price' => 1.99,
+                'stock' => 200,
+                'unit' => 'box',
+                'SKU' => 'SCH-STP-1000-036'
+            ],
+            [
+                'name' => 'Paper Clips (100 count)',
+                'description' => 'Jumbo paper clips, 100 count box, assorted colors. Great for organizing papers.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.80,
+                'selling_price' => 1.49,
+                'stock' => 250,
+                'unit' => 'box',
+                'SKU' => 'SCH-PPR-CLP-037'
+            ],
+            [
+                'name' => 'Binder Dividers (5 tabs)',
+                'description' => 'Set of 5 binder dividers with tabs, clear pockets, numbered tabs. Keep subjects organized.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 1.50,
+                'selling_price' => 2.99,
+                'stock' => 150,
+                'unit' => 'set',
+                'SKU' => 'SCH-DIV-5-038'
+            ],
+            [
+                'name' => 'Pencil Sharpener (Manual)',
+                'description' => 'Compact manual pencil sharpener with cover, dual hole design for standard and jumbo pencils.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 0.60,
+                'selling_price' => 1.49,
+                'stock' => 180,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-SHR-MAN-039'
+            ],
+            [
+                'name' => 'Pencil Sharpener (Electric)',
+                'description' => 'Electric pencil sharpener, auto-stop feature, large shavings receptacle. Fast and efficient.',
+                'category_id' => $getCategoryId('School Supply'),
+                'purchase_price' => 8.00,
+                'selling_price' => 12.99,
+                'stock' => 50,
+                'unit' => 'pcs',
+                'SKU' => 'SCH-SHR-ELC-040'
             ]
         ];
 

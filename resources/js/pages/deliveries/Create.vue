@@ -21,6 +21,7 @@ interface Customer {
     name: string;
     company_name?: string;
     address?: string;
+    phone?: string;
     location?: { lat: number; lng: number } | null;
 }
 
@@ -70,6 +71,11 @@ function submit() {
         return;
     }
 
+    // Normalize phone number before validation
+    if (form.contact_phone) {
+        form.contact_phone = normalizePhoneNumber(form.contact_phone);
+    }
+    
     // Validate Philippine mobile format on the client-side (10 digits after +63)
     const phMobileRegex = /^\+63\d{10}$/;
     if (form.contact_phone && !phMobileRegex.test(form.contact_phone)) {
@@ -159,6 +165,33 @@ function formatCurrency(amount: number) {
 // Set minimum date to today
 const today = new Date().toISOString().split('T')[0];
 
+// Helper function to normalize phone number to +63XXXXXXXXXX format
+function normalizePhoneNumber(phone: string | null | undefined): string {
+    if (!phone) return '';
+    
+    // Remove all non-digit characters
+    let digits = phone.replace(/[^0-9]/g, '');
+    
+    // Handle different formats:
+    // - If starts with 63, remove it (country code)
+    // - If starts with 0, remove it (local format)
+    if (digits.startsWith('63')) {
+        digits = digits.substring(2);
+    } else if (digits.startsWith('0')) {
+        digits = digits.substring(1);
+    }
+    
+    // Ensure we have exactly 10 digits
+    digits = digits.substring(0, 10);
+    
+    // Return in +63XXXXXXXXXX format if we have 10 digits
+    if (digits.length === 10) {
+        return '+63' + digits;
+    }
+    
+    return phone; // Return original if can't normalize
+}
+
 // Get selected customer location
 const selectedCustomerLocation = computed(() => {
     if (!form.customer_id) return null;
@@ -217,17 +250,47 @@ onMounted(() => {
                 if (customer.name && !form.contact_person) {
                     form.contact_person = customer.name;
                 }
+                if (customer.phone && !form.contact_phone) {
+                    form.contact_phone = normalizePhoneNumber(customer.phone);
+                }
             }
         }
     }
 });
 
-// Auto-fill delivery address when customer is selected
+// Auto-fill delivery address and contact info when customer is selected
 watch(() => form.customer_id, (newCustomerId) => {
     if (newCustomerId) {
         const customer = props.customers.find(c => c.id === newCustomerId);
-        if (customer?.address && !form.delivery_address) {
-            form.delivery_address = customer.address;
+        if (customer) {
+            if (customer.address && !form.delivery_address) {
+                form.delivery_address = customer.address;
+            }
+            if (customer.name && !form.contact_person) {
+                form.contact_person = customer.name;
+            }
+            if (customer.phone && !form.contact_phone) {
+                form.contact_phone = normalizePhoneNumber(customer.phone);
+            }
+        }
+    }
+});
+
+// Auto-fill customer details when invoice is selected
+watch(() => form.invoice_id, (newInvoiceId) => {
+    if (newInvoiceId) {
+        const invoice = props.invoices.find(inv => inv.id === newInvoiceId);
+        if (invoice?.customer) {
+            form.customer_id = invoice.customer_id;
+            if (invoice.customer.address && !form.delivery_address) {
+                form.delivery_address = invoice.customer.address;
+            }
+            if (invoice.customer.name && !form.contact_person) {
+                form.contact_person = invoice.customer.name;
+            }
+            if (invoice.customer.phone && !form.contact_phone) {
+                form.contact_phone = normalizePhoneNumber(invoice.customer.phone);
+            }
         }
     }
 });

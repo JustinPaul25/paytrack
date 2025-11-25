@@ -234,7 +234,7 @@ class InvoiceController extends Controller
                 ];
             });
         // Get customers for delivery form
-        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location']);
+        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location', 'phone']);
         
         // Get deliveries for this invoice
         $deliveries = $invoice->deliveries()->orderByDesc('created_at')->get()->map(function ($d) {
