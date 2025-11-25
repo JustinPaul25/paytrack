@@ -252,12 +252,20 @@ class InvoiceController extends Controller
             ];
         });
         
+        // Calculate net balance (total - refunds) for display
+        $netBalance = $invoice->net_balance;
+        $totalRefunded = $invoice->refunds()
+            ->whereIn('status', ['approved', 'processed', 'completed'])
+            ->sum('refund_amount') / 100; // Convert from cents
+        
         return inertia('invoices/Show', [
             'invoice' => $invoice,
             'refunds' => $refunds,
             'refundRequests' => $refundRequests,
             'deliveries' => $deliveries,
             'customers' => $customers,
+            'netBalance' => $netBalance,
+            'totalRefunded' => $totalRefunded,
         ]);
     }
 

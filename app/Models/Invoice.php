@@ -140,5 +140,30 @@ class Invoice extends Model
     {
         $this->attributes['vat_amount'] = (int) round($value * 100);
     }
+
+    /**
+     * Calculate net amount owed after refunds
+     * For credit invoices, this is the actual amount the customer owes
+     * Only counts approved, processed, or completed refunds
+     */
+    public function getNetBalanceAttribute(): float
+    {
+        $totalRefunded = $this->refunds()
+            ->whereIn('status', ['approved', 'processed', 'completed'])
+            ->sum('refund_amount');
+        
+        // Convert from cents to currency
+        $totalRefunded = $totalRefunded / 100;
+        
+        return max(0, $this->total_amount - $totalRefunded);
+    }
+
+    /**
+     * Check if invoice is fully settled (including refunds)
+     */
+    public function isFullySettled(): bool
+    {
+        return $this->payment_status === 'paid' || $this->net_balance <= 0;
+    }
     
 }

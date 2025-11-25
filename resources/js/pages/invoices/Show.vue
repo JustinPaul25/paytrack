@@ -94,6 +94,8 @@ const props = defineProps<{
     refundRequests?: { id:number; tracking_number:string; product_name?:string; quantity:number; status:string; created_at:string; media_link?:string; review_notes?:string }[];
     deliveries?: Delivery[];
     customers?: Customer[];
+    netBalance?: number;
+    totalRefunded?: number;
 }>();
 
 const page = usePage();
@@ -110,6 +112,27 @@ const canSendReminder = computed(() => {
            props.invoice.payment_status !== 'paid';
 });
 const isSendingReminder = ref(false);
+
+// Calculate net balance if not provided
+const netBalance = computed(() => {
+    return props.netBalance !== undefined ? props.netBalance : props.invoice.total_amount;
+});
+
+const totalRefunded = computed(() => {
+    return props.totalRefunded !== undefined ? props.totalRefunded : 0;
+});
+
+const hasRefunds = computed(() => {
+    return totalRefunded.value > 0;
+});
+
+const netBalanceDiffers = computed(() => {
+    return hasRefunds.value && Math.abs(netBalance.value - props.invoice.total_amount) > 0.01;
+});
+
+const isCreditInvoice = computed(() => {
+    return props.invoice.payment_method === 'credit';
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -268,6 +291,29 @@ watch(() => (page.props as any).flash, (flash) => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head :title="props.invoice.reference_number" />
         
+        <!-- Net Balance Warning Banner -->
+        <div v-if="netBalanceDiffers && isCreditInvoice" class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-md">
+            <div class="flex items-start">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1">
+                    <h3 class="text-sm font-medium text-blue-800">Credit Invoice with Refunds</h3>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>
+                            Original invoice amount: <strong>{{ formatCurrency(props.invoice.total_amount) }}</strong>
+                            <br>
+                            Total refunded: <strong>{{ formatCurrency(totalRefunded) }}</strong>
+                            <br>
+                            <span class="font-semibold">Amount Due: {{ formatCurrency(netBalance) }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="flex items-center justify-between my-6">
             <h1 class="text-2xl font-bold">{{ props.invoice.reference_number }}</h1>
             <div class="flex gap-2">
@@ -337,6 +383,13 @@ watch(() => (page.props as any).flash, (flash) => {
                                     {{ props.invoice.payment_status }}
                                 </span>
                             </div>
+                            <div v-if="hasRefunds && isCreditInvoice">
+                                <label class="text-sm font-medium text-gray-500">Amount Due</label>
+                                <p class="font-semibold text-lg" :class="netBalance <= 0 ? 'text-green-600' : 'text-orange-600'">
+                                    {{ formatCurrency(netBalance) }}
+                                    <span v-if="netBalance <= 0" class="text-xs font-normal text-green-600 ml-2">(Fully Settled)</span>
+                                </p>
+                            </div>
                             <div v-if="props.invoice.due_date">
                                 <label class="text-sm font-medium text-gray-500">Due Date</label>
                                 <p>{{ formatDateOnly(props.invoice.due_date) }}</p>
@@ -395,6 +448,29 @@ watch(() => (page.props as any).flash, (flash) => {
                                         <td colspan="3" class="px-4 py-2 text-right font-bold text-lg">Total Amount:</td>
                                         <td class="px-4 py-2 font-bold text-lg">{{ formatCurrency(props.invoice.total_amount) }}</td>
                                     </tr>
+                                    <tr v-if="hasRefunds" class="border-t bg-yellow-50">
+                                        <td colspan="3" class="px-4 py-2 text-right font-medium text-orange-700">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                                </svg>
+                                                Total Refunded:
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-2 font-medium text-orange-700">-{{ formatCurrency(totalRefunded) }}</td>
+                                    </tr>
+                                    <tr v-if="hasRefunds" class="border-t-2 border-blue-500 bg-blue-50">
+                                        <td colspan="3" class="px-4 py-2 text-right font-bold text-lg text-blue-700">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span v-if="isCreditInvoice">Amount Due:</span>
+                                                <span v-else>Net Balance:</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-2 font-bold text-lg text-blue-700">{{ formatCurrency(netBalance) }}</td>
+                                    </tr>
                                 </tfoot>
                             </table>
                         </div>
@@ -404,6 +480,37 @@ watch(() => (page.props as any).flash, (flash) => {
 
             <!-- Sidebar -->
             <div class="space-y-6">
+                <!-- Net Balance Summary Card (for credit invoices with refunds) -->
+                <Card v-if="hasRefunds && isCreditInvoice" class="border-blue-200 bg-blue-50">
+                    <CardHeader>
+                        <CardTitle class="text-blue-800">Payment Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Original Amount:</span>
+                            <span class="font-medium">{{ formatCurrency(props.invoice.total_amount) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Total Refunded:</span>
+                            <span class="font-medium text-orange-600">-{{ formatCurrency(totalRefunded) }}</span>
+                        </div>
+                        <div class="border-t pt-3 mt-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm font-semibold text-blue-800">Amount Due:</span>
+                                <span class="text-lg font-bold" :class="netBalance <= 0 ? 'text-green-600' : 'text-blue-700'">
+                                    {{ formatCurrency(netBalance) }}
+                                </span>
+                            </div>
+                            <div v-if="netBalance <= 0" class="mt-2 text-xs text-green-600 flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Fully settled
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Deliveries Card -->
                 <Card v-if="props.deliveries && props.deliveries.length">
                     <CardHeader>

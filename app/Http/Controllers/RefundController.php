@@ -99,6 +99,43 @@ class RefundController extends Controller
             'completed_at' => now(),
             'notes' => $notes ?? $refund->notes,
         ]);
+
+        // For credit invoices: Check if refund fully settles the invoice
+        $invoice = $refund->invoice;
+        $invoiceAutoSettled = false;
+        if ($invoice && $invoice->payment_method === 'credit' && $invoice->payment_status === 'pending') {
+            // Calculate net balance after this refund completion
+            $netBalance = $invoice->net_balance;
+            
+            // If net balance is zero or negative, automatically mark as paid
+            if ($netBalance <= 0) {
+                $invoice->update(['payment_status' => 'paid']);
+                $invoiceAutoSettled = true;
+                
+                // Create notification for customer if invoice was auto-settled
+                $customerUser = \App\Models\User::where('email', $invoice->customer?->email)->first();
+                if ($customerUser) {
+                    $notification = \App\Models\Notification::create([
+                        'user_id' => $customerUser->id,
+                        'type' => 'invoice.auto_settled',
+                        'notifiable_id' => $invoice->id,
+                        'notifiable_type' => \App\Models\Invoice::class,
+                        'title' => 'Invoice Automatically Settled',
+                        'message' => "Invoice {$invoice->reference_number} has been automatically marked as paid. The refund amount fully covers the invoice balance.",
+                        'action_url' => "/invoices/{$invoice->id}",
+                        'read' => false,
+                        'data' => [
+                            'invoice_id' => $invoice->id,
+                            'invoice_reference' => $invoice->reference_number,
+                            'refund_id' => $refund->id,
+                        ],
+                    ]);
+                    // Broadcast notification
+                    broadcast(new \App\Events\NotificationCreated($notification));
+                }
+            }
+        }
+
         return redirect()->back();
     }
 

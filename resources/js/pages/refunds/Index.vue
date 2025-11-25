@@ -9,20 +9,49 @@ import { Button } from '@/components/ui/button';
 import Swal from 'sweetalert2';
 import { ref } from 'vue';
 
+function formatCurrency(amount: number) {
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2
+    }).format(amount);
+}
+
 interface RefundRequest {
     id: number;
     tracking_number: string;
     customer_name: string;
     email?: string;
+    phone?: string;
     invoice_reference?: string;
     invoice_id?: number;
+    invoice_item_id?: number;
     product_id?: number;
+    product_name?: string;
     quantity: number;
     amount_requested?: number;
     reason?: string;
+    notes?: string;
     media_link?: string;
     status: string;
+    review_notes?: string;
+    converted_refund_id?: number;
     created_at: string;
+    updated_at: string;
+    invoice?: {
+        id: number;
+        reference_number: string;
+        total_amount: number;
+        status: string;
+        payment_status?: string;
+        created_at: string;
+    };
+    product?: {
+        id: number;
+        name: string;
+        selling_price: number;
+        SKU?: string;
+    };
 }
 
 interface Paginated<T> {
@@ -195,37 +224,132 @@ function reject(id: number) {
         </Card>
 
         <!-- Details Modal -->
-        <div v-if="showDetails" class="fixed inset-0 z-50 flex items-center justify-center">
+        <div v-if="showDetails" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-black/50" @click="showDetails = null"></div>
-            <div class="relative bg-background rounded-lg shadow-lg w-[90%] max-w-lg p-6">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-lg font-semibold">Refund Request Details</h3>
-                    <button class="text-sm text-gray-500" @click="showDetails = null">Close</button>
+            <div class="relative bg-background rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+                <div class="flex items-center justify-between mb-6 border-b pb-4">
+                    <h3 class="text-xl font-semibold">Refund Request Details</h3>
+                    <button class="text-sm text-gray-500 hover:text-gray-700" @click="showDetails = null">Close</button>
                 </div>
-                <div class="space-y-3">
-                    <div>
-                        <div class="text-xs text-gray-500">Tracking</div>
-                        <div class="font-medium">{{ showDetails.tracking_number }}</div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column -->
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Tracking Number</div>
+                            <div class="font-semibold text-lg">{{ showDetails.tracking_number }}</div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Status</div>
+                            <span class="px-3 py-1 rounded-full text-sm font-medium inline-block"
+                                :class="{
+                                    'bg-yellow-100 text-yellow-800': showDetails.status === 'pending',
+                                    'bg-green-100 text-green-800': showDetails.status === 'approved' || showDetails.status === 'converted',
+                                    'bg-red-100 text-red-800': showDetails.status === 'rejected',
+                                }"
+                            >
+                                {{ showDetails.status }}
+                            </span>
+                        </div>
+
+                        <div v-if="showDetails.invoice">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Invoice</div>
+                            <div>
+                                <Link v-if="showDetails.invoice_id" :href="route('invoices.show', showDetails.invoice_id)" class="text-blue-600 hover:underline font-medium">
+                                    {{ showDetails.invoice.reference_number || showDetails.invoice_reference || `#${showDetails.invoice_id}` }}
+                                </Link>
+                                <span v-else class="font-medium">{{ showDetails.invoice_reference || 'N/A' }}</span>
+                            </div>
+                            <div v-if="showDetails.invoice" class="mt-1 text-sm text-gray-600">
+                                <div>Amount: {{ formatCurrency(showDetails.invoice.total_amount) }}</div>
+                                <div>Status: {{ showDetails.invoice.status }}</div>
+                                <div v-if="showDetails.invoice.payment_status">Payment: {{ showDetails.invoice.payment_status }}</div>
+                            </div>
+                        </div>
+                        <div v-else-if="showDetails.invoice_reference">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Invoice Reference</div>
+                            <div class="font-medium">{{ showDetails.invoice_reference }}</div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Customer Information</div>
+                            <div class="space-y-1">
+                                <div class="font-medium">{{ showDetails.customer_name }}</div>
+                                <div v-if="showDetails.email" class="text-sm text-gray-600">{{ showDetails.email }}</div>
+                                <div v-if="showDetails.phone" class="text-sm text-gray-600">{{ showDetails.phone }}</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Submitted</div>
+                            <div class="text-sm">{{ new Date(showDetails.created_at).toLocaleString() }}</div>
+                            <div v-if="showDetails.updated_at && showDetails.updated_at !== showDetails.created_at" class="text-xs text-gray-500 mt-1">
+                                Last updated: {{ new Date(showDetails.updated_at).toLocaleString() }}
+                            </div>
+                        </div>
                     </div>
-                    <div v-if="showDetails.product_name">
-                        <div class="text-xs text-gray-500">Product</div>
-                        <div>{{ showDetails.product_name }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs text-gray-500">Quantity</div>
-                        <div>{{ showDetails.quantity }}</div>
-                    </div>
-                    <div>
-                        <div class="text-xs text-gray-500">Description</div>
-                        <div class="whitespace-pre-wrap">{{ (showDetails as any).reason || '—' }}</div>
-                    </div>
-                    <div v-if="showDetails.media_link">
-                        <div class="text-xs text-gray-500">Media Link</div>
-                        <a :href="showDetails.media_link" target="_blank" class="text-blue-500 underline break-all">{{ showDetails.media_link }}</a>
+
+                    <!-- Right Column -->
+                    <div class="space-y-4">
+                        <div v-if="showDetails.product || showDetails.product_name">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Product</div>
+                            <div>
+                                <div class="font-medium">{{ showDetails.product?.name || showDetails.product_name || 'N/A' }}</div>
+                                <div v-if="showDetails.product" class="mt-1 text-sm text-gray-600 space-y-1">
+                                    <div v-if="showDetails.product.SKU">SKU: {{ showDetails.product.SKU }}</div>
+                                    <div>Price: {{ formatCurrency(showDetails.product.selling_price) }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Quantity</div>
+                            <div class="font-medium text-lg">{{ showDetails.quantity }}</div>
+                        </div>
+
+                        <div v-if="showDetails.amount_requested">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount Requested</div>
+                            <div class="font-medium text-lg text-green-600">{{ formatCurrency(showDetails.amount_requested) }}</div>
+                        </div>
+
+                        <div v-if="showDetails.reason">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Reason</div>
+                            <div class="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded-md border">{{ showDetails.reason }}</div>
+                        </div>
+
+                        <div v-if="showDetails.notes">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Additional Notes</div>
+                            <div class="whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded-md border">{{ showDetails.notes }}</div>
+                        </div>
+
+                        <div v-if="showDetails.review_notes">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Review Notes</div>
+                            <div class="whitespace-pre-wrap text-sm bg-blue-50 p-3 rounded-md border border-blue-200">{{ showDetails.review_notes }}</div>
+                        </div>
+
+                        <div v-if="showDetails.media_link">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Media / Evidence</div>
+                            <a :href="showDetails.media_link" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline break-all text-sm flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                </svg>
+                                View Media
+                            </a>
+                        </div>
+
+                        <div v-if="showDetails.converted_refund_id">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Converted to Refund</div>
+                            <div class="text-sm font-medium text-green-600">Refund ID: #{{ showDetails.converted_refund_id }}</div>
+                        </div>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end">
-                    <Button variant="default" @click="showDetails = null">Done</Button>
+
+                <div class="mt-6 pt-4 border-t flex justify-end gap-2">
+                    <Button variant="outline" @click="showDetails = null">Close</Button>
+                    <Link v-if="showDetails.invoice_id" :href="route('invoices.show', showDetails.invoice_id)">
+                        <Button variant="default">View Invoice</Button>
+                    </Link>
                 </div>
             </div>
         </div>

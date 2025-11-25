@@ -219,6 +219,20 @@ class RefundRequestController extends Controller
             'converted_refund_id' => $refund->id,
         ]);
 
+        // For credit invoices: Check if refund fully settles the invoice
+        $invoice = $refund->invoice;
+        $invoiceAutoSettled = false;
+        if ($invoice && $invoice->payment_method === 'credit' && $invoice->payment_status === 'pending') {
+            // Calculate net balance after this refund
+            $netBalance = $invoice->net_balance;
+            
+            // If net balance is zero or negative, automatically mark as paid
+            if ($netBalance <= 0) {
+                $invoice->update(['payment_status' => 'paid']);
+                $invoiceAutoSettled = true;
+            }
+        }
+
         // Email customer (if available)
         if (!empty($refundRequest->email)) {
             try {
@@ -233,13 +247,18 @@ class RefundRequestController extends Controller
         // Create notification for customer
         $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();
         if ($customerUser) {
+            $message = "Your refund request {$refundRequest->tracking_number} for invoice {$refundRequest->invoice_reference} has been approved.";
+            if ($invoiceAutoSettled) {
+                $message .= " Your invoice has been automatically marked as paid as the refund fully settles the amount due.";
+            }
+            
             $notification = \App\Models\Notification::create([
                 'user_id' => $customerUser->id,
                 'type' => 'refund.request.approved',
                 'notifiable_id' => $refundRequest->id,
                 'notifiable_type' => \App\Models\RefundRequest::class,
-                'title' => 'Refund Request Approved',
-                'message' => "Your refund request {$refundRequest->tracking_number} for invoice {$refundRequest->invoice_reference} has been approved.",
+                'title' => 'Refund Request Approved' . ($invoiceAutoSettled ? ' - Invoice Settled' : ''),
+                'message' => $message,
                 'action_url' => "/invoices/{$refundRequest->invoice_id}",
                 'read' => false,
                 'data' => [
@@ -247,6 +266,7 @@ class RefundRequestController extends Controller
                     'tracking_number' => $refundRequest->tracking_number,
                     'invoice_reference' => $refundRequest->invoice_reference,
                     'invoice_id' => $refundRequest->invoice_id,
+                    'invoice_auto_settled' => $invoiceAutoSettled,
                 ],
             ]);
             // Broadcast notification
