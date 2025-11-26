@@ -8,6 +8,7 @@ use App\Models\InvoiceItem;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\User;
+use Carbon\Carbon;
 
 class InvoiceSeeder extends Seeder
 {
@@ -29,6 +30,15 @@ class InvoiceSeeder extends Seeder
         // Prefer a Staff/Admin user as the creator of seeded invoices
         $creator = $users->first();
 
+        // Define date range: September, October, November (current year)
+        // Ensure dates don't exceed today
+        $currentYear = Carbon::now()->year;
+        $today = Carbon::today();
+        $startDate = Carbon::create($currentYear, 9, 1)->startOfDay(); // September 1
+        $maxEndDate = Carbon::create($currentYear, 11, 30)->endOfDay(); // November 30
+        $endDate = $today->copy()->endOfDay()->isBefore($maxEndDate) ? $today->copy()->endOfDay() : $maxEndDate;
+        $daysRange = $startDate->diffInDays($endDate);
+
         foreach ($customers as $customer) {
             // For each customer create three invoices with different statuses
             $statusSets = [
@@ -38,6 +48,14 @@ class InvoiceSeeder extends Seeder
             ];
 
             foreach ($statusSets as $meta) {
+                // Generate a random date within September, October, November (not exceeding today)
+                $randomDays = rand(0, max(0, $daysRange));
+                $invoiceDate = $startDate->copy()->addDays($randomDays);
+                // Ensure the date doesn't exceed today
+                if ($invoiceDate->isAfter($today)) {
+                    $invoiceDate = $today->copy();
+                }
+                $invoiceDate->setTime(rand(8, 17), rand(0, 59), rand(0, 59));
                 // Add 1-3 random products to calculate totals
                 $randomProducts = $products->random(min(3, max(1, rand(1, $products->count()))));
                 $subtotalAmount = 0;
@@ -52,10 +70,10 @@ class InvoiceSeeder extends Seeder
                     $items[] = ['product' => $product, 'quantity' => $quantity, 'price' => $price, 'total' => $total];
                 }
 
-                // VAT (12%)
+                // VAT is already included in product prices, so total = subtotal
                 $vatRate = 12.00;
-                $vatAmount = $subtotalAmount * ($vatRate / 100);
-                $totalAmount = $subtotalAmount + $vatAmount;
+                $vatAmount = 0; // VAT already included in product prices
+                $totalAmount = $subtotalAmount; // Total equals subtotal (VAT included)
 
                 $invoice = Invoice::create([
                     'customer_id' => $customer->id,
@@ -68,6 +86,8 @@ class InvoiceSeeder extends Seeder
                     'vat_amount' => $vatAmount,
                     'vat_rate' => $vatRate,
                     'total_amount' => $totalAmount,
+                    'created_at' => $invoiceDate,
+                    'updated_at' => $invoiceDate,
                 ]);
 
                 foreach ($items as $item) {
@@ -77,6 +97,8 @@ class InvoiceSeeder extends Seeder
                         'quantity' => $item['quantity'],
                         'price' => $item['price'],
                         'total' => $item['total'],
+                        'created_at' => $invoiceDate,
+                        'updated_at' => $invoiceDate,
                     ]);
                 }
             }

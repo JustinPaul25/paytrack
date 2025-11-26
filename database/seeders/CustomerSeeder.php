@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\User;
+use Carbon\Carbon;
 
 class CustomerSeeder extends Seeder
 {
@@ -107,6 +108,15 @@ class CustomerSeeder extends Seeder
             $this->command->warn('No user found. Invoices will not be created. Please run RolesAndUsersSeeder first.');
         }
 
+        // Define date range: September, October, November (current year)
+        // Ensure dates don't exceed today
+        $currentYear = Carbon::now()->year;
+        $today = Carbon::today();
+        $startDate = Carbon::create($currentYear, 9, 1)->startOfDay(); // September 1
+        $maxEndDate = Carbon::create($currentYear, 11, 30)->endOfDay(); // November 30
+        $endDate = $today->copy()->endOfDay()->isBefore($maxEndDate) ? $today->copy()->endOfDay() : $maxEndDate;
+        $daysRange = $startDate->diffInDays($endDate);
+
         foreach ($customers as $customerData) {
             $customer = Customer::create($customerData);
 
@@ -120,6 +130,14 @@ class CustomerSeeder extends Seeder
                 $invoiceCount = rand(2, 3);
                 
                 for ($i = 0; $i < $invoiceCount; $i++) {
+                    // Generate a random date within September, October, November (not exceeding today)
+                    $randomDays = rand(0, max(0, $daysRange));
+                    $invoiceDate = $startDate->copy()->addDays($randomDays);
+                    // Ensure the date doesn't exceed today
+                    if ($invoiceDate->isAfter($today)) {
+                        $invoiceDate = $today->copy();
+                    }
+                    $invoiceDate->setTime(rand(8, 17), rand(0, 59), rand(0, 59));
                     // Select 1-4 random products for this invoice
                     $selectedProducts = $products->random(min(4, max(1, rand(1, $products->count()))));
                     $subtotalAmount = 0;
@@ -138,10 +156,10 @@ class CustomerSeeder extends Seeder
                         ];
                     }
 
-                    // Calculate VAT (12%)
+                    // VAT is already included in product prices, so total = subtotal
                     $vatRate = 12.00;
-                    $vatAmount = $subtotalAmount * ($vatRate / 100);
-                    $totalAmount = $subtotalAmount + $vatAmount;
+                    $vatAmount = 0; // VAT already included in product prices
+                    $totalAmount = $subtotalAmount; // Total equals subtotal (VAT included)
 
                     // Create invoice (mutators will convert dollar values to cents)
                     $invoice = Invoice::create([
@@ -155,6 +173,8 @@ class CustomerSeeder extends Seeder
                         'vat_amount' => $vatAmount,
                         'vat_rate' => $vatRate,
                         'total_amount' => $totalAmount,
+                        'created_at' => $invoiceDate,
+                        'updated_at' => $invoiceDate,
                     ]);
 
                     // Create invoice items (mutators will convert dollar values to cents)
@@ -165,6 +185,8 @@ class CustomerSeeder extends Seeder
                             'quantity' => $item['quantity'],
                             'price' => $item['price'],
                             'total' => $item['total'],
+                            'created_at' => $invoiceDate,
+                            'updated_at' => $invoiceDate,
                         ]);
                     }
                 }

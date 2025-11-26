@@ -21,10 +21,10 @@ class UpdateExistingInvoicesSeeder extends Seeder
                 return $item->quantity * $item->price;
             });
 
-            // Calculate VAT (12%)
+            // VAT is already included in product prices, so total = subtotal
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / 100);
-            $totalAmount = $subtotalAmount + $vatAmount;
+            $vatAmount = 0; // VAT already included in product prices
+            $totalAmount = $subtotalAmount; // Total equals subtotal (VAT included)
 
             // Generate reference number if not exists
             if (empty($invoice->reference_number)) {

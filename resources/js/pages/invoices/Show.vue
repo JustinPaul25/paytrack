@@ -440,9 +440,11 @@ watch(() => (page.props as any).flash, (flash) => {
                                         <td colspan="3" class="px-4 py-2 text-right font-medium">Subtotal:</td>
                                         <td class="px-4 py-2 font-medium">{{ formatCurrency(props.invoice.subtotal_amount) }}</td>
                                     </tr>
-                                    <tr>
-                                        <td colspan="3" class="px-4 py-2 text-right font-medium">VAT ({{ props.invoice.vat_rate }}%):</td>
-                                        <td class="px-4 py-2 font-medium">{{ formatCurrency(props.invoice.vat_amount) }}</td>
+                                    <tr v-if="props.invoice.vat_rate > 0">
+                                        <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-500 italic">
+                                            VAT ({{ props.invoice.vat_rate }}%) included in prices
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-gray-500 italic">—</td>
                                     </tr>
                                     <tr class="border-t">
                                         <td colspan="3" class="px-4 py-2 text-right font-bold text-lg">Total Amount:</td>

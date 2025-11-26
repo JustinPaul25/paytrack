@@ -4,15 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\RefundRequestStoreRequest;
 use App\Events\RefundRequestCreated;
-use App\Mail\RefundRequestSubmitted;
+use App\Events\NotificationCreated;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\RefundRequest;
 use App\Models\Refund;
+use App\Models\Notification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class RefundRequestController extends Controller
@@ -165,9 +165,27 @@ class RefundRequestController extends Controller
 
             $created[] = $refundRequest;
 
-            // Email confirmation to requester if available
-            if (!empty($refundRequest->email)) {
-                Mail::to($refundRequest->email)->queue(new RefundRequestSubmitted($refundRequest));
+            // Create notification for customer when refund request is submitted
+            $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();
+            if ($customerUser) {
+                $notification = Notification::create([
+                    'user_id' => $customerUser->id,
+                    'type' => 'refund.request.submitted',
+                    'notifiable_id' => $refundRequest->id,
+                    'notifiable_type' => RefundRequest::class,
+                    'title' => 'Refund Request Submitted',
+                    'message' => "Your refund request {$refundRequest->tracking_number} for invoice {$refundRequest->invoice_reference} has been submitted and is pending review.",
+                    'action_url' => "/invoices/{$refundRequest->invoice_id}",
+                    'read' => false,
+                    'data' => [
+                        'refund_request_id' => $refundRequest->id,
+                        'tracking_number' => $refundRequest->tracking_number,
+                        'invoice_reference' => $refundRequest->invoice_reference,
+                        'invoice_id' => $refundRequest->invoice_id,
+                    ],
+                ]);
+                // Broadcast notification
+                broadcast(new NotificationCreated($notification));
             }
 
             // Dispatch event for real-time notifications to Admin/Staff
@@ -233,17 +251,6 @@ class RefundRequestController extends Controller
             }
         }
 
-        // Email customer (if available)
-        if (!empty($refundRequest->email)) {
-            try {
-                \Illuminate\Support\Facades\Mail::to($refundRequest->email)->queue(
-                    new \App\Mail\RefundRequestDecision($refundRequest->fresh(), 'approved')
-                );
-            } catch (\Throwable $e) {
-                // ignore mail errors; still proceed
-            }
-        }
-
         // Create notification for customer
         $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();
         if ($customerUser) {
@@ -290,17 +297,6 @@ class RefundRequestController extends Controller
             'status' => 'rejected',
             'review_notes' => $request->get('review_notes'),
         ]);
-
-        // Email customer (if available)
-        if (!empty($refundRequest->email)) {
-            try {
-                \Illuminate\Support\Facades\Mail::to($refundRequest->email)->queue(
-                    new \App\Mail\RefundRequestDecision($refundRequest->fresh(), 'rejected')
-                );
-            } catch (\Throwable $e) {
-                // ignore mail errors
-            }
-        }
 
         // Create notification for customer
         $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();

@@ -216,11 +216,56 @@ const monthlyGrowth = computed<number>(() => {
 });
 const usingDummy = ref(false);
 
+// Group historical sales data by month
+const groupedHistoricalData = computed(() => {
+    if (!props.salesData || props.salesData.length === 0) {
+        return new Map<string, { sales: number; date: string; sortKey: string; isHistorical: boolean }>();
+    }
+    
+    const grouped = new Map<string, { sales: number; date: string; sortKey: string; isHistorical: boolean }>();
+    
+    props.salesData.forEach(item => {
+        // Handle date parsing
+        let date: Date;
+        if (typeof item.date === 'string') {
+            if (item.date.includes('T')) {
+                date = new Date(item.date);
+            } else {
+                date = new Date(item.date + 'T00:00:00');
+            }
+        } else {
+            date = new Date(item.date);
+        }
+        
+        // Skip invalid dates
+        if (isNaN(date.getTime())) {
+            return;
+        }
+        
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        
+        if (grouped.has(monthKey)) {
+            const existing = grouped.get(monthKey)!;
+            existing.sales += item.sales;
+        } else {
+            grouped.set(monthKey, {
+                sales: item.sales,
+                date: monthLabel,
+                sortKey: monthKey,
+                isHistorical: true
+            });
+        }
+    });
+    
+    return grouped;
+});
+
 // Group predictions by month or year based on forecastPeriod
 const groupedPredictions = computed(() => {
     if (forecastPeriod.value === 'yearly') {
         // Group by year (for longer forecasts)
-        const grouped = new Map<string, { sales: number; date: string; sortKey: string }>();
+        const grouped = new Map<string, { sales: number; date: string; sortKey: string; isHistorical: boolean }>();
         
         predictions.value.forEach((pred, index) => {
             const date = getDateFromIndex(index);
@@ -234,7 +279,8 @@ const groupedPredictions = computed(() => {
                 grouped.set(year, {
                     sales: pred.predicted_sales,
                     date: year,
-                    sortKey: sortKey
+                    sortKey: sortKey,
+                    isHistorical: false
                 });
             }
         });
@@ -243,34 +289,66 @@ const groupedPredictions = computed(() => {
             .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
             .map(item => ({
                 label: item.date,
-                sales: item.sales
+                sales: item.sales,
+                isHistorical: item.isHistorical
             }));
     } else {
-        // Group by month
-        const grouped = new Map<string, { sales: number; date: string; sortKey: string }>();
+        // Group by month - combine historical and predicted data
+        const combined = new Map<string, { sales: number; date: string; sortKey: string; isHistorical: boolean }>();
         
+        // Add historical data first
+        groupedHistoricalData.value.forEach((value, key) => {
+            combined.set(key, { ...value });
+        });
+        
+        // Add predicted data (only for future months)
         predictions.value.forEach((pred, index) => {
             const date = getDateFromIndex(index);
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
             
-            if (grouped.has(monthKey)) {
-                const existing = grouped.get(monthKey)!;
-                existing.sales += pred.predicted_sales;
-            } else {
-                grouped.set(monthKey, {
+            // Only add if it's a future month (not already in historical data)
+            if (!combined.has(monthKey)) {
+                combined.set(monthKey, {
                     sales: pred.predicted_sales,
                     date: monthLabel,
-                    sortKey: monthKey
+                    sortKey: monthKey,
+                    isHistorical: false
+                });
+            } else {
+                // If the month exists in historical data, add predictions to it (for current month)
+                const existing = combined.get(monthKey)!;
+                if (!existing.isHistorical) {
+                    existing.sales += pred.predicted_sales;
+                }
+            }
+        });
+        
+        // Ensure all expected months are represented (September, October, November)
+        const currentYear = new Date().getFullYear();
+        const expectedMonths = [
+            { key: `${currentYear}-09`, label: 'Sep ' + currentYear },
+            { key: `${currentYear}-10`, label: 'Oct ' + currentYear },
+            { key: `${currentYear}-11`, label: 'Nov ' + currentYear },
+        ];
+        
+        expectedMonths.forEach(month => {
+            if (!combined.has(month.key)) {
+                combined.set(month.key, {
+                    sales: 0,
+                    date: month.label,
+                    sortKey: month.key,
+                    isHistorical: true
                 });
             }
         });
         
-        return Array.from(grouped.values())
+        return Array.from(combined.values())
             .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
             .map(item => ({
                 label: item.date,
-                sales: item.sales
+                sales: item.sales,
+                isHistorical: item.isHistorical
             }));
     }
 });
@@ -278,25 +356,32 @@ const groupedPredictions = computed(() => {
 // Prediction Chart.js data and options
 const predictionChartData = computed(() => {
     if (forecastPeriod.value === 'yearly' || forecastPeriod.value === 'monthly') {
-        // Use grouped data for monthly/yearly view
+        // Use grouped data for monthly/yearly view - combine historical and predicted
+        const historicalData = groupedPredictions.value.filter(item => item.isHistorical);
+        const predictedData = groupedPredictions.value.filter(item => !item.isHistorical);
+        
         return {
             labels: groupedPredictions.value.map(item => item.label),
             datasets: [
                 {
-                    label: forecastPeriod.value === 'yearly' ? 'Predicted Yearly Sales' : 'Predicted Monthly Sales',
+                    label: forecastPeriod.value === 'yearly' ? 'Historical & Predicted Yearly Sales' : 'Historical & Predicted Monthly Sales',
                     data: groupedPredictions.value.map(item => item.sales),
                     borderColor: 'rgb(59, 130, 246)',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     fill: true,
                     tension: 0.4,
-                    pointBackgroundColor: 'rgb(59, 130, 246)',
+                    pointBackgroundColor: groupedPredictions.value.map(item => 
+                        item.isHistorical ? 'rgb(16, 185, 129)' : 'rgb(59, 130, 246)'
+                    ),
                     pointBorderColor: '#ffffff',
                     pointBorderWidth: 2,
                     pointRadius: 5,
                 },
                 {
                     label: 'Confidence Range',
-                    data: groupedPredictions.value.map(item => item.sales * 0.95),
+                    data: groupedPredictions.value.map(item => 
+                        item.isHistorical ? item.sales : item.sales * 0.95
+                    ),
                     borderColor: 'rgba(59, 130, 246, 0.3)',
                     backgroundColor: 'rgba(59, 130, 246, 0.05)',
                     fill: false,

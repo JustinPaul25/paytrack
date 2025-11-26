@@ -217,7 +217,26 @@ const groupedSalesData = computed(() => {
         const grouped = new Map<string, { sales: number; invoices: number; date: string; sortKey: string }>();
         
         props.salesByDate.forEach(item => {
-            const date = new Date(item.date);
+            // Handle date parsing - item.date might be in 'YYYY-MM-DD' format
+            let date: Date;
+            if (typeof item.date === 'string') {
+                // If it's already a date string, parse it
+                if (item.date.includes('T')) {
+                    date = new Date(item.date);
+                } else {
+                    // If it's just YYYY-MM-DD, add time component
+                    date = new Date(item.date + 'T00:00:00');
+                }
+            } else {
+                date = new Date(item.date);
+            }
+            
+            // Skip invalid dates
+            if (isNaN(date.getTime())) {
+                console.warn('Invalid date:', item.date);
+                return;
+            }
+            
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
             const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
             
@@ -231,6 +250,25 @@ const groupedSalesData = computed(() => {
                     invoices: item.invoices,
                     date: monthLabel,
                     sortKey: monthKey
+                });
+            }
+        });
+        
+        // Ensure all months in the expected range are represented (September, October, November)
+        const currentYear = new Date().getFullYear();
+        const expectedMonths = [
+            { key: `${currentYear}-09`, label: 'Sep ' + currentYear },
+            { key: `${currentYear}-10`, label: 'Oct ' + currentYear },
+            { key: `${currentYear}-11`, label: 'Nov ' + currentYear },
+        ];
+        
+        expectedMonths.forEach(month => {
+            if (!grouped.has(month.key)) {
+                grouped.set(month.key, {
+                    sales: 0,
+                    invoices: 0,
+                    date: month.label,
+                    sortKey: month.key
                 });
             }
         });

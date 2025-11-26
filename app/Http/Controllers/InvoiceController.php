@@ -9,10 +9,9 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\RefundRequest;
 use App\Models\StockMovement;
-use App\Mail\InvoiceDueDateReminder;
+use App\Models\Reminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 
 class InvoiceController extends Controller
@@ -449,7 +448,7 @@ class InvoiceController extends Controller
 
     public function sendPaymentReminder(Invoice $invoice)
     {
-        // Only Staff can send payment reminders
+        // Only Staff can create payment reminders
         $user = auth()->user();
         if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
@@ -460,10 +459,10 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'This invoice does not have a due date.');
         }
 
-        // Check if customer has an email
+        // Check if customer exists
         $invoice->load('customer');
-        if (!$invoice->customer || empty($invoice->customer->email)) {
-            return redirect()->back()->with('error', 'Customer does not have an email address.');
+        if (!$invoice->customer) {
+            return redirect()->back()->with('error', 'Customer not found for this invoice.');
         }
 
         // Check if invoice is already paid
@@ -476,21 +475,88 @@ class InvoiceController extends Controller
             $today = Carbon::today();
             $daysUntilDue = Carbon::parse($invoice->due_date)->diffInDays($today, false);
 
-            // Queue the email to prevent timeout issues
-            Mail::to($invoice->customer->email)->queue(
-                new InvoiceDueDateReminder($invoice, $daysUntilDue)
-            );
+            // Check if a reminder already exists for this invoice
+            $existingReminder = Reminder::where('invoice_id', $invoice->id)
+                ->where('type', 'customer_due')
+                ->where('status', 'pending')
+                ->first();
 
-            return redirect()->back()->with('success', 'Payment reminder queued successfully and will be sent to ' . $invoice->customer->email);
+            if ($existingReminder) {
+                // Update existing reminder
+                $existingReminder->update([
+                    'due_date' => $invoice->due_date,
+                    'amount' => $invoice->total_amount, // Already in currency format (accessor divides by 100)
+                    'priority' => $daysUntilDue < 0 ? 'high' : ($daysUntilDue <= 3 ? 'high' : 'medium'),
+                    'title' => $this->generateReminderTitle($invoice, $daysUntilDue),
+                    'description' => $this->generateReminderDescription($invoice, $daysUntilDue),
+                    'is_read' => false, // Mark as unread when updated
+                ]);
+
+                return redirect()->back()->with('success', 'Payment reminder updated successfully and will appear on the customer dashboard.');
+            } else {
+                // Create new reminder
+                Reminder::create([
+                    'type' => 'customer_due',
+                    'title' => $this->generateReminderTitle($invoice, $daysUntilDue),
+                    'description' => $this->generateReminderDescription($invoice, $daysUntilDue),
+                    'due_date' => $invoice->due_date,
+                    'amount' => $invoice->total_amount, // Already in currency format (accessor divides by 100)
+                    'currency' => 'PHP',
+                    'priority' => $daysUntilDue < 0 ? 'high' : ($daysUntilDue <= 3 ? 'high' : 'medium'),
+                    'status' => 'pending',
+                    'is_read' => false,
+                    'remindable_type' => Invoice::class,
+                    'remindable_id' => $invoice->id,
+                    'customer_id' => $invoice->customer_id,
+                    'invoice_id' => $invoice->id,
+                ]);
+
+                return redirect()->back()->with('success', 'Payment reminder created successfully and will appear on the customer dashboard.');
+            }
         } catch (\Exception $e) {
-            \Log::error('Failed to queue payment reminder', [
+            \Log::error('Failed to create payment reminder', [
                 'invoice_id' => $invoice->id,
-                'customer_email' => $invoice->customer->email,
+                'customer_id' => $invoice->customer_id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return redirect()->back()->with('error', 'Failed to queue payment reminder: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create payment reminder: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Generate reminder title based on invoice and days until due
+     */
+    private function generateReminderTitle(Invoice $invoice, int $daysUntilDue): string
+    {
+        if ($daysUntilDue < 0) {
+            return "Invoice {$invoice->reference_number} - Overdue by " . abs($daysUntilDue) . " day(s)";
+        } elseif ($daysUntilDue === 0) {
+            return "Invoice {$invoice->reference_number} - Due Today";
+        } else {
+            return "Invoice {$invoice->reference_number} - Due in {$daysUntilDue} day(s)";
+        }
+    }
+
+    /**
+     * Generate reminder description based on invoice and days until due
+     */
+    private function generateReminderDescription(Invoice $invoice, int $daysUntilDue): string
+    {
+        $amount = number_format($invoice->total_amount, 2); // Already in currency format (accessor divides by 100)
+        $dueDate = Carbon::parse($invoice->due_date)->format('F d, Y');
+        
+        $description = "Payment of ₱{$amount} is ";
+        
+        if ($daysUntilDue < 0) {
+            $description .= "overdue by " . abs($daysUntilDue) . " day(s). Due date was {$dueDate}.";
+        } elseif ($daysUntilDue === 0) {
+            $description .= "due today ({$dueDate}).";
+        } else {
+            $description .= "due in {$daysUntilDue} day(s) ({$dueDate}).";
+        }
+        
+        return $description;
     }
 
     /**

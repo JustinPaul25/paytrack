@@ -29,10 +29,23 @@ class HistoricalInvoicesSeeder extends Seeder
 
         $creator = $users->first();
 
-        // Generate invoices for last 60 days
-        $days = 60;
-        for ($i = $days; $i >= 1; $i--) {
-            $day = Carbon::now()->subDays($i)->setTime(rand(8, 17), rand(0, 59), rand(0, 59));
+        // Define date range: September, October, November (current year)
+        // Ensure dates don't exceed today
+        $currentYear = Carbon::now()->year;
+        $today = Carbon::today();
+        $startDate = Carbon::create($currentYear, 9, 1)->startOfDay(); // September 1
+        $maxEndDate = Carbon::create($currentYear, 11, 30)->endOfDay(); // November 30
+        $endDate = $today->copy()->endOfDay()->isBefore($maxEndDate) ? $today->copy()->endOfDay() : $maxEndDate;
+        $daysRange = $startDate->diffInDays($endDate);
+
+        // Generate invoices for September, October, November (up to today)
+        for ($i = 0; $i <= $daysRange; $i++) {
+            $day = $startDate->copy()->addDays($i);
+            // Ensure the date doesn't exceed today
+            if ($day->isAfter($today)) {
+                $day = $today->copy();
+            }
+            $day->setTime(rand(8, 17), rand(0, 59), rand(0, 59));
 
             // 0–3 invoices per day
             $count = rand(0, 3);
@@ -55,9 +68,10 @@ class HistoricalInvoicesSeeder extends Seeder
                     $items[] = ['product' => $product, 'quantity' => $qty, 'price' => $price, 'total' => $total];
                 }
 
+                // VAT is already included in product prices, so total = subtotal
                 $vatRate = 12.00;
-                $vatAmount = $subtotal * ($vatRate / 100);
-                $grandTotal = $subtotal + $vatAmount;
+                $vatAmount = 0; // VAT already included in product prices
+                $grandTotal = $subtotal; // Total equals subtotal (VAT included)
 
                 $invoice = Invoice::create([
                     'customer_id' => $customer->id,
@@ -88,7 +102,7 @@ class HistoricalInvoicesSeeder extends Seeder
             }
         }
 
-        $this->command->info('Historical invoices (last 60 days) seeded.');
+        $this->command->info('Historical invoices (September, October, November) seeded.');
     }
 }
 

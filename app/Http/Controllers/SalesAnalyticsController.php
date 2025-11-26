@@ -7,6 +7,7 @@ use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Reminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -27,6 +28,7 @@ class SalesAnalyticsController extends Controller
                     'topProducts' => [],
                     'categorySpend' => [],
                     'aovTrend' => [],
+                    'reminders' => [],
                 ]);
             }
 
@@ -94,6 +96,37 @@ class SalesAnalyticsController extends Controller
                     return ['month' => $r->ym, 'aov' => $total / $cnt];
                 });
 
+            // Get invoice payment reminders for this customer
+            $reminders = Reminder::where('customer_id', $customerId)
+                ->where('type', 'customer_due')
+                ->where('status', 'pending')
+                ->with('invoice')
+                ->orderBy('due_date', 'asc')
+                ->orderBy('priority', 'desc')
+                ->get()
+                ->map(function ($reminder) {
+                    // Use invoice total_amount if available (more accurate), otherwise fall back to reminder amount
+                    // Note: invoice->total_amount is already in currency format (accessor divides by 100)
+                    $amount = $reminder->invoice && $reminder->invoice->total_amount 
+                        ? $reminder->invoice->total_amount 
+                        : $reminder->amount;
+                    
+                    return [
+                        'id' => $reminder->id,
+                        'title' => $reminder->title,
+                        'description' => $reminder->description,
+                        'due_date' => $reminder->due_date->format('Y-m-d'),
+                        'due_date_formatted' => $reminder->due_date->format('M d, Y'),
+                        'amount' => $amount,
+                        'currency' => $reminder->currency,
+                        'priority' => $reminder->priority,
+                        'is_read' => $reminder->is_read,
+                        'invoice_id' => $reminder->invoice_id,
+                        'invoice_reference' => $reminder->invoice ? $reminder->invoice->reference_number : null,
+                        'days_until_due' => Carbon::parse($reminder->due_date)->diffInDays(Carbon::today(), false),
+                    ];
+                });
+
             return inertia('CustomerDashboard', [
                 'customer' => ['id' => $customerId],
                 'monthlySpend' => $monthlySpend,
@@ -101,6 +134,7 @@ class SalesAnalyticsController extends Controller
                 'topProducts' => $topProducts,
                 'categorySpend' => $categorySpend,
                 'aovTrend' => $aovTrend,
+                'reminders' => $reminders,
                 'filters' => [
                     'start_date' => $start->format('Y-m-d'),
                     'end_date' => $end->format('Y-m-d'),
@@ -115,19 +149,24 @@ class SalesAnalyticsController extends Controller
 
         // Set default date range if not provided
         if (!$startDate || !$endDate) {
-            $endDate = Carbon::now()->endOfDay();
+            $currentYear = Carbon::now()->year;
             switch ($period) {
                 case 'week':
+                    $endDate = Carbon::now()->endOfDay();
                     $startDate = Carbon::now()->subWeek()->startOfDay();
                     break;
                 case 'quarter':
+                    $endDate = Carbon::now()->endOfDay();
                     $startDate = Carbon::now()->subQuarter()->startOfDay();
                     break;
                 case 'year':
+                    $endDate = Carbon::now()->endOfDay();
                     $startDate = Carbon::now()->subYear()->startOfDay();
                     break;
-                default: // month
-                    $startDate = Carbon::now()->subMonth()->startOfDay();
+                default: // month - default to September, October, November for current year
+                    // Set to September 1 - November 30 of current year to show all seeded data
+                    $startDate = Carbon::create($currentYear, 9, 1)->startOfDay();
+                    $endDate = Carbon::create($currentYear, 11, 30)->endOfDay();
                     break;
             }
         } else {

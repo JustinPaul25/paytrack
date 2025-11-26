@@ -14,8 +14,8 @@ Schedule::command('reminders:generate-monthly')
     ->at('00:00')
     ->description('Generate monthly reminders for bills, customer dues, and credit terms');
 
-// Schedule daily invoice due date notifications
+// Schedule daily invoice due date reminders
 Schedule::command('invoices:send-due-date-notifications')
     ->daily()
     ->at('09:00')
-    ->description('Send email notifications for unpaid invoices with upcoming or past due dates');
+    ->description('Create dashboard reminders for unpaid invoices with upcoming or past due dates');
