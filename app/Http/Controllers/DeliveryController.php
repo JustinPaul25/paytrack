@@ -50,7 +50,37 @@ class DeliveryController extends Controller
 
     public function create(Request $request)
     {
-        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location', 'phone']);
+        // Get customers with properly cast location
+        $customers = Customer::select(['id', 'name', 'company_name', 'address', 'location', 'phone'])
+            ->get()
+            ->map(function ($customer) {
+                // Ensure location is properly formatted as array or null
+                // Convert string coordinates to numbers
+                $location = $customer->location;
+                if ($location && is_array($location) && isset($location['lat'], $location['lng'])) {
+                    // Convert strings to numbers if needed
+                    $lat = is_numeric($location['lat']) ? (float) $location['lat'] : null;
+                    $lng = is_numeric($location['lng']) ? (float) $location['lng'] : null;
+                    
+                    // Ensure it's valid and not 0,0
+                    if ($lat !== null && $lng !== null && ($lat != 0 || $lng != 0)) {
+                        $location = ['lat' => $lat, 'lng' => $lng];
+                    } else {
+                        $location = null;
+                    }
+                } else {
+                    $location = null;
+                }
+                
+                return [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'company_name' => $customer->company_name,
+                    'address' => $customer->address,
+                    'phone' => $customer->phone,
+                    'location' => $location,
+                ];
+            });
         $invoices = Invoice::with('customer')
             ->where('status', 'pending')
             ->get(['id', 'customer_id', 'total_amount', 'reference_number']);

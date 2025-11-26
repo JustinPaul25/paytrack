@@ -32,6 +32,24 @@ class CustomerRegistrationController extends Controller
     {
         $data = $request->validated();
         
+        // Only save location if it's valid (not 0,0 or empty)
+        // Ensure lat and lng are numbers, not strings
+        $location = null;
+        if (isset($data['location']) && 
+            is_array($data['location']) && 
+            isset($data['location']['lat'], $data['location']['lng'])) {
+            $lat = is_numeric($data['location']['lat']) ? (float) $data['location']['lat'] : null;
+            $lng = is_numeric($data['location']['lng']) ? (float) $data['location']['lng'] : null;
+            
+            // Only save if coordinates are valid and not 0,0
+            if ($lat !== null && $lng !== null && ($lat != 0 || $lng != 0)) {
+                $location = [
+                    'lat' => $lat,
+                    'lng' => $lng,
+                ];
+            }
+        }
+        
         // Create customer
         $customer = Customer::create([
             'name' => $data['name'],
@@ -39,7 +57,7 @@ class CustomerRegistrationController extends Controller
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
-            'location' => $data['location'] ?? null,
+            'location' => $location,
         ]);
 
         // Handle profile image if provided

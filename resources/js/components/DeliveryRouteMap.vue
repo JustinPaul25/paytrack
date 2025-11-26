@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, computed, nextTick } from 'vue'
 import { LMap, LTileLayer, LMarker, LPolyline } from '@vue-leaflet/vue-leaflet'
 import { usePage } from '@inertiajs/vue3'
 import 'leaflet/dist/leaflet.css'
@@ -49,6 +49,7 @@ const zoom = ref(10)
 const showManualLocationInput = ref(false)
 const manualLat = ref('')
 const manualLng = ref('')
+const isMounted = ref(false)
 
 // Custom icons for markers
 const createCustomIcon = (color: string) => {
@@ -168,36 +169,60 @@ const calculateRoute = async (from: { lat: number; lng: number }, to: { lat: num
 // Watch for customer location changes
 watch(() => props.customerLocation, async (newLocation) => {
   // Validate customer location data
-  if (newLocation && 
-      typeof newLocation.lat === 'number' && 
-      typeof newLocation.lng === 'number' && 
-      !isNaN(newLocation.lat) && 
-      !isNaN(newLocation.lng) &&
-      newLocation.lat >= -90 && newLocation.lat <= 90 &&
-      newLocation.lng >= -180 && newLocation.lng <= 180) {
+  // Handle both number and string coordinates (convert strings to numbers)
+  if (newLocation) {
+    let lat = newLocation.lat;
+    let lng = newLocation.lng;
     
-    if (currentLocation.value) {
-      await calculateRoute(currentLocation.value, newLocation)
-      
-      // Update map center to show both points
-      const midLat = (currentLocation.value.lat + newLocation.lat) / 2
-      const midLng = (currentLocation.value.lng + newLocation.lng) / 2
-      mapCenter.value = [midLat, midLng]
-      zoom.value = 12
-    } else {
-      // If no current location, center on customer location
-      mapCenter.value = [newLocation.lat, newLocation.lng]
-      zoom.value = 13
+    // Convert strings to numbers if needed
+    if (typeof lat === 'string') {
+      lat = parseFloat(lat);
     }
-  } else if (newLocation) {
-    // Invalid customer location data
-    console.warn('Invalid customer location data:', newLocation)
-    error.value = 'Customer location data is invalid or missing. Please update the customer with valid coordinates.'
+    if (typeof lng === 'string') {
+      lng = parseFloat(lng);
+    }
+    
+    if (typeof lat === 'number' && 
+        typeof lng === 'number' && 
+        !isNaN(lat) && 
+        !isNaN(lng) &&
+        lat >= -90 && lat <= 90 &&
+        lng >= -180 && lng <= 180 &&
+        (lat != 0 || lng != 0)) {
+    
+      const validLocation = { lat, lng };
+      
+      if (currentLocation.value) {
+        await calculateRoute(currentLocation.value, validLocation)
+        
+        // Update map center to show both points
+        const midLat = (currentLocation.value.lat + validLocation.lat) / 2
+        const midLng = (currentLocation.value.lng + validLocation.lng) / 2
+        mapCenter.value = [midLat, midLng]
+        zoom.value = 12
+      } else {
+        // If no current location, center on customer location
+        mapCenter.value = [validLocation.lat, validLocation.lng]
+        zoom.value = 13
+      }
+    } else if (newLocation) {
+      // Invalid customer location data
+      console.warn('Invalid customer location data:', newLocation)
+      error.value = 'Customer location data is invalid or missing. Please update the customer with valid coordinates.'
+    }
   }
 }, { immediate: true })
 
 // Initialize current location on mount
 onMounted(async () => {
+  // Wait for DOM to be ready, especially important for modals
+  await nextTick()
+  await new Promise(resolve => setTimeout(resolve, 100))
+  isMounted.value = true
+  
+  // Wait a bit more for Leaflet to initialize
+  await nextTick()
+  
   try {
     // First, try to use the delivery origin location from admin settings
     if (deliveryOriginLocation.value) {
@@ -317,6 +342,7 @@ async function retryGetLocation() {
     <!-- Map Container -->
     <div class="relative">
       <LMap
+        v-if="isMounted"
         v-model:center="mapCenter"
         :zoom="zoom"
         :style="{ width: '100%', height: props.mapHeight, borderRadius: '0.5rem', border: '1px solid #e5e7eb', overflow: 'hidden' }"
@@ -377,6 +403,9 @@ async function retryGetLocation() {
           opacity="0.8"
         />
       </LMap>
+      <div v-else :style="{ width: '100%', height: props.mapHeight, borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6' }">
+        <span class="text-muted-foreground text-sm">Loading map...</span>
+      </div>
       
       <!-- Loading Overlay -->
       <div

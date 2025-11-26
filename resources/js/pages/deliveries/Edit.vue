@@ -231,14 +231,28 @@ const selectedCustomerLocation = computed(() => {
     }
     
     // Validate the location object
-    if (location && 
-        typeof location.lat === 'number' && 
-        typeof location.lng === 'number' && 
-        !isNaN(location.lat) && 
-        !isNaN(location.lng) &&
-        location.lat >= -90 && location.lat <= 90 &&
-        location.lng >= -180 && location.lng <= 180) {
-        return location;
+    // Handle both number and string coordinates (convert strings to numbers)
+    if (location) {
+        let lat = location.lat;
+        let lng = location.lng;
+        
+        // Convert strings to numbers if needed
+        if (typeof lat === 'string') {
+            lat = parseFloat(lat);
+        }
+        if (typeof lng === 'string') {
+            lng = parseFloat(lng);
+        }
+        
+        if (typeof lat === 'number' && 
+            typeof lng === 'number' && 
+            !isNaN(lat) && 
+            !isNaN(lng) &&
+            lat >= -90 && lat <= 90 &&
+            lng >= -180 && lng <= 180 &&
+            (lat != 0 || lng != 0)) {
+            return { lat, lng };
+        }
     }
     
     console.warn('Invalid customer location data:', customer.location);

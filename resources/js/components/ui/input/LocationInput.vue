@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, nextTick } from 'vue'
 import type { HTMLAttributes } from 'vue'
 import { cn } from '@/lib/utils'
 import { LMap, LTileLayer, LMarker } from '@vue-leaflet/vue-leaflet'
@@ -33,6 +33,15 @@ const emits = defineEmits<{
 const selected = ref<{ lat: number; lng: number } | null>(null)
 const mapCenter = ref<[number, number]>([0, 0])
 const zoom = ref(props.mapZoom ?? (props.modelValue ? 13 : 2))
+const isMounted = ref(false)
+
+// Ensure map only renders after component is mounted
+onMounted(async () => {
+  // Wait for DOM to be ready, especially important for modals
+  await nextTick()
+  await new Promise(resolve => setTimeout(resolve, 100))
+  isMounted.value = true
+})
 
 // Simple place search (OSM Nominatim)
 const searchQuery = ref('')
@@ -139,6 +148,7 @@ function onMarkerDrag(e: any) {
     </div>
 
     <LMap
+      v-if="isMounted"
       v-model:center="mapCenter"
       :zoom="zoom"
       :style="{ width: '100%', height: props.mapHeight ?? '300px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', overflow: 'hidden' }"
@@ -159,6 +169,9 @@ function onMarkerDrag(e: any) {
         @moveend="onMarkerDrag"
       />
     </LMap>
+    <div v-else :style="{ width: '100%', height: props.mapHeight ?? '300px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6' }">
+      <span class="text-muted-foreground text-sm">Loading map...</span>
+    </div>
     <div v-if="selected && typeof selected.lat === 'number' && typeof selected.lng === 'number'" class="mt-2 text-xs text-muted-foreground">
       Selected: <span class="font-mono">{{ selected.lat.toFixed(6) }}, {{ selected.lng.toFixed(6) }}</span>
     </div>

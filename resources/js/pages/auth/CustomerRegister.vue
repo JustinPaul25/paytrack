@@ -34,7 +34,7 @@ const form = useForm({
     
     // Step 3: Location & Address
     address: '',
-    location: { lat: 0, lng: 0 },
+    location: null as { lat: number; lng: number } | null,
     
     // Step 4: Profile Picture
     profile_image: null as File | null,
@@ -125,6 +125,13 @@ function onFileChange(e: Event) {
 
 
 const submit = () => {
+    // Clean up location - set to null if invalid (0,0 or not set)
+    if (form.location && 
+        (form.location.lat === 0 && form.location.lng === 0 || 
+         !form.location.lat || !form.location.lng)) {
+        form.location = null;
+    }
+    
     form.post(route('customer.register'), {
         forceFormData: true,
         onFinish: () => form.reset('password', 'password_confirmation', 'profile_image'),
