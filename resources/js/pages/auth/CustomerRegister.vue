@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Eye, EyeOff, ChevronRight, ChevronLeft, Check, AlertCircle } from 'lucide-vue-next';
-import { ref, defineAsyncComponent, watch, computed } from 'vue';
+import { ref, defineAsyncComponent, computed } from 'vue';
 
 // Dynamically import LocationInput to prevent initialization when not needed
 const LocationInput = defineAsyncComponent(() => import('@/components/ui/input/LocationInput.vue'));
@@ -46,13 +46,6 @@ const showPassword = ref(false);
 const showPasswordConfirmation = ref(false);
 const profileImageUrl = ref<string | null>(null);
 const showErrorDialog = ref(false);
-
-// Watch for form errors and show dialog when errors occur
-watch(() => form.errors, (errors) => {
-    if (Object.keys(errors).length > 0) {
-        showErrorDialog.value = true;
-    }
-}, { deep: true });
 
 // Get all error messages as an array
 const errorMessages = computed(() => {
@@ -93,9 +86,11 @@ const nextStep = () => {
             const phMobileRegex = /^\+63\d{10}$/;
             if (!phMobileRegex.test(form.phone)) {
                 form.setError('phone', 'Please enter a valid 10-digit Philippine mobile number.');
+                // Don't show dialog, just show inline error
                 return;
             }
         }
+        // Clear phone error if validation passed
         form.clearErrors('phone');
         currentStep.value++;
     }
