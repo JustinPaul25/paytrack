@@ -295,9 +295,66 @@ class DeliveryController extends Controller
         ]);
     }
 
-    public function shortcut()
+    public function shortcut(Request $request)
     {
-        $deliveries = Delivery::with(['customer', 'invoice'])->orderByDesc('delivery_date')->get();
+        // Get filter parameters with defaults
+        $status = $request->input('status'); // optional: 'pending', 'completed', 'cancelled', or null for all
+        $limit = min((int) $request->input('limit', 500), 1000); // Max 1000 deliveries, default 500
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+
+        // Build query with eager loading and filters
+        $query = Delivery::with(['customer', 'invoice'])
+            ->orderByDesc('delivery_date')
+            ->orderByDesc('created_at');
+
+        // Apply status filter if provided
+        if ($status && in_array($status, ['pending', 'completed', 'cancelled'])) {
+            $query->where('status', $status);
+        }
+
+        // Apply date range filters if provided
+        if ($dateFrom) {
+            $query->whereDate('delivery_date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('delivery_date', '<=', $dateTo);
+        }
+
+        // Limit the results to prevent memory issues
+        $deliveries = $query->limit($limit)->get();
+
+        // Calculate statistics using database queries (more efficient)
+        // Helper function to build base query with filters
+        $buildStatsQuery = function() use ($status, $dateFrom, $dateTo) {
+            $query = Delivery::query();
+            
+            // Apply same filters to stats query
+            if ($status && in_array($status, ['pending', 'completed', 'cancelled'])) {
+                $query->where('status', $status);
+            }
+            if ($dateFrom) {
+                $query->whereDate('delivery_date', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('delivery_date', '<=', $dateTo);
+            }
+            
+            return $query;
+        };
+
+        // Get stats using database aggregation
+        $baseQuery = $buildStatsQuery();
+        $stats = [
+            'totalDeliveries' => (int) $baseQuery->count(),
+            'inProgressDeliveries' => (int) $buildStatsQuery()->whereNotIn('status', ['completed', 'cancelled'])->count(),
+            'pendingDeliveries' => (int) $buildStatsQuery()->where('status', 'pending')->count(),
+            'completedDeliveries' => (int) $buildStatsQuery()->where('status', 'completed')->count(),
+            'cancelledDeliveries' => (int) $buildStatsQuery()->where('status', 'cancelled')->count(),
+            'totalRevenue' => (float) $buildStatsQuery()
+                ->join('invoices', 'deliveries.invoice_id', '=', 'invoices.id')
+                ->sum('invoices.total_amount') / 100, // Convert from cents to dollars
+        ];
 
         $colorPalette = [
             '#1d4ed8',
@@ -310,6 +367,7 @@ class DeliveryController extends Controller
             '#db2777',
         ];
 
+        // Map deliveries to endpoints (only for loaded deliveries)
         $endpoints = $deliveries->values()->map(function (Delivery $delivery, int $index) use ($colorPalette) {
             $customer = $delivery->customer;
             $invoice = $delivery->invoice;
@@ -349,19 +407,8 @@ class DeliveryController extends Controller
             ];
         })->toArray();
 
-        $stats = [
-            'totalDeliveries' => $deliveries->count(),
-            'inProgressDeliveries' => $deliveries->whereNotIn('status', ['completed', 'cancelled'])->count(),
-            'pendingDeliveries' => $deliveries->where('status', 'pending')->count(),
-            'completedDeliveries' => $deliveries->where('status', 'completed')->count(),
-            'cancelledDeliveries' => $deliveries->where('status', 'cancelled')->count(),
-            'totalRevenue' => $deliveries->sum(function (Delivery $delivery) {
-                $invoice = $delivery->invoice;
-                return $invoice ? $invoice->total_amount : 0;
-            }),
-        ];
-
-        $defaultCenter = [14.5995, 120.9842];
+        // Find default map center from first endpoint with coordinates
+        $defaultCenter = [14.5995, 120.9842]; // Default to Manila, Philippines
         foreach ($endpoints as $endpoint) {
             if (isset($endpoint['coordinates'])) {
                 $defaultCenter = $endpoint['coordinates'];
@@ -373,6 +420,12 @@ class DeliveryController extends Controller
             'deliveryEndpoints' => $endpoints,
             'stats' => $stats,
             'mapCenter' => $defaultCenter,
+            'filters' => [
+                'status' => $status,
+                'limit' => $limit,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ],
         ]);
     }
 
