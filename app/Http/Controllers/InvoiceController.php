@@ -446,14 +446,51 @@ class InvoiceController extends Controller
             $today = Carbon::today();
             $daysUntilDue = Carbon::parse($invoice->due_date)->diffInDays($today, false);
 
-            // Send the email
-            Mail::to($invoice->customer->email)->send(
-                new InvoiceDueDateReminder($invoice, $daysUntilDue)
-            );
-
-            return redirect()->back()->with('success', 'Payment reminder sent successfully to ' . $invoice->customer->email);
+            // Check if queue connection is available
+            $queueConnection = config('queue.default');
+            
+            // Try to queue the email first (preferred method)
+            try {
+                Mail::to($invoice->customer->email)->queue(
+                    new InvoiceDueDateReminder($invoice, $daysUntilDue)
+                );
+                
+                return redirect()->back()->with('success', 'Payment reminder queued successfully and will be sent to ' . $invoice->customer->email);
+            } catch (\Exception $queueException) {
+                // If queue fails, try sending synchronously as fallback
+                \Log::warning('Queue failed, attempting synchronous send', [
+                    'invoice_id' => $invoice->id,
+                    'queue_error' => $queueException->getMessage(),
+                ]);
+                
+                try {
+                    Mail::to($invoice->customer->email)->send(
+                        new InvoiceDueDateReminder($invoice, $daysUntilDue)
+                    );
+                    
+                    return redirect()->back()->with('success', 'Payment reminder sent successfully to ' . $invoice->customer->email);
+                } catch (\Exception $sendException) {
+                    throw $sendException; // Re-throw to be caught by outer catch
+                }
+            }
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to send payment reminder: ' . $e->getMessage());
+            \Log::error('Failed to send payment reminder', [
+                'invoice_id' => $invoice->id,
+                'customer_email' => $invoice->customer->email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            $errorMessage = 'Failed to send payment reminder. ';
+            if (str_contains($e->getMessage(), 'Connection') || str_contains($e->getMessage(), 'timeout')) {
+                $errorMessage .= 'Unable to connect to mail server. Please check your mail configuration.';
+            } elseif (str_contains($e->getMessage(), 'authentication')) {
+                $errorMessage .= 'Mail server authentication failed. Please check your credentials.';
+            } else {
+                $errorMessage .= $e->getMessage();
+            }
+            
+            return redirect()->back()->with('error', $errorMessage);
         }
     }
 
