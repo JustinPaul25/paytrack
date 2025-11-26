@@ -197,76 +197,116 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice)
     {
-        // Customers can only view their own invoices
-        if (auth()->user()?->hasRole('Customer')) {
-            $customerId = Customer::where('email', auth()->user()->email)->value('id');
-            if (!$customerId || $invoice->customer_id !== $customerId) {
-                abort(403);
+        try {
+            // Customers can only view their own invoices
+            if (auth()->user()?->hasRole('Customer')) {
+                $customerId = Customer::where('email', auth()->user()->email)->value('id');
+                if (!$customerId || $invoice->customer_id !== $customerId) {
+                    abort(403);
+                }
             }
-        }
-        $invoice->load(['customer.media', 'user', 'invoiceItems.product', 'refunds.product', 'deliveries']);
-        $refunds = $invoice->refunds()->with('product')->orderByDesc('created_at')->get()->map(function ($r) {
-            return [
-                'id' => $r->id,
-                'refund_number' => $r->refund_number,
-                'product_name' => $r->product?->name,
-                'quantity_refunded' => $r->quantity_refunded,
-                'refund_amount' => $r->refund_amount, // accessor returns currency
-                'status' => $r->status,
-                'created_at' => $r->created_at?->format('M d, Y'),
-            ];
-        });
-        $refundRequests = RefundRequest::with('product')
-            ->where('invoice_id', $invoice->id)
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(function ($rq) {
+            
+            // Optimize eager loading to prevent N+1 queries
+            $invoice->load([
+                'customer' => function ($query) {
+                    $query->select(['id', 'name', 'company_name', 'email', 'phone', 'address', 'location']);
+                },
+                'customer.media', // Load all media columns (Spatie requires specific structure)
+                'user:id,name',
+                'invoiceItems' => function ($query) {
+                    $query->select(['id', 'invoice_id', 'product_id', 'quantity', 'price', 'total']);
+                },
+                'invoiceItems.product:id,name,selling_price',
+                'refunds' => function ($query) {
+                    $query->select(['id', 'invoice_id', 'product_id', 'refund_number', 'quantity_refunded', 'refund_amount', 'status', 'created_at']);
+                },
+                'refunds.product:id,name',
+                'deliveries' => function ($query) {
+                    $query->select(['id', 'invoice_id', 'delivery_address', 'contact_person', 'contact_phone', 'delivery_date', 'delivery_time', 'status', 'delivery_fee', 'notes', 'created_at']);
+                }
+            ]);
+            
+            $refunds = $invoice->refunds->map(function ($r) {
                 return [
-                    'id' => $rq->id,
-                    'tracking_number' => $rq->tracking_number,
-                    'product_name' => $rq->product?->name,
-                    'quantity' => $rq->quantity,
-                    'reason' => $rq->reason,
-                    'review_notes' => $rq->review_notes,
-                    'status' => $rq->status,
-                    'created_at' => $rq->created_at?->format('M d, Y'),
-                    'media_link' => $rq->media_link,
+                    'id' => $r->id,
+                    'refund_number' => $r->refund_number,
+                    'product_name' => $r->product?->name,
+                    'quantity_refunded' => $r->quantity_refunded,
+                    'refund_amount' => $r->refund_amount,
+                    'status' => $r->status,
+                    'created_at' => $r->created_at?->format('M d, Y'),
                 ];
             });
-        // Get customers for delivery form
-        $customers = Customer::all(['id', 'name', 'company_name', 'address', 'location', 'phone']);
-        
-        // Get deliveries for this invoice
-        $deliveries = $invoice->deliveries()->orderByDesc('created_at')->get()->map(function ($d) {
-            return [
-                'id' => $d->id,
-                'delivery_address' => $d->delivery_address,
-                'contact_person' => $d->contact_person,
-                'contact_phone' => $d->contact_phone,
-                'delivery_date' => $d->delivery_date?->format('M d, Y'),
-                'delivery_time' => $d->delivery_time,
-                'status' => $d->status,
-                'delivery_fee' => $d->delivery_fee,
-                'notes' => $d->notes,
-                'created_at' => $d->created_at?->format('M d, Y'),
-            ];
-        });
-        
-        // Calculate net balance (total - refunds) for display
-        $netBalance = $invoice->net_balance;
-        $totalRefunded = $invoice->refunds()
-            ->whereIn('status', ['approved', 'processed', 'completed'])
-            ->sum('refund_amount') / 100; // Convert from cents
-        
-        return inertia('invoices/Show', [
-            'invoice' => $invoice,
-            'refunds' => $refunds,
-            'refundRequests' => $refundRequests,
-            'deliveries' => $deliveries,
-            'customers' => $customers,
-            'netBalance' => $netBalance,
-            'totalRefunded' => $totalRefunded,
-        ]);
+            
+            $refundRequests = RefundRequest::with('product:id,name')
+                ->where('invoice_id', $invoice->id)
+                ->select(['id', 'invoice_id', 'product_id', 'tracking_number', 'quantity', 'reason', 'review_notes', 'status', 'created_at', 'media_link'])
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(function ($rq) {
+                    return [
+                        'id' => $rq->id,
+                        'tracking_number' => $rq->tracking_number,
+                        'product_name' => $rq->product?->name,
+                        'quantity' => $rq->quantity,
+                        'reason' => $rq->reason,
+                        'review_notes' => $rq->review_notes,
+                        'status' => $rq->status,
+                        'created_at' => $rq->created_at?->format('M d, Y'),
+                        'media_link' => $rq->media_link,
+                    ];
+                });
+            
+            // Get customers for delivery form (only if user is staff/admin, limit to prevent memory issues)
+            $customers = [];
+            if (auth()->user() && !auth()->user()->hasRole('Customer')) {
+                $customers = Customer::select(['id', 'name', 'company_name', 'address', 'location', 'phone'])
+                    ->limit(1000) // Limit to prevent memory issues
+                    ->get();
+            }
+            
+            // Get deliveries for this invoice (already loaded via eager loading)
+            $deliveries = $invoice->deliveries->map(function ($d) {
+                return [
+                    'id' => $d->id,
+                    'delivery_address' => $d->delivery_address,
+                    'contact_person' => $d->contact_person,
+                    'contact_phone' => $d->contact_phone,
+                    'delivery_date' => $d->delivery_date?->format('M d, Y'),
+                    'delivery_time' => $d->delivery_time,
+                    'status' => $d->status,
+                    'delivery_fee' => $d->delivery_fee,
+                    'notes' => $d->notes,
+                    'created_at' => $d->created_at?->format('M d, Y'),
+                ];
+            });
+            
+            // Calculate net balance (total - refunds) for display
+            $netBalance = $invoice->net_balance;
+            // Calculate total refunded from collection (refund_amount accessor already returns dollars)
+            $totalRefunded = $invoice->refunds
+                ->whereIn('status', ['approved', 'processed', 'completed'])
+                ->sum('refund_amount'); // Accessor already converts from cents to dollars
+            
+            return inertia('invoices/Show', [
+                'invoice' => $invoice,
+                'refunds' => $refunds,
+                'refundRequests' => $refundRequests,
+                'deliveries' => $deliveries,
+                'customers' => $customers,
+                'netBalance' => $netBalance,
+                'totalRefunded' => $totalRefunded,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error loading invoice', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('invoices.index')
+                ->with('error', 'Failed to load invoice. Please try again.');
+        }
     }
 
     public function edit(Invoice $invoice)
@@ -446,51 +486,20 @@ class InvoiceController extends Controller
             $today = Carbon::today();
             $daysUntilDue = Carbon::parse($invoice->due_date)->diffInDays($today, false);
 
-            // Check if queue connection is available
-            $queueConnection = config('queue.default');
-            
-            // Try to queue the email first (preferred method)
-            try {
-                Mail::to($invoice->customer->email)->queue(
-                    new InvoiceDueDateReminder($invoice, $daysUntilDue)
-                );
-                
-                return redirect()->back()->with('success', 'Payment reminder queued successfully and will be sent to ' . $invoice->customer->email);
-            } catch (\Exception $queueException) {
-                // If queue fails, try sending synchronously as fallback
-                \Log::warning('Queue failed, attempting synchronous send', [
-                    'invoice_id' => $invoice->id,
-                    'queue_error' => $queueException->getMessage(),
-                ]);
-                
-                try {
-                    Mail::to($invoice->customer->email)->send(
-                        new InvoiceDueDateReminder($invoice, $daysUntilDue)
-                    );
-                    
-                    return redirect()->back()->with('success', 'Payment reminder sent successfully to ' . $invoice->customer->email);
-                } catch (\Exception $sendException) {
-                    throw $sendException; // Re-throw to be caught by outer catch
-                }
-            }
+            // Queue the email to prevent timeout issues
+            Mail::to($invoice->customer->email)->queue(
+                new InvoiceDueDateReminder($invoice, $daysUntilDue)
+            );
+
+            return redirect()->back()->with('success', 'Payment reminder queued successfully and will be sent to ' . $invoice->customer->email);
         } catch (\Exception $e) {
-            \Log::error('Failed to send payment reminder', [
+            \Log::error('Failed to queue payment reminder', [
                 'invoice_id' => $invoice->id,
                 'customer_email' => $invoice->customer->email,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
-            $errorMessage = 'Failed to send payment reminder. ';
-            if (str_contains($e->getMessage(), 'Connection') || str_contains($e->getMessage(), 'timeout')) {
-                $errorMessage .= 'Unable to connect to mail server. Please check your mail configuration.';
-            } elseif (str_contains($e->getMessage(), 'authentication')) {
-                $errorMessage .= 'Mail server authentication failed. Please check your credentials.';
-            } else {
-                $errorMessage .= $e->getMessage();
-            }
-            
-            return redirect()->back()->with('error', $errorMessage);
+            return redirect()->back()->with('error', 'Failed to queue payment reminder: ' . $e->getMessage());
         }
     }
 
