@@ -12,6 +12,7 @@ use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\SalesAnalyticsController;
 use App\Http\Controllers\SalesTransactionController;
 use App\Http\Controllers\Admin\AdminSettingsController;
+use App\Http\Controllers\ExportController;
 
 
 Route::get('/', function () {
@@ -52,6 +53,14 @@ Route::middleware(['auth'])->group(function () {
         // Admin Settings
         Route::get('admin/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::post('admin/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
+        
+        // Data Export
+        Route::get('admin/export', [ExportController::class, 'index'])->name('export.index');
+        Route::get('admin/export/categories', [ExportController::class, 'exportCategories'])->name('export.categories');
+        Route::get('admin/export/products', [ExportController::class, 'exportProducts'])->name('export.products');
+        Route::get('admin/export/invoices', [ExportController::class, 'exportInvoices'])->name('export.invoices');
+        Route::get('admin/export/orders', [ExportController::class, 'exportOrders'])->name('export.orders');
+        Route::get('admin/export/sales', [ExportController::class, 'exportSales'])->name('export.sales');
     });
 
     // Category CRUD routes (Admin|Staff)

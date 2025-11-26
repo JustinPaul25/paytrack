@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings } from 'lucide-vue-next';
+import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -306,6 +306,18 @@ const isFinancialOpen = ref(true);
                             </SidebarMenuSub>
                         </CollapsibleContent>
                     </Collapsible>
+                </SidebarMenuItem>
+            </SidebarMenu>
+
+            <!-- Data Export (Admin only) -->
+            <SidebarMenu v-if="isAdmin" class="px-2">
+                <SidebarMenuItem>
+                    <SidebarMenuButton as-child>
+                        <Link :href="route('export.index')">
+                            <Download />
+                            <span>Data Export</span>
+                        </Link>
+                    </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
 
