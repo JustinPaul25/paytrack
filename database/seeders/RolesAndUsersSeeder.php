@@ -24,19 +24,31 @@ class RolesAndUsersSeeder extends Seeder
         // Sample users
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
-            ['name' => 'Admin User', 'password' => 'password']
+            [
+                'name' => 'Admin User',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ]
         );
         $admin->syncRoles(['Admin']);
 
         $staff = User::firstOrCreate(
             ['email' => 'staff@example.com'],
-            ['name' => 'Staff User', 'password' => 'password']
+            [
+                'name' => 'Staff User',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ]
         );
         $staff->syncRoles(['Staff']);
 
         $customer = User::firstOrCreate(
             ['email' => 'customer@example.com'],
-            ['name' => 'Customer User', 'password' => 'password']
+            [
+                'name' => 'Customer User',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ]
         );
         $customer->syncRoles(['Customer']);
     }

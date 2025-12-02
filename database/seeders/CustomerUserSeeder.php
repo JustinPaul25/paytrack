@@ -25,6 +25,7 @@ class CustomerUserSeeder extends Seeder
                 [
                     'name' => $customer->name,
                     'password' => 'password',
+                    'email_verified_at' => now(),
                 ]
             );
 

@@ -79,10 +79,7 @@ class CustomerRegistrationController extends Controller
 
         event(new Registered($user));
 
-        // Automatically log in the customer
-        Auth::login($user);
-
-        return redirect()->route('dashboard')->with('success', 'Registration successful! Welcome to PayTrack.');
+        return redirect()->route('verification.notice')->with('status', 'verification-link-sent');
     }
 }
 
