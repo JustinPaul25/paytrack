@@ -119,6 +119,9 @@ const form = useForm({
     proof_of_delivery: null as File | null,
 });
 
+// Set minimum date to today
+const today = new Date().toISOString().split('T')[0];
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Deliveries',
@@ -188,8 +191,8 @@ const invoiceOptions = computed(() => {
 
 // Status options
 const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'completed', label: 'Completed' },
+    { value: 'pending', label: 'Out for Delivery' },
+    { value: 'completed', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' }
 ];
 
@@ -415,6 +418,7 @@ const removeImage = () => {
                                 v-model="form.delivery_date"
                                 type="date"
                                 id="delivery_date"
+                                :min="today"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                                 required
                             />

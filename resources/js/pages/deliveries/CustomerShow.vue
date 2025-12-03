@@ -45,6 +45,15 @@ function getStatusBadgeClass(status: string) {
         default: return 'bg-gray-100 text-gray-800';
     }
 }
+
+function getStatusLabel(status: string): string {
+    switch (status) {
+        case 'pending': return 'Out for Delivery';
+        case 'completed': return 'Delivered';
+        case 'cancelled': return 'Cancelled';
+        default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+}
 </script>
 
 <template>
@@ -72,7 +81,7 @@ function getStatusBadgeClass(status: string) {
                                 <div class="text-sm text-gray-500">Status</div>
                                 <div class="mt-1">
                                     <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(props.delivery.status)]">
-                                        {{ props.delivery.status }}
+                                        {{ getStatusLabel(props.delivery.status) }}
                                     </span>
                                 </div>
                             </div>

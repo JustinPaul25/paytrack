@@ -30,6 +30,15 @@ function formatCurrency(amount: number) {
 function formatDate(dateString: string) {
     return new Date(dateString).toLocaleString();
 }
+
+function getStatusLabel(status: string): string {
+    switch (status) {
+        case 'pending': return 'Out for Delivery';
+        case 'completed': return 'Delivered';
+        case 'cancelled': return 'Cancelled';
+        default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+}
 </script>
 
 <template>
@@ -58,7 +67,7 @@ function formatDate(dateString: string) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <div class="text-sm text-gray-500">Status</div>
-                                <div class="font-medium capitalize">{{ props.delivery.status }}</div>
+                                <div class="font-medium">{{ getStatusLabel(props.delivery.status) }}</div>
                             </div>
                             <div>
                                 <div class="text-sm text-gray-500">Delivery Date/Time</div>

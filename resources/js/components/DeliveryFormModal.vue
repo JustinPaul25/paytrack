@@ -58,6 +58,39 @@ const form = useForm({
     delivery_fee: '',
 });
 
+// Delivery fee calculation
+const routeDistance = ref<number | null>(null);
+const isAutoCalculatingFee = ref(false);
+
+// Delivery fee rates (can be made configurable later)
+const BASE_DELIVERY_FEE = 50.00; // Base fee in PHP
+const RATE_PER_KM = 10.00; // Rate per kilometer in PHP
+const MINIMUM_FEE = 50.00; // Minimum delivery fee
+
+// Calculate delivery fee based on distance
+function calculateDeliveryFee(distance: number | null): number {
+    if (!distance || distance <= 0) {
+        return MINIMUM_FEE;
+    }
+    
+    const calculatedFee = BASE_DELIVERY_FEE + (distance * RATE_PER_KM);
+    return Math.max(calculatedFee, MINIMUM_FEE); // Ensure minimum fee
+}
+
+// Handle distance calculated from map
+function handleDistanceCalculated(distance: number | null) {
+    routeDistance.value = distance;
+    
+    // Auto-calculate fee only if user hasn't manually entered a value
+    // or if the field is empty
+    if (!form.delivery_fee || form.delivery_fee === '0' || form.delivery_fee === '0.00') {
+        isAutoCalculatingFee.value = true;
+        const calculatedFee = calculateDeliveryFee(distance);
+        form.delivery_fee = calculatedFee.toFixed(2);
+        isAutoCalculatingFee.value = false;
+    }
+}
+
 // Set minimum date to today
 const today = new Date().toISOString().split('T')[0];
 
@@ -99,8 +132,8 @@ const customerOptions = computed(() => [
 
 // Status options
 const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'completed', label: 'Completed' },
+    { value: 'pending', label: 'Out for Delivery' },
+    { value: 'completed', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' }
 ];
 
@@ -172,6 +205,11 @@ watch(() => form.customer_id, (newCustomerId) => {
         if (customer?.address && !form.delivery_address) {
             form.delivery_address = customer.address;
         }
+        // Reset distance and fee when customer changes
+        routeDistance.value = null;
+        if (isAutoCalculatingFee.value === false) {
+            form.delivery_fee = '';
+        }
     }
 });
 
@@ -185,6 +223,8 @@ watch(() => props.open, (isOpen) => {
         form.contact_person = props.invoice.customer?.name || '';
         form.contact_phone = normalizePhoneNumber(props.invoice.customer?.phone) || '';
         form.clearErrors();
+        // Reset distance when modal opens
+        routeDistance.value = null;
     }
 });
 
@@ -202,6 +242,9 @@ function submit() {
         form.setError('contact_phone', 'Enter a valid 10-digit Philippine mobile number.');
         return;
     }
+    
+    // Automatically set status to 'pending' (Out for Delivery) when creating a delivery
+    form.status = 'pending';
     
     form.post(route('deliveries.store'), {
         preserveScroll: true,
@@ -231,7 +274,7 @@ function closeModal() {
     <Dialog :open="open" @update:open="emit('update:open', $event)">
         <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-                <DialogTitle>Out for Delivery</DialogTitle>
+                <DialogTitle>Create Delivery</DialogTitle>
                 <DialogDescription>
                     Create a delivery for invoice {{ invoice.reference_number }}
                 </DialogDescription>
@@ -308,7 +351,7 @@ function closeModal() {
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <Label for="delivery_time">Delivery Time</Label>
                             <Select
@@ -322,32 +365,37 @@ function closeModal() {
                         </div>
                         
                         <div>
-                            <Label for="status">Status</Label>
-                            <Select
-                                v-model="form.status"
-                                :options="statusOptions"
-                                placeholder="Select status"
-                                class="mt-1"
-                                required
-                            />
-                            <InputError :message="form.errors.status" />
-                        </div>
-                        
-                        <div>
                             <Label for="delivery_fee">Delivery Fee</Label>
-                            <input
-                                v-model="form.delivery_fee"
-                                type="number"
-                                id="delivery_fee"
-                                min="0"
-                                step="0.01"
-                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
-                                placeholder="0.00"
-                                required
-                            />
+                            <div class="relative">
+                                <input
+                                    v-model="form.delivery_fee"
+                                    type="number"
+                                    id="delivery_fee"
+                                    min="0"
+                                    step="0.01"
+                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                    placeholder="0.00"
+                                    required
+                                />
+                                <button
+                                    v-if="routeDistance !== null"
+                                    type="button"
+                                    @click="form.delivery_fee = calculateDeliveryFee(routeDistance).toFixed(2)"
+                                    class="absolute right-2 top-[calc(0.25rem+1px)] px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                    title="Recalculate based on distance"
+                                >
+                                    Recalculate
+                                </button>
+                            </div>
+                            <div v-if="routeDistance !== null" class="text-xs text-muted-foreground mt-1">
+                                Distance: {{ routeDistance }} km • Fee: ₱{{ BASE_DELIVERY_FEE.toFixed(2) }} base + ₱{{ RATE_PER_KM.toFixed(2) }}/km
+                            </div>
                             <InputError :message="form.errors.delivery_fee" />
                         </div>
                     </div>
+                    
+                    <!-- Status is automatically set to 'pending' (Out for Delivery) when creating a delivery -->
+                    <!-- Status field hidden - will always be 'pending' for new deliveries -->
                     
                     <div>
                         <Label for="notes">Notes</Label>
@@ -369,6 +417,7 @@ function closeModal() {
                         :customer-location="selectedCustomerLocation"
                         :delivery-address="form.delivery_address || selectedCustomer?.address"
                         map-height="300px"
+                        @distance-calculated="handleDistanceCalculated"
                     />
                 </div>
 

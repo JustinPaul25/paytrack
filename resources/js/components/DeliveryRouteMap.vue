@@ -23,6 +23,10 @@ interface Props {
   mapHeight?: string
 }
 
+const emit = defineEmits<{
+  'distance-calculated': [distance: number | null]
+}>()
+
 const props = withDefaults(defineProps<Props>(), {
   mapHeight: '400px',
   class: ''
@@ -146,6 +150,9 @@ const calculateRoute = async (from: { lat: number; lng: number }, to: { lat: num
       routeDistance.value = parseFloat((data.routes[0].distance / 1000).toFixed(1)) // Convert to km
       routeDuration.value = parseFloat((data.routes[0].duration / 60).toFixed(1)) // Convert to minutes
       
+      // Emit distance to parent component for fee calculation
+      emit('distance-calculated', routeDistance.value)
+      
       // Log route information
       console.log('Route calculated:', {
         distance: routeDistance.value,
@@ -263,7 +270,13 @@ watch(routeCoordinates, (coordinates) => {
   if (coordinates.length < 2) {
     routeDistance.value = null
     routeDuration.value = null
+    emit('distance-calculated', null)
   }
+})
+
+// Watch routeDistance and emit when it changes
+watch(routeDistance, (distance) => {
+  emit('distance-calculated', distance)
 })
 
 // Set manual location

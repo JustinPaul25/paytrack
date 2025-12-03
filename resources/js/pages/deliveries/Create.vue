@@ -140,8 +140,8 @@ const invoiceOptions = computed(() => {
 
 // Status options
 const statusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'completed', label: 'Completed' },
+    { value: 'pending', label: 'Out for Delivery' },
+    { value: 'completed', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' }
 ];
 

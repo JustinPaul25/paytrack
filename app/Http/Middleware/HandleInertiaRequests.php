@@ -59,7 +59,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
-            'pendingRefundCount' => fn () => $request->user()?->hasRole('Admin') 
+            'pendingRefundCount' => fn () => ($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))
                 ? RefundRequest::where('status', 'pending')->count() 
                 : 0,
             'pendingOrderCount' => fn () => ($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))

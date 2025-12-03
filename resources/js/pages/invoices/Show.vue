@@ -155,12 +155,41 @@ function getStatusBadgeClass(status: string) {
     }
 }
 
+function getInvoiceStatusLabel(status: string): string {
+    // If invoice status is 'pending' and there are deliveries, show "Out for Delivery"
+    if (status === 'pending' && props.deliveries && props.deliveries.length > 0) {
+        // Check if any delivery is pending (out for delivery)
+        const hasPendingDelivery = props.deliveries.some((d: any) => d.status === 'pending');
+        if (hasPendingDelivery) {
+            return 'Out for Delivery';
+        }
+    }
+    
+    // Otherwise, use standard labels
+    switch (status) {
+        case 'draft': return 'Draft';
+        case 'pending': return 'Pending';
+        case 'completed': return 'Completed';
+        case 'cancelled': return 'Cancelled';
+        default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+}
+
 function getDeliveryStatusBadgeClass(status: string) {
     switch (status) {
         case 'pending': return 'bg-yellow-100 text-yellow-800';
         case 'completed': return 'bg-green-100 text-green-800';
         case 'cancelled': return 'bg-red-100 text-red-800';
         default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getDeliveryStatusLabel(status: string): string {
+    switch (status) {
+        case 'pending': return 'Out for Delivery';
+        case 'completed': return 'Delivered';
+        case 'cancelled': return 'Cancelled';
+        default: return status.charAt(0).toUpperCase() + status.slice(1);
     }
 }
 
@@ -329,7 +358,7 @@ watch(() => (page.props as any).flash, (flash) => {
                     </Button>
                 </template>
                 <template v-if="!isCustomer && props.invoice.status !== 'completed'">
-                    <Button variant="default" @click="showDeliveryModal = true">Out for Delivery</Button>
+                    <Button variant="default" @click="showDeliveryModal = true">Create Delivery</Button>
                 </template>
                 <template v-if="isCustomer && props.invoice.status === 'completed'">
                     <Link v-if="!hasPendingRefundRequest" :href="route('refundRequests.create', props.invoice.id)">
@@ -366,7 +395,7 @@ watch(() => (page.props as any).flash, (flash) => {
                             <div>
                                 <label class="text-sm font-medium text-gray-500">Status</label>
                                 <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(props.invoice.status)]">
-                                    {{ props.invoice.status }}
+                                    {{ getInvoiceStatusLabel(props.invoice.status) }}
                                 </span>
                             </div>
                             <div>
@@ -526,7 +555,7 @@ watch(() => (page.props as any).flash, (flash) => {
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
                                         :class="getDeliveryStatusBadgeClass(delivery.status)"
                                     >
-                                        {{ delivery.status }}
+                                        {{ getDeliveryStatusLabel(delivery.status) }}
                                     </span>
                                 </div>
                                 <div class="text-sm text-gray-600 space-y-1">

@@ -53,7 +53,7 @@ class OrderController extends Controller
             $query->where('status', $status);
         }
 
-        $orders = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
+        $orders = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         // Calculate statistics
         $statsBase = Order::query();

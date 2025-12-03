@@ -81,6 +81,15 @@ function getStatusBadgeClass(status: string) {
     }
 }
 
+function getStatusLabel(status: string): string {
+    switch (status) {
+        case 'pending': return 'Out for Delivery';
+        case 'completed': return 'Delivered';
+        case 'cancelled': return 'Cancelled';
+        default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+}
+
 function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', {
         style: 'currency',
@@ -223,7 +232,7 @@ function formatDate(dateString: string) {
                             </td>
                             <td class="px-4 py-2">
                                 <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusBadgeClass(delivery.status)]">
-                                    {{ delivery.status }}
+                                    {{ getStatusLabel(delivery.status) }}
                                 </span>
                             </td>
                             <td class="px-4 py-2 font-medium">{{ formatCurrency(delivery.delivery_fee) }}</td>

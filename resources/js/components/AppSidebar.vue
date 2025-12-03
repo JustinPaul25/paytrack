@@ -16,6 +16,7 @@ const isAdmin = !!((page.props.auth as any)?.userRoles && (page.props.auth as an
 const isStaff = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Staff'));
 const isStaffOnly = isStaff && !isAdmin; // Staff but not Admin
 const pendingOrderCount = (page.props.pendingOrderCount as number) || 0;
+const pendingRefundCount = (page.props.pendingRefundCount as number) || 0;
 
 const mainNavItems: NavItem[] = isCustomer
     ? [
@@ -75,6 +76,9 @@ const isUsersOpen = ref(true);
 const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
 const isFinancialOpen = ref(true);
+const isInvoicesOpen = ref(false);
+const isOrdersOpen = ref(false);
+const isFinancialInvoicesOpen = ref(false);
 </script>
 
 <template>
@@ -102,28 +106,78 @@ const isFinancialOpen = ref(true);
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link href="/invoices">
-                                            <Receipt />
-                                            <span>Invoices</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
+                                    <Collapsible v-model:open="isInvoicesOpen">
+                                        <CollapsibleTrigger as-child>
+                                            <SidebarMenuSubButton>
+                                                <Receipt />
+                                                <span>Invoices</span>
+                                                <ChevronDown class="ml-auto h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isInvoicesOpen }" />
+                                            </SidebarMenuSubButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton as-child>
+                                                        <Link href="/invoices">
+                                                            <span>All Invoices</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton as-child>
+                                                        <Link href="/invoices?status=pending">
+                                                            <span>Pending</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </Collapsible>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link href="/orders" class="flex items-center justify-between w-full">
-                                            <div class="flex items-center gap-2">
-                                                <ShoppingCart />
-                                                <span>Orders</span>
-                                            </div>
-                                            <span 
-                                                v-if="pendingOrderCount > 0"
-                                                class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
-                                            >
-                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
-                                            </span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
+                                    <Collapsible v-model:open="isOrdersOpen">
+                                        <CollapsibleTrigger as-child>
+                                            <SidebarMenuSubButton class="flex items-center justify-between w-full">
+                                                <div class="flex items-center gap-2">
+                                                    <ShoppingCart />
+                                                    <span>Orders</span>
+                                                </div>
+                                                <div class="flex items-center gap-1">
+                                                    <span 
+                                                        v-if="pendingOrderCount > 0"
+                                                        class="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
+                                                    >
+                                                        {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
+                                                    </span>
+                                                    <ChevronDown class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isOrdersOpen }" />
+                                                </div>
+                                            </SidebarMenuSubButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton as-child>
+                                                        <Link href="/orders">
+                                                            <span>All Orders</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton as-child>
+                                                        <Link href="/orders?status=pending" class="flex items-center justify-between w-full">
+                                                            <span>Pending</span>
+                                                            <span 
+                                                                v-if="pendingOrderCount > 0"
+                                                                class="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
+                                                            >
+                                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
+                                                            </span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </Collapsible>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
@@ -151,9 +205,17 @@ const isFinancialOpen = ref(true);
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
-                                        <Link :href="route('refundRequests.index')">
-                                            <RotateCcw />
-                                            <span>Refund Requests</span>
+                                        <Link :href="route('refundRequests.index')" class="flex items-center justify-between w-full">
+                                            <div class="flex items-center gap-2">
+                                                <RotateCcw />
+                                                <span>Refund Requests</span>
+                                            </div>
+                                            <span 
+                                                v-if="pendingRefundCount > 0"
+                                                class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white"
+                                            >
+                                                {{ pendingRefundCount > 99 ? '99+' : pendingRefundCount }}
+                                            </span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
@@ -263,13 +325,34 @@ const isFinancialOpen = ref(true);
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link href="/invoices">
-                                            <Receipt />
-                                            <span>Invoices</span>
-                                            <span class="ml-auto text-xs text-muted-foreground">(View Only)</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
+                                    <Collapsible v-model:open="isFinancialInvoicesOpen">
+                                        <CollapsibleTrigger as-child>
+                                            <SidebarMenuSubButton>
+                                                <Receipt />
+                                                <span>Invoices</span>
+                                                <span class="ml-auto text-xs text-muted-foreground">(View Only)</span>
+                                                <ChevronDown class="ml-1 h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isFinancialInvoicesOpen }" />
+                                            </SidebarMenuSubButton>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent>
+                                            <SidebarMenuSub>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton as-child>
+                                                        <Link href="/invoices">
+                                                            <span>All Invoices</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                                <SidebarMenuSubItem>
+                                                    <SidebarMenuSubButton as-child>
+                                                        <Link href="/invoices?status=pending">
+                                                            <span>Pending</span>
+                                                        </Link>
+                                                    </SidebarMenuSubButton>
+                                                </SidebarMenuSubItem>
+                                            </SidebarMenuSub>
+                                        </CollapsibleContent>
+                                    </Collapsible>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>

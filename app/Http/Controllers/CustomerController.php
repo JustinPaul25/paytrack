@@ -88,7 +88,7 @@ class CustomerController extends Controller
             $user->syncRoles(['Customer']);
         }
         // Email credentials to the customer
-        Mail::to($customer->email)->send(new CustomerCredentials($customer->name, $customer->email, $generatedPassword));
+        Mail::to($customer->email)->queue(new CustomerCredentials($customer->name, $customer->email, $generatedPassword));
 
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }

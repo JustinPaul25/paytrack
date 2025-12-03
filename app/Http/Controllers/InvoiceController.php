@@ -10,8 +10,11 @@ use App\Models\Category;
 use App\Models\RefundRequest;
 use App\Models\StockMovement;
 use App\Models\Reminder;
+use App\Mail\InvoiceDueDateReminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class InvoiceController extends Controller
@@ -470,6 +473,10 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'This invoice has already been paid.');
         }
 
+        // Check if customer has email for sending notification
+        $customerEmail = $invoice->customer->email;
+        $hasEmail = !empty($customerEmail);
+
         try {
             // Calculate days until due (negative if overdue)
             $today = Carbon::today();
@@ -492,7 +499,27 @@ class InvoiceController extends Controller
                     'is_read' => false, // Mark as unread when updated
                 ]);
 
-                return redirect()->back()->with('success', 'Payment reminder updated successfully and will appear on the customer dashboard.');
+                // Send email notification (queued)
+                if ($hasEmail) {
+                    try {
+                        Mail::to($customerEmail)->queue(new InvoiceDueDateReminder($invoice, $daysUntilDue));
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to queue payment reminder email', [
+                            'invoice_id' => $invoice->id,
+                            'customer_email' => $customerEmail,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                $message = 'Payment reminder updated successfully and will appear on the customer dashboard.';
+                if ($hasEmail) {
+                    $message .= ' Email notification has been sent.';
+                } elseif (!$hasEmail) {
+                    $message .= ' Note: Customer email not available, email notification was not sent.';
+                }
+
+                return redirect()->back()->with('success', $message);
             } else {
                 // Create new reminder
                 Reminder::create([
@@ -511,7 +538,27 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoice->id,
                 ]);
 
-                return redirect()->back()->with('success', 'Payment reminder created successfully and will appear on the customer dashboard.');
+                // Send email notification (queued)
+                if ($hasEmail) {
+                    try {
+                        Mail::to($customerEmail)->queue(new InvoiceDueDateReminder($invoice, $daysUntilDue));
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to queue payment reminder email', [
+                            'invoice_id' => $invoice->id,
+                            'customer_email' => $customerEmail,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                $message = 'Payment reminder created successfully and will appear on the customer dashboard.';
+                if ($hasEmail) {
+                    $message .= ' Email notification has been sent.';
+                } elseif (!$hasEmail) {
+                    $message .= ' Note: Customer email not available, email notification was not sent.';
+                }
+
+                return redirect()->back()->with('success', $message);
             }
         } catch (\Exception $e) {
             \Log::error('Failed to create payment reminder', [
