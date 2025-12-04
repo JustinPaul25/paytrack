@@ -64,10 +64,8 @@ class CustomerRegistrationController extends Controller
             'location' => $location,
         ]);
 
-        // Handle profile image if provided
-        if ($request->hasFile('profile_image')) {
-            $customer->addMediaFromRequest('profile_image')->toMediaCollection('profile_image');
-        }
+        // Get profile image file before it's consumed
+        $profileImageFile = $request->hasFile('profile_image') ? $request->file('profile_image') : null;
 
         // Create corresponding user account with customer's password
         $user = User::create([
@@ -79,6 +77,21 @@ class CustomerRegistrationController extends Controller
         // Assign "Customer" role if roles system is present
         if (method_exists($user, 'syncRoles')) {
             $user->syncRoles(['Customer']);
+        }
+
+        // Handle profile image if provided - add to both Customer and User
+        if ($profileImageFile) {
+            // Add to Customer model
+            $customer->addMedia($profileImageFile->getRealPath())
+                ->usingName($profileImageFile->getClientOriginalName())
+                ->usingFileName($profileImageFile->getClientOriginalName())
+                ->toMediaCollection('profile_image');
+            
+            // Add to User model
+            $user->addMedia($profileImageFile->getRealPath())
+                ->usingName($profileImageFile->getClientOriginalName())
+                ->usingFileName($profileImageFile->getClientOriginalName())
+                ->toMediaCollection('profile');
         }
 
         event(new Registered($user));
