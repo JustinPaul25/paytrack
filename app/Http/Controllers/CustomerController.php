@@ -11,14 +11,21 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\CustomerCredentials;
+use App\Mail\CustomerAccountVerified;
 
 class CustomerController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $pending = $request->boolean('pending', false);
 
         $query = Customer::query();
+
+        // Filter by pending approvals if requested
+        if ($pending) {
+            $query->whereNull('approved_at');
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -40,12 +47,14 @@ class CustomerController extends Controller
             'customersWithCompany' => Customer::whereNotNull('company_name')->where('company_name', '!=', '')->count(),
             'customersWithPhone' => Customer::whereNotNull('phone')->where('phone', '!=', '')->count(),
             'recentlyAdded' => Customer::where('created_at', '>=', now()->subDays(7))->count(),
+            'pendingApprovals' => Customer::whereNull('approved_at')->count(),
         ];
 
         return Inertia::render('customers/Index', [
             'customers' => $customers,
             'filters' => [
                 'search' => $search,
+                'pending' => $pending,
             ],
             'stats' => $stats,
         ]);
@@ -148,5 +157,32 @@ class CustomerController extends Controller
         $customer->delete();
 
         return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
+    }
+
+    public function approve(Customer $customer)
+    {
+        // Only admins can approve customers
+        if (!auth()->user()->hasRole('Admin')) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to approve customers.');
+        }
+
+        // Check if already approved
+        if ($customer->isApproved()) {
+            return redirect()->route('customers.index')
+                ->with('info', 'This customer is already approved.');
+        }
+
+        // Approve the customer
+        $customer->update([
+            'approved_at' => now(),
+        ]);
+
+        // Send verification email to customer
+        $loginUrl = route('login', [], true);
+        Mail::to($customer->email)->queue(new CustomerAccountVerified($customer->name, $loginUrl));
+
+        return redirect()->route('customers.index', ['pending' => true])
+            ->with('success', "Customer {$customer->name} has been approved and notified via email.");
     }
 } 

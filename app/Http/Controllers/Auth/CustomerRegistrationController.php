@@ -50,7 +50,7 @@ class CustomerRegistrationController extends Controller
             }
         }
         
-        // Create customer
+        // Create customer (unapproved by default - admin must approve)
         $customer = Customer::create([
             'name' => $data['name'],
             'company_name' => $data['company_name'] ?? null,
@@ -62,6 +62,7 @@ class CustomerRegistrationController extends Controller
             'city_municipality' => $data['city_municipality'] ?? null,
             'province' => $data['province'] ?? null,
             'location' => $location,
+            'approved_at' => null, // Customer needs admin approval
         ]);
 
         // Create corresponding user account with customer's password
@@ -80,6 +81,9 @@ class CustomerRegistrationController extends Controller
         $user->markEmailAsVerified();
 
         event(new Registered($user));
+
+        // Dispatch event to notify admins of new customer registration
+        event(new \App\Events\CustomerRegistered($customer));
 
         return redirect()->route('login')->with('status', 'registration-successful');
     }

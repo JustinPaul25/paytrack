@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\Customer;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -47,6 +48,22 @@ class LoginRequest extends FormRequest
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
+        }
+
+        // Check if the user is a Customer and if their account is approved
+        $user = Auth::user();
+        if ($user && method_exists($user, 'hasRole') && $user->hasRole('Customer')) {
+            $customer = Customer::where('email', $user->email)->first();
+            
+            if ($customer && !$customer->isApproved()) {
+                // Log out the user since they're not approved
+                Auth::logout();
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => 'Your account is pending approval. Please wait for admin approval before logging in.',
+                ]);
+            }
         }
 
         RateLimiter::clear($this->throttleKey());

@@ -71,6 +71,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('users/customer-verification', [CustomerVerificationController::class, 'index'])->name('users.customer-verification');
         Route::post('customers/{customer}/verify', [CustomerVerificationController::class, 'verify'])->name('customers.verify');
         Route::post('customers/{customer}/unverify', [CustomerVerificationController::class, 'unverify'])->name('customers.unverify');
+        Route::post('customers/{customer}/approve', [CustomerController::class, 'approve'])->name('customers.approve');
     });
 
     // Category CRUD routes (Admin|Staff)

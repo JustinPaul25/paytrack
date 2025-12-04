@@ -32,6 +32,7 @@ interface Customer {
     address?: string;
     location?: { lat: number; lng: number };
     updated_at?: string;
+    approved_at?: string | null;
 }
 
 interface CustomerStats {
@@ -39,11 +40,13 @@ interface CustomerStats {
     customersWithCompany: number;
     customersWithPhone: number;
     recentlyAdded: number;
+    pendingApprovals?: number;
 }
 
 const page = usePage();
-const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
+const filters = ref<{ search?: string; pending?: boolean }>(page.props.filters ? (page.props.filters as { search?: string; pending?: boolean }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const showPending = ref(typeof filters.value.pending === 'boolean' ? filters.value.pending : false);
 const showStats = ref(false);
 
 // Check user role
@@ -73,12 +76,52 @@ watch(search, (val) => {
             : '';
         // Avoid redundant navigation if value didn't effectively change
         if (next === current) return;
-        router.get('/customers', { search: next || undefined }, { preserveState: true, replace: true });
+        router.get('/customers', { 
+            search: next || undefined, 
+            pending: showPending.value || undefined 
+        }, { preserveState: true, replace: true });
     }, 400);
 });
 
+watch(showPending, (val) => {
+    router.get('/customers', { 
+        search: search.value || undefined, 
+        pending: val || undefined 
+    }, { preserveState: true, replace: true });
+});
+
 function goToPage(pageNum: number) {
-    router.get('/customers', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
+    router.get('/customers', { 
+        search: search.value, 
+        pending: showPending.value || undefined,
+        page: pageNum 
+    }, { preserveState: true, replace: true });
+}
+
+async function approveCustomer(customer: Customer) {
+    const result = await Swal.fire({
+        title: 'Approve Customer?',
+        text: `Are you sure you want to approve ${customer.name}? They will receive an email notification.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8f5be8',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, approve',
+        cancelButtonText: 'Cancel',
+    });
+    
+    if (result.isConfirmed) {
+        router.post(`/customers/${customer.id}/approve`, {}, {
+            onSuccess: () => {
+                Swal.fire('Customer Approved', 'The customer has been approved and notified via email.', 'success');
+            },
+            onError: () => {
+                const flash = (page.props as unknown as { flash?: { error?: string } }).flash;
+                const message = flash?.error ?? 'Failed to approve customer.';
+                Swal.fire('Error', message, 'error');
+            },
+        });
+    }
 }
 
 // Numbered pagination helpers
@@ -247,6 +290,23 @@ async function deleteCustomer(id: number) {
                         </div>
                     </CardContent>
                 </Card>
+
+                <!-- Pending Approvals (Admin only) -->
+                <Card v-if="isAdmin" class="relative overflow-hidden">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-muted-foreground">Pending Approvals</p>
+                                <p class="text-xl font-bold text-orange-600">{{ (page.props.stats as CustomerStats)?.pendingApprovals || 0 }}</p>
+                            </div>
+                            <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                <svg class="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </Transition>
 
@@ -259,6 +319,17 @@ async function deleteCustomer(id: number) {
                     placeholder="Search customers by name, company, or email..." 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
+                <Button 
+                    v-if="isAdmin" 
+                    :variant="showPending ? 'default' : 'outline'"
+                    @click="showPending = !showPending"
+                >
+                    <Icon name="Clock" class="h-4 w-4 mr-2" />
+                    Pending Approvals
+                    <span v-if="(page.props.stats as CustomerStats)?.pendingApprovals" class="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                        {{ (page.props.stats as CustomerStats)?.pendingApprovals }}
+                    </span>
+                </Button>
             </div>
             <Link v-if="canModifyCustomers" :href="route('customers.create')">
                 <Button variant="default">
@@ -309,6 +380,7 @@ async function deleteCustomer(id: number) {
                             <th class="px-4 py-2 text-left">Company</th>
                             <th class="px-4 py-2 text-left">Email</th>
                             <th class="px-4 py-2 text-left">Phone</th>
+                            <th v-if="isAdmin" class="px-4 py-2 text-left">Status</th>
                             <th class="px-4 py-2 text-left">Actions</th>
                         </tr>
                     </thead>
@@ -323,8 +395,26 @@ async function deleteCustomer(id: number) {
                             <td class="px-4 py-2">{{ customer.company_name || '-' }}</td>
                             <td class="px-4 py-2">{{ customer.email }}</td>
                             <td class="px-4 py-2">{{ customer.phone || '-' }}</td>
+                            <td v-if="isAdmin" class="px-4 py-2">
+                                <span v-if="!customer.approved_at" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    Pending Approval
+                                </span>
+                                <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Approved
+                                </span>
+                            </td>
                             <td class="px-4 py-2">
                                 <div v-if="canModifyCustomers" class="flex gap-2">
+                                    <Button 
+                                        v-if="!customer.approved_at" 
+                                        variant="default" 
+                                        size="sm" 
+                                        @click="approveCustomer(customer)"
+                                        class="bg-green-600 hover:bg-green-700"
+                                    >
+                                        <Icon name="Check" class="h-4 w-4 mr-1" />
+                                        Approve
+                                    </Button>
                                     <Link :href="route('customers.edit', customer.id)">
                                         <Button variant="ghost" size="sm">
                                             <Icon name="edit" class="h-4 w-4" />

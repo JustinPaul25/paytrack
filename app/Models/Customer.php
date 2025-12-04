@@ -29,6 +29,7 @@ class Customer extends Model implements HasMedia
         'location',
         'is_walk_in',
         'verified_at',
+        'approved_at',
     ];
 
     /**
@@ -42,6 +43,7 @@ class Customer extends Model implements HasMedia
             'location' => 'array',
             'is_walk_in' => 'boolean',
             'verified_at' => 'datetime',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -99,5 +101,13 @@ class Customer extends Model implements HasMedia
     public function isVerified(): bool
     {
         return $this->verified_at !== null;
+    }
+
+    /**
+     * Check if the customer is approved.
+     */
+    public function isApproved(): bool
+    {
+        return $this->approved_at !== null;
     }
 }
