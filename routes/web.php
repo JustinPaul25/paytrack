@@ -14,6 +14,7 @@ use App\Http\Controllers\SalesTransactionController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\GeocodingController;
+use App\Http\Controllers\CustomerVerificationController;
 
 
 Route::get('/', function () {
@@ -65,6 +66,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('admin/export/invoices', [ExportController::class, 'exportInvoices'])->name('export.invoices');
         Route::get('admin/export/orders', [ExportController::class, 'exportOrders'])->name('export.orders');
         Route::get('admin/export/sales', [ExportController::class, 'exportSales'])->name('export.sales');
+        
+        // Customer Verification
+        Route::get('users/customer-verification', [CustomerVerificationController::class, 'index'])->name('users.customer-verification');
+        Route::post('customers/{customer}/verify', [CustomerVerificationController::class, 'verify'])->name('customers.verify');
+        Route::post('customers/{customer}/unverify', [CustomerVerificationController::class, 'unverify'])->name('customers.unverify');
     });
 
     // Category CRUD routes (Admin|Staff)

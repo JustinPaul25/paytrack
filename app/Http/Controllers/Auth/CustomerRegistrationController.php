@@ -76,9 +76,12 @@ class CustomerRegistrationController extends Controller
             $user->syncRoles(['Customer']);
         }
 
+        // Mark email as verified for customers (admin will verify the customer separately)
+        $user->markEmailAsVerified();
+
         event(new Registered($user));
 
-        return redirect()->route('verification.notice')->with('status', 'verification-link-sent');
+        return redirect()->route('login')->with('status', 'registration-successful');
     }
 }
 

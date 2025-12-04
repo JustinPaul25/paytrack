@@ -37,7 +37,6 @@ const props = defineProps<{
 
 const requestType = ref<'refund' | 'exchange'>('refund');
 const description = ref('');
-const mediaLink = ref(''); // Keep for backward compatibility
 const proofImages = ref<File[]>([]);
 const damagedItemsTerms = ref('');
 const selections = ref<Record<number, {
@@ -137,7 +136,6 @@ function submit() {
     router.post(`/invoices/${props.invoice.id}/refund-request`, {
         request_type: requestType.value,
         description: description.value || undefined,
-        media_link: mediaLink.value || undefined,
         damaged_items_terms: damagedItemsTerms.value || undefined,
         items: items,
         proof_images: proofImages.value,
@@ -348,17 +346,6 @@ function submit() {
                                         <div class="text-xs text-gray-500 mt-1 truncate">{{ image.name }}</div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">Video/Image Link (Optional)</label>
-                                <input
-                                    v-model="mediaLink"
-                                    type="url"
-                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    placeholder="https://..."
-                                />
-                                <p class="text-xs text-gray-500 mt-1">Alternative: Paste a link to external photos or video if you prefer.</p>
                             </div>
 
                             <div>

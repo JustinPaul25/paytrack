@@ -28,6 +28,7 @@ class Customer extends Model implements HasMedia
         'province',
         'location',
         'is_walk_in',
+        'verified_at',
     ];
 
     /**
@@ -40,6 +41,7 @@ class Customer extends Model implements HasMedia
         return [
             'location' => 'array',
             'is_walk_in' => 'boolean',
+            'verified_at' => 'datetime',
         ];
     }
 
@@ -81,5 +83,21 @@ class Customer extends Model implements HasMedia
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * Get the user account associated with this customer.
+     */
+    public function user()
+    {
+        return $this->hasOne(User::class, 'email', 'email');
+    }
+
+    /**
+     * Check if the customer is verified.
+     */
+    public function isVerified(): bool
+    {
+        return $this->verified_at !== null;
     }
 }

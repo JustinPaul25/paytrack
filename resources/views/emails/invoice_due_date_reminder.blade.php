@@ -75,7 +75,7 @@
         <div class="invoice-details">
             <h3>Invoice Details:</h3>
             <p><strong>Invoice Number:</strong> {{ $invoice->reference_number }}</p>
-            <p><strong>Amount Due:</strong> ₱{{ number_format($invoice->total_amount / 100, 2) }}</p>
+            <p><strong>Amount Due:</strong> ₱{{ number_format($invoice->total_amount, 2) }}</p>
             <p><strong>Due Date:</strong> {{ \Carbon\Carbon::parse($invoice->due_date)->format('F d, Y') }}</p>
             @if($invoice->payment_method)
                 <p><strong>Payment Method:</strong> {{ ucfirst(str_replace('_', ' ', $invoice->payment_method)) }}</p>
