@@ -82,12 +82,24 @@ const totalAmount = computed(() => {
     }, 0);
 });
 
+// Minimum order amount for delivery
+const MINIMUM_DELIVERY_AMOUNT = 500.00;
+
+// Check if delivery order meets minimum amount requirement
+const meetsDeliveryMinimum = computed(() => {
+    if (form.delivery_type !== 'delivery') return true;
+    return totalAmount.value >= MINIMUM_DELIVERY_AMOUNT;
+});
+
 // Basic validation to ensure form is ready for submission
 const canSubmit = computed(() => {
     if (!form.customer_id) return false;
     if (!form.order_items.length) return false;
     // At least one valid line item
-    return form.order_items.some(it => !!it.product_id && it.quantity > 0);
+    if (!form.order_items.some(it => !!it.product_id && it.quantity > 0)) return false;
+    // Check minimum order amount for delivery
+    if (!meetsDeliveryMinimum.value) return false;
+    return true;
 });
 
 // Add new order item
@@ -285,6 +297,15 @@ function getItemTotal(index: number): number {
                             required
                         />
                         <InputError :message="form.errors.delivery_type" />
+                        <div v-if="form.delivery_type === 'delivery' && !meetsDeliveryMinimum" class="mt-2 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-md">
+                            <p class="text-sm text-orange-800 dark:text-orange-200">
+                                <strong>Minimum order amount for delivery:</strong> ₱{{ MINIMUM_DELIVERY_AMOUNT.toFixed(2) }}
+                            </p>
+                            <p class="text-sm text-orange-700 dark:text-orange-300 mt-1">
+                                Current total: ₱{{ totalAmount.toFixed(2) }}. 
+                                <span class="font-semibold">Add ₱{{ (MINIMUM_DELIVERY_AMOUNT - totalAmount).toFixed(2) }} more to proceed with delivery.</span>
+                            </p>
+                        </div>
                     </div>
                     
                     <div>
@@ -429,7 +450,14 @@ function getItemTotal(index: number): number {
             <!-- Form Actions -->
             <Card>
                 <CardFooter class="flex gap-2 justify-end">
-                    <Button type="submit" :disabled="!canSubmit" variant="default">Submit Order</Button>
+                    <Button 
+                        type="submit" 
+                        :disabled="!canSubmit" 
+                        variant="default"
+                        :title="!meetsDeliveryMinimum ? `Minimum order amount for delivery is ₱${MINIMUM_DELIVERY_AMOUNT.toFixed(2)}` : ''"
+                    >
+                        Submit Order
+                    </Button>
                     <Link :href="route('orders.index')">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>

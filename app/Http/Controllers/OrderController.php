@@ -171,6 +171,15 @@ class OrderController extends Controller
             // Total amount equals subtotal (VAT already included)
             $totalAmount = $subtotalAmount;
 
+            // Validate minimum order amount for delivery
+            $minimumDeliveryAmount = 500.00; // 500 pesos minimum for delivery orders
+            if ($validated['delivery_type'] === 'delivery' && $totalAmount < $minimumDeliveryAmount) {
+                DB::rollBack();
+                return redirect()->back()->withErrors([
+                    'delivery_type' => "Minimum order amount for delivery is ₱{$minimumDeliveryAmount}. Your current order total is ₱" . number_format($totalAmount, 2) . "."
+                ])->withInput();
+            }
+
             // Create order with status 'pending'
             $order = Order::create([
                 'customer_id' => $validated['customer_id'],
