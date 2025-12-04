@@ -34,6 +34,10 @@ const form = useForm({
     
     // Step 3: Location & Address
     address: '',
+    purok: '',
+    barangay: '',
+    city_municipality: '',
+    province: '',
     location: null as { lat: number; lng: number } | null,
     
     // Step 4: Profile Picture
@@ -324,19 +328,70 @@ const closeErrorDialog = () => {
                     <!-- Step 3: Location & Address -->
                     <div v-if="currentStep === 3" class="space-y-6">
                         <div>
-                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Address</Label>
+                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Street Address (Optional)</Label>
                             <textarea
                                 id="address"
                                 v-model="form.address"
                                 class="w-full rounded border px-3 py-2 mt-1"
-                                rows="3"
+                                rows="2"
+                                placeholder="House/Unit number, Street name"
                             />
-                            <p class="text-xs text-muted-foreground mt-1">Helps with delivery and invoices.</p>
+                            <p class="text-xs text-muted-foreground mt-1">Additional address details if needed.</p>
                             <InputError :message="form.errors.address" />
                         </div>
 
                         <div>
-                            <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location</Label>
+                            <Label for="purok" class="text-sm font-medium text-foreground mb-2 block">Purok</Label>
+                            <Input
+                                id="purok"
+                                type="text"
+                                v-model="form.purok"
+                                placeholder="Enter purok"
+                                class="w-full"
+                            />
+                            <InputError :message="form.errors.purok" />
+                        </div>
+
+                        <div>
+                            <Label for="barangay" class="text-sm font-medium text-foreground mb-2 block">Barangay</Label>
+                            <Input
+                                id="barangay"
+                                type="text"
+                                v-model="form.barangay"
+                                placeholder="Enter barangay"
+                                class="w-full"
+                            />
+                            <InputError :message="form.errors.barangay" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label for="city_municipality" class="text-sm font-medium text-foreground mb-2 block">City/Municipality</Label>
+                                <Input
+                                    id="city_municipality"
+                                    type="text"
+                                    v-model="form.city_municipality"
+                                    placeholder="Enter city or municipality"
+                                    class="w-full"
+                                />
+                                <InputError :message="form.errors.city_municipality" />
+                            </div>
+
+                            <div>
+                                <Label for="province" class="text-sm font-medium text-foreground mb-2 block">Province</Label>
+                                <Input
+                                    id="province"
+                                    type="text"
+                                    v-model="form.province"
+                                    placeholder="Enter province"
+                                    class="w-full"
+                                />
+                                <InputError :message="form.errors.province" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location (Map)</Label>
                             <LocationInput v-model="form.location" />
                             <InputError :message="form.errors.location" />
                         </div>

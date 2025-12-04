@@ -38,10 +38,36 @@
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="address">Address</Label>
-        <textarea id="address" v-model="form.address" placeholder="Street, city, state" class="w-full rounded border px-3 py-2 mt-1" rows="3" />
-        <p class="text-xs text-muted-foreground mt-1">Helps with delivery and invoices.</p>
+        <Label for="address">Street Address (Optional)</Label>
+        <textarea id="address" v-model="form.address" placeholder="House/Unit number, Street name" class="w-full rounded border px-3 py-2 mt-1" rows="2" />
+        <p class="text-xs text-muted-foreground mt-1">Additional address details if needed.</p>
         <InputError :message="form.errors.address" />
+      </div>
+    </div>
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <Label for="purok">Purok</Label>
+        <Input id="purok" v-model="form.purok" placeholder="Enter purok" />
+        <InputError :message="form.errors.purok" />
+      </div>
+    </div>
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <Label for="barangay">Barangay</Label>
+        <Input id="barangay" v-model="form.barangay" placeholder="Enter barangay" />
+        <InputError :message="form.errors.barangay" />
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <Label for="city_municipality">City/Municipality</Label>
+        <Input id="city_municipality" v-model="form.city_municipality" placeholder="Enter city or municipality" />
+        <InputError :message="form.errors.city_municipality" />
+      </div>
+      <div>
+        <Label for="province">Province</Label>
+        <Input id="province" v-model="form.province" placeholder="Enter province" />
+        <InputError :message="form.errors.province" />
       </div>
     </div>
     <div class="flex gap-4">
@@ -114,6 +140,10 @@ const form = useForm({
   email: props.customer?.email || '',
   phone: props.customer?.phone || '',
   address: props.customer?.address || '',
+  purok: props.customer?.purok || '',
+  barangay: props.customer?.barangay || '',
+  city_municipality: props.customer?.city_municipality || '',
+  province: props.customer?.province || '',
   profile_image: null as File | null,
   customerId: props.customer?.id || null,
   location: getLocationData()

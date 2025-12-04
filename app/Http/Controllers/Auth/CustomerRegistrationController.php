@@ -57,6 +57,10 @@ class CustomerRegistrationController extends Controller
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
+            'purok' => $data['purok'] ?? null,
+            'barangay' => $data['barangay'] ?? null,
+            'city_municipality' => $data['city_municipality'] ?? null,
+            'province' => $data['province'] ?? null,
             'location' => $location,
         ]);
 

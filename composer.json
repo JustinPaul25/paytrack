@@ -12,6 +12,7 @@
         "php": "^8.2",
         "ably/ably-php": "^1.1",
         "ably/laravel-broadcaster": "^1.0",
+        "cloudinary/cloudinary_php": "^3.1",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
@@ -83,6 +84,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "ignore": ["PKSA-365x-2zjk-pt47"]
         }
     },
     "minimum-stability": "stable",

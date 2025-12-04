@@ -26,6 +26,10 @@ interface Customer {
     email: string;
     phone?: string;
     address?: string;
+    purok?: string;
+    barangay?: string;
+    city_municipality?: string;
+    province?: string;
     location?: { lat: number; lng: number };
     total_purchases: number;
     total_invoices: number;
@@ -73,6 +77,28 @@ function formatCurrency(amount: number) {
         currency: 'PHP',
         minimumFractionDigits: 2
     }).format(amount);
+}
+
+function formatAddress(customer: Customer): string {
+    const parts: string[] = [];
+    
+    if (customer.address) {
+        parts.push(customer.address);
+    }
+    if (customer.purok) {
+        parts.push(`Purok ${customer.purok}`);
+    }
+    if (customer.barangay) {
+        parts.push(`Barangay ${customer.barangay}`);
+    }
+    if (customer.city_municipality) {
+        parts.push(customer.city_municipality);
+    }
+    if (customer.province) {
+        parts.push(customer.province);
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : 'No address provided';
 }
 
 function goToPage(pageNum: number) {
@@ -168,10 +194,9 @@ function goToPage(pageNum: number) {
                                 <MapPin class="h-4 w-4" />
                                 Address
                             </h3>
-                            <p v-if="customer.address" class="text-sm text-gray-600">
-                                {{ customer.address }}
+                            <p class="text-sm text-gray-600">
+                                {{ formatAddress(customer) }}
                             </p>
-                            <p v-else class="text-sm text-gray-400 italic">No address provided</p>
                         </div>
                     </div>
 

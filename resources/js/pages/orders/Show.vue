@@ -37,6 +37,10 @@ interface Customer {
     email: string;
     phone?: string;
     address?: string;
+    purok?: string;
+    barangay?: string;
+    city_municipality?: string;
+    province?: string;
     media?: any[];
 }
 
@@ -181,6 +185,28 @@ function getCustomerInitials(customer: Customer) {
         .join('')
         .toUpperCase()
         .slice(0, 2);
+}
+
+function formatAddress(customer: Customer): string {
+    const parts: string[] = [];
+    
+    if (customer.address) {
+        parts.push(customer.address);
+    }
+    if (customer.purok) {
+        parts.push(`Purok ${customer.purok}`);
+    }
+    if (customer.barangay) {
+        parts.push(`Barangay ${customer.barangay}`);
+    }
+    if (customer.city_municipality) {
+        parts.push(customer.city_municipality);
+    }
+    if (customer.province) {
+        parts.push(customer.province);
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : '';
 }
 
 function approveOrder() {
@@ -574,9 +600,19 @@ onUnmounted(() => {
                                 <p v-if="order.customer.company_name" class="text-sm text-gray-600">{{ order.customer.company_name }}</p>
                                 <p class="text-sm text-gray-600 mt-1">{{ order.customer.email }}</p>
                                 <p v-if="order.customer.phone" class="text-sm text-gray-600">{{ order.customer.phone }}</p>
-                                <p v-if="order.customer.address" class="text-sm text-gray-600 mt-2">{{ order.customer.address }}</p>
+                                <p v-if="formatAddress(order.customer)" class="text-sm text-gray-600 mt-2">{{ formatAddress(order.customer) }}</p>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Notes -->
+                <Card v-if="order.notes">
+                    <CardHeader>
+                        <CardTitle>Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p class="text-sm whitespace-pre-wrap">{{ order.notes }}</p>
                     </CardContent>
                 </Card>
 
@@ -614,16 +650,6 @@ onUnmounted(() => {
                                 </div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
-
-                <!-- Notes -->
-                <Card v-if="order.notes">
-                    <CardHeader>
-                        <CardTitle>Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p class="text-sm whitespace-pre-wrap">{{ order.notes }}</p>
                     </CardContent>
                 </Card>
 

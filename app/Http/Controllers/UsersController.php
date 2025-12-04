@@ -137,6 +137,10 @@ class UsersController extends Controller
                 'email' => $customer->email,
                 'phone' => $customer->phone,
                 'address' => $customer->address,
+                'purok' => $customer->purok,
+                'barangay' => $customer->barangay,
+                'city_municipality' => $customer->city_municipality,
+                'province' => $customer->province,
                 'location' => $customer->location,
                 'total_purchases' => $totalPurchases,
                 'total_invoices' => $totalInvoices,
@@ -187,25 +191,59 @@ class UsersController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'profile_image' => 'nullable|image|max:20480',
+            'profile_image' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,jpg,png,webp',
+                'max:5120', // 5MB in kilobytes
+                'dimensions:max_width=2000,max_height=2000',
+            ],
+        ], [
+            'name.required' => 'The name field is required.',
+            'name.max' => 'The name may not be greater than 255 characters.',
+            'email.required' => 'The email field is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'email.unique' => 'This email address is already registered.',
+            'password.required' => 'The password field is required.',
+            'password.confirmed' => 'The password confirmation does not match.',
+            'profile_image.image' => 'The profile image must be an image file.',
+            'profile_image.mimes' => 'The profile image must be a JPEG, PNG, or WebP file.',
+            'profile_image.max' => 'The profile image may not be greater than 5MB.',
+            'profile_image.dimensions' => 'The profile image dimensions must not exceed 2000x2000 pixels.',
         ]);
         
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
-        
-        // Automatically assign Staff role
-        $user->assignRole('Staff');
-        
-        if ($request->hasFile('profile_image')) {
-            $user->addMediaFromRequest('profile_image')->toMediaCollection('profile');
+        try {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
+            
+            // Automatically assign Staff role
+            $user->assignRole('Staff');
+            
+            if ($request->hasFile('profile_image')) {
+                try {
+                    $user->addMediaFromRequest('profile_image')->toMediaCollection('profile');
+                } catch (\Exception $e) {
+                    // If image upload fails, continue without image but log the error
+                    \Log::error('Failed to upload profile image for user ' . $user->id . ': ' . $e->getMessage());
+                    return redirect()->back()
+                        ->withInput()
+                        ->withErrors(['profile_image' => 'Failed to upload profile image. Please try again.']);
+                }
+            }
+            
+            if ($request->has('create_another')) {
+                return redirect()->route('users.create')->with('success', 'User created successfully!');
+            }
+            return redirect()->route('users.index')->with('success', 'User created successfully!');
+        } catch (\Exception $e) {
+            \Log::error('Failed to create user: ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to create user. Please try again.']);
         }
-        if ($request->has('create_another')) {
-            return redirect()->route('users.create')->with('success', 'User created successfully!');
-        }
-        return redirect()->route('users.index')->with('success', 'User created successfully!');
     }
 
     public function edit(User $user)
@@ -229,23 +267,61 @@ class UsersController extends Controller
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'roles' => 'array',
             'roles.*' => 'integer|exists:roles,id',
-            'profile_image' => 'nullable|image|max:20480',
+            'profile_image' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,jpg,png,webp',
+                'max:5120', // 5MB in kilobytes
+                'dimensions:max_width=2000,max_height=2000',
+            ],
+        ], [
+            'name.required' => 'The name field is required.',
+            'name.max' => 'The name may not be greater than 255 characters.',
+            'email.required' => 'The email field is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'email.unique' => 'This email address is already registered.',
+            'password.confirmed' => 'The password confirmation does not match.',
+            'roles.array' => 'The roles must be an array.',
+            'roles.*.exists' => 'One or more selected roles are invalid.',
+            'profile_image.image' => 'The profile image must be an image file.',
+            'profile_image.mimes' => 'The profile image must be a JPEG, PNG, or WebP file.',
+            'profile_image.max' => 'The profile image may not be greater than 5MB.',
+            'profile_image.dimensions' => 'The profile image dimensions must not exceed 2000x2000 pixels.',
         ]);
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
+        
+        try {
+            $user->name = $validated['name'];
+            $user->email = $validated['email'];
+            if (!empty($validated['password'])) {
+                $user->password = Hash::make($validated['password']);
+            }
+            $user->save();
+            
+            if (!empty($validated['roles'])) {
+                $roleNames = \Spatie\Permission\Models\Role::whereIn('id', $validated['roles'])->pluck('name')->toArray();
+                $user->syncRoles($roleNames);
+            }
+            
+            if ($request->hasFile('profile_image')) {
+                try {
+                    $user->clearMediaCollection('profile');
+                    $user->addMediaFromRequest('profile_image')->toMediaCollection('profile');
+                } catch (\Exception $e) {
+                    // If image upload fails, continue without updating image but log the error
+                    \Log::error('Failed to upload profile image for user ' . $user->id . ': ' . $e->getMessage());
+                    return redirect()->back()
+                        ->withInput()
+                        ->withErrors(['profile_image' => 'Failed to upload profile image. Please try again.']);
+                }
+            }
+            
+            return redirect()->route('users.index')->with('success', 'User updated successfully!');
+        } catch (\Exception $e) {
+            \Log::error('Failed to update user ' . $user->id . ': ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Failed to update user. Please try again.']);
         }
-        $user->save();
-        if (!empty($validated['roles'])) {
-            $roleNames = \Spatie\Permission\Models\Role::whereIn('id', $validated['roles'])->pluck('name')->toArray();
-            $user->syncRoles($roleNames);
-        }
-        if ($request->hasFile('profile_image')) {
-            $user->clearMediaCollection('profile');
-            $user->addMediaFromRequest('profile_image')->toMediaCollection('profile');
-        }
-        return redirect()->route('users.index')->with('success', 'User updated successfully!');
     }
 
     public function destroy(User $user)

@@ -14,6 +14,13 @@ class ProductController extends Controller
         $query = Product::with('category');
         $search = $request->input('search');
         $lowStock = $request->input('low_stock');
+        $sortBy = $request->input('sort_by', 'updated_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+        
+        // Validate sort parameters
+        $allowedSortFields = ['name', 'stock', 'selling_price', 'updated_at'];
+        $sortBy = in_array($sortBy, $allowedSortFields) ? $sortBy : 'updated_at';
+        $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
         
         if ($search) {
             $query->where('name', 'like', "%{$search}%");
@@ -24,7 +31,7 @@ class ProductController extends Controller
             $query->where('stock', '<=', 10);
         }
         
-        $products = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
+        $products = $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
 
         // Calculate statistics
         $totalProducts = Product::count();
@@ -39,6 +46,8 @@ class ProductController extends Controller
             'filters' => [
                 'search' => $search,
                 'low_stock' => $lowStock,
+                'sort_by' => $sortBy,
+                'sort_order' => $sortOrder,
             ],
             'stats' => [
                 'totalProducts' => $totalProducts,

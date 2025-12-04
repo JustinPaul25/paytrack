@@ -56,7 +56,32 @@ class SalesTransactionController extends Controller
         ];
         $column = $sortMap[$sortBy] ?? 'created_at';
         $direction = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
-        $query->orderBy($column, $direction);
+        
+        // Special handling for status sorting to ensure proper order
+        if ($column === 'status') {
+            // Use CASE statement to give priority: completed = 1, cancelled = 2, draft = 3, pending = 4
+            // For ascending: completed first (1), cancelled second (2)
+            // For descending: cancelled first (2), completed second (1)
+            if ($direction === 'asc') {
+                $query->orderByRaw("CASE 
+                    WHEN status = 'completed' THEN 1
+                    WHEN status = 'cancelled' THEN 2
+                    WHEN status = 'draft' THEN 3
+                    WHEN status = 'pending' THEN 4
+                    ELSE 5
+                END ASC");
+            } else {
+                $query->orderByRaw("CASE 
+                    WHEN status = 'completed' THEN 1
+                    WHEN status = 'cancelled' THEN 2
+                    WHEN status = 'draft' THEN 3
+                    WHEN status = 'pending' THEN 4
+                    ELSE 5
+                END DESC");
+            }
+        } else {
+            $query->orderBy($column, $direction);
+        }
 
         $invoices = $query->get();
 

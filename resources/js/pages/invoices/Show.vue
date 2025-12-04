@@ -45,6 +45,10 @@ interface Customer {
     email: string;
     phone?: string;
     address?: string;
+    purok?: string;
+    barangay?: string;
+    city_municipality?: string;
+    province?: string;
     location?: { lat: number; lng: number } | null;
     media?: Media[];
 }
@@ -217,6 +221,28 @@ function formatDateOnly(dateString: string) {
         month: 'long',
         day: 'numeric'
     });
+}
+
+function formatAddress(customer: Customer): string {
+    const parts: string[] = [];
+    
+    if (customer.address) {
+        parts.push(customer.address);
+    }
+    if (customer.purok) {
+        parts.push(`Purok ${customer.purok}`);
+    }
+    if (customer.barangay) {
+        parts.push(`Barangay ${customer.barangay}`);
+    }
+    if (customer.city_municipality) {
+        parts.push(customer.city_municipality);
+    }
+    if (customer.province) {
+        parts.push(customer.province);
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : '';
 }
 
 function printPage() {
@@ -700,9 +726,9 @@ watch(() => (page.props as any).flash, (flash) => {
                                 <label class="text-sm font-medium text-gray-500">Phone</label>
                                 <p>{{ props.invoice.customer.phone }}</p>
                             </div>
-                            <div v-if="props.invoice.customer.address">
+                            <div v-if="formatAddress(props.invoice.customer)">
                                 <label class="text-sm font-medium text-gray-500">Address</label>
-                                <p class="text-sm">{{ props.invoice.customer.address }}</p>
+                                <p class="text-sm">{{ formatAddress(props.invoice.customer) }}</p>
                             </div>
                         </div>
                     </CardContent>

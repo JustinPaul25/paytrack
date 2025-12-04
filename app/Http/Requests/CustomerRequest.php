@@ -26,6 +26,10 @@ class CustomerRequest extends FormRequest
             ],
             'phone' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+\s()\-,]*$/'],
             'address' => ['nullable', 'string'],
+            'purok' => ['nullable', 'string', 'max:255'],
+            'barangay' => ['nullable', 'string', 'max:255'],
+            'city_municipality' => ['nullable', 'string', 'max:255'],
+            'province' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'array'],
             'location.lat' => ['nullable', 'numeric', 'between:-90,90'],
             'location.lng' => ['nullable', 'numeric', 'between:-180,180'],
@@ -48,6 +52,10 @@ class CustomerRequest extends FormRequest
             'email' => 'email address',
             'phone' => 'phone number',
             'address' => 'address',
+            'purok' => 'purok',
+            'barangay' => 'barangay',
+            'city_municipality' => 'city/municipality',
+            'province' => 'province',
             'profile_image' => 'profile picture',
         ];
     }

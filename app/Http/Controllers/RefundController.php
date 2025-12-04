@@ -60,8 +60,64 @@ class RefundController extends Controller
         $returnToStock = (bool) $request->get('return_to_stock', true);
         $notes = $request->get('notes');
 
-        // Handle inventory if returning to stock
-        if ($returnToStock) {
+        // Handle inventory
+        // For exchanges: return original item to stock AND deduct exchange item from stock
+        // For refunds: return item to stock (if returnToStock) or write-off
+        
+        if ($refund->refund_type === 'exchange' && $refund->exchange_product_id && $refund->exchange_quantity) {
+            // EXCHANGE: Handle both returned item and exchanged item
+            
+            // 1. Return original item to stock
+            $originalProduct = \App\Models\Product::find($refund->product_id);
+            if ($originalProduct) {
+                $beforeOriginal = (int) $originalProduct->stock;
+                $originalProduct->stock = $beforeOriginal + (int) $refund->quantity_refunded;
+                $originalProduct->save();
+
+                // Record stock movement for returned item
+                \App\Models\StockMovement::create([
+                    'product_id' => $refund->product_id,
+                    'refund_id' => $refund->id,
+                    'invoice_id' => $refund->invoice_id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'refund',
+                    'quantity' => (int) $refund->quantity_refunded,
+                    'quantity_before' => $beforeOriginal,
+                    'quantity_after' => $originalProduct->stock,
+                    'notes' => 'Item returned from exchange. ' . ($notes ?? ''),
+                ]);
+            }
+            
+            // 2. Deduct exchange item from stock
+            $exchangeProduct = \App\Models\Product::find($refund->exchange_product_id);
+            if ($exchangeProduct) {
+                $beforeExchange = (int) $exchangeProduct->stock;
+                $exchangeQty = (int) $refund->exchange_quantity;
+                
+                // Check stock availability
+                if ($beforeExchange < $exchangeQty) {
+                    return redirect()->back()
+                        ->with('error', "Insufficient stock for exchange product. Available: {$beforeExchange}, Required: {$exchangeQty}");
+                }
+                
+                $exchangeProduct->stock = $beforeExchange - $exchangeQty;
+                $exchangeProduct->save();
+
+                // Record stock movement for exchanged item (sale type, negative quantity)
+                \App\Models\StockMovement::create([
+                    'product_id' => $refund->exchange_product_id,
+                    'refund_id' => $refund->id,
+                    'invoice_id' => $refund->invoice_id,
+                    'user_id' => $request->user()->id,
+                    'type' => 'sale',
+                    'quantity' => -1 * $exchangeQty,
+                    'quantity_before' => $beforeExchange,
+                    'quantity_after' => $exchangeProduct->stock,
+                    'notes' => 'Item exchanged. ' . ($notes ?? ''),
+                ]);
+            }
+        } elseif ($returnToStock) {
+            // REFUND: Return item to stock
             $product = \App\Models\Product::find($refund->product_id);
             if ($product) {
                 $before = (int) $product->stock;
@@ -82,7 +138,7 @@ class RefundController extends Controller
                 ]);
             }
         } else {
-            // Record a write-off movement for traceability
+            // Write-off: Record a write-off movement for traceability
             \App\Models\StockMovement::create([
                 'product_id' => $refund->product_id,
                 'refund_id' => $refund->id,

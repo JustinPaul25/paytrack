@@ -20,7 +20,7 @@ class RefundRequestController extends Controller
     public function index(Request $request)
     {
         $status = $request->get('status', ''); // pending, approved, rejected, converted, or empty for all
-        $query = RefundRequest::query()->with(['invoice', 'product']);
+        $query = RefundRequest::query()->with(['invoice', 'product', 'exchangeProduct', 'media']);
 
         // Customer role: restrict to own refund requests only
         if ($request->user()?->hasRole('Customer')) {
@@ -77,6 +77,21 @@ class RefundRequestController extends Controller
 
         $invoice->load(['invoiceItems.product', 'customer']);
 
+        // Get available products for exchange (only products with stock > 0)
+        $availableProducts = Product::where('stock', '>', 0)
+            ->select('id', 'name', 'selling_price', 'stock', 'SKU')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->selling_price,
+                    'stock' => $product->stock,
+                    'sku' => $product->SKU,
+                ];
+            });
+
         return inertia('refunds/Create', [
             'invoice' => [
                 'id' => $invoice->id,
@@ -97,6 +112,7 @@ class RefundRequestController extends Controller
                     ];
                 }),
             ],
+            'availableProducts' => $availableProducts,
         ]);
     }
 
@@ -130,12 +146,29 @@ class RefundRequestController extends Controller
         // Expect a payload with selected items
         $validated = $request->validate([
             'description' => ['nullable', 'string', 'max:2000'],
-            'media_link' => ['nullable', 'url', 'max:1024'],
+            'media_link' => ['nullable', 'url', 'max:1024'], // Keep for backward compatibility
+            'proof_images' => ['nullable', 'array'],
+            'proof_images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // 5MB max per image
+            'request_type' => ['required', 'in:refund,exchange'],
+            'damaged_items_terms' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.invoice_item_id' => ['required', 'exists:invoice_items,id'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.exchange_product_id' => ['nullable', 'required_if:request_type,exchange', 'exists:products,id'],
+            'items.*.exchange_quantity' => ['nullable', 'required_if:request_type,exchange', 'integer', 'min:1'],
         ]);
+
+        // Additional validation: if exchange, ensure all items have exchange details
+        if ($validated['request_type'] === 'exchange') {
+            foreach ($validated['items'] as $index => $item) {
+                if (empty($item['exchange_product_id']) || empty($item['exchange_quantity']) || $item['exchange_quantity'] <= 0) {
+                    return redirect()->back()->withErrors([
+                        "items.{$index}.exchange_product_id" => 'Exchange product and quantity are required for exchange requests.',
+                    ])->withInput();
+                }
+            }
+        }
 
         $created = [];
         foreach ($validated['items'] as $item) {
@@ -159,9 +192,27 @@ class RefundRequestController extends Controller
                 // amount_requested left null; could be computed qty * price if desired
                 'reason' => $validated['description'] ?? null,
                 'notes' => null,
-                'media_link' => $validated['media_link'] ?? null,
+                'media_link' => $validated['media_link'] ?? null, // Keep for backward compatibility
                 'status' => 'pending',
+                'request_type' => $validated['request_type'] ?? 'refund',
+                'exchange_product_id' => $item['exchange_product_id'] ?? null,
+                'exchange_quantity' => $item['exchange_quantity'] ?? null,
+                'damaged_items_terms' => $validated['damaged_items_terms'] ?? null,
             ]);
+
+            // Handle proof images upload
+            if ($request->hasFile('proof_images')) {
+                $files = $request->file('proof_images');
+                // Handle both single file and array of files
+                $fileArray = is_array($files) ? $files : [$files];
+                foreach ($fileArray as $image) {
+                    if ($image && $image->isValid()) {
+                        $refundRequest->addMedia($image)
+                            ->usingName($image->getClientOriginalName())
+                            ->toMediaCollection('proof_images');
+                    }
+                }
+            }
 
             $created[] = $refundRequest;
 
@@ -213,6 +264,10 @@ class RefundRequestController extends Controller
         $amount = (int) round(($qty * $invoiceItem->price) * 100);
         $type = $qty >= $invoiceItem->quantity ? 'full' : 'partial';
 
+        // Determine refund type and method based on request
+        $refundMethod = ($refundRequest->request_type === 'exchange') ? 'exchange' : 'credit_note';
+        $refundTypeValue = ($refundRequest->request_type === 'exchange') ? 'exchange' : $type;
+
         $refund = Refund::create([
             'invoice_id' => $refundRequest->invoice_id,
             'invoice_item_id' => $refundRequest->invoice_item_id,
@@ -221,13 +276,15 @@ class RefundRequestController extends Controller
             'refund_number' => 'RF-' . strtoupper(Str::random(8)),
             'quantity_refunded' => $qty,
             'refund_amount' => $amount, // cents
-            'refund_type' => $type,
-            'refund_method' => 'credit_note', // default method for system-approved refunds
+            'refund_type' => $refundTypeValue,
+            'refund_method' => $refundMethod,
             'status' => 'approved',
             'reason' => $refundRequest->reason,
             'notes' => $refundRequest->media_link ? ('Media: ' . $refundRequest->media_link) : null,
             'reference_number' => $refundRequest->invoice_reference,
             'processed_at' => now(),
+            'exchange_product_id' => $refundRequest->exchange_product_id,
+            'exchange_quantity' => $refundRequest->exchange_quantity,
         ]);
 
         // Link refund back to request and mark as converted

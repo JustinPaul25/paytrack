@@ -38,6 +38,10 @@ interface RefundRequest {
     converted_refund_id?: number;
     created_at: string;
     updated_at: string;
+    request_type?: 'refund' | 'exchange';
+    exchange_product_id?: number;
+    exchange_quantity?: number;
+    damaged_items_terms?: string;
     invoice?: {
         id: number;
         reference_number: string;
@@ -52,6 +56,19 @@ interface RefundRequest {
         selling_price: number;
         SKU?: string;
     };
+    exchange_product?: {
+        id: number;
+        name: string;
+        selling_price: number;
+        SKU?: string;
+    };
+    media?: Array<{
+        id: number;
+        file_name: string;
+        mime_type: string;
+        size: number;
+        url: string;
+    }>;
 }
 
 interface Paginated<T> {
@@ -165,6 +182,7 @@ function reject(id: number) {
                         <thead>
                             <tr>
                                 <th class="px-4 py-2 text-left">Tracking</th>
+                                <th class="px-4 py-2 text-left">Type</th>
                                 <th class="px-4 py-2 text-left">Invoice</th>
                                 <th v-if="!isCustomer" class="px-4 py-2 text-left">Customer</th>
                                 <th class="px-4 py-2 text-left">Qty</th>
@@ -178,6 +196,16 @@ function reject(id: number) {
                                 <td class="px-4 py-2">
                                     <div class="font-medium">{{ r.tracking_number }}</div>
                                     <div v-if="r.reason" class="text-xs text-gray-500 truncate max-w-64">{{ r.reason }}</div>
+                                </td>
+                                <td class="px-4 py-2">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                        :class="{
+                                            'bg-blue-100 text-blue-800': r.request_type === 'refund' || !r.request_type,
+                                            'bg-purple-100 text-purple-800': r.request_type === 'exchange',
+                                        }"
+                                    >
+                                        {{ r.request_type === 'exchange' ? 'Exchange' : 'Refund' }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-2">
                                     <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)" class="text-sm text-blue-600 hover:underline">
@@ -328,14 +356,43 @@ function reject(id: number) {
                             <div class="whitespace-pre-wrap text-sm bg-blue-50 p-3 rounded-md border border-blue-200">{{ showDetails.review_notes }}</div>
                         </div>
 
+                        <div v-if="showDetails.request_type === 'exchange' && showDetails.exchange_product">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Exchange Product</div>
+                            <div>
+                                <div class="font-medium">{{ showDetails.exchange_product.name }}</div>
+                                <div v-if="showDetails.exchange_product.SKU" class="text-sm text-gray-600">SKU: {{ showDetails.exchange_product.SKU }}</div>
+                                <div class="text-sm text-gray-600">Price: {{ formatCurrency(showDetails.exchange_product.selling_price) }}</div>
+                                <div v-if="showDetails.exchange_quantity" class="text-sm text-gray-600">Quantity: {{ showDetails.exchange_quantity }}</div>
+                            </div>
+                        </div>
+
+                        <div v-if="showDetails.media && showDetails.media.length > 0">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Proof Images</div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+                                <a v-for="(media, index) in showDetails.media" :key="media.id" :href="media.url" target="_blank" rel="noopener noreferrer" class="relative group">
+                                    <img :src="media.url" :alt="`Proof image ${index + 1}`" class="w-full h-32 object-cover rounded-md border hover:opacity-75 transition-opacity" />
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity rounded-md flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                                        </svg>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+
                         <div v-if="showDetails.media_link">
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Media / Evidence</div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Media Link (Legacy)</div>
                             <a :href="showDetails.media_link" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline break-all text-sm flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                 </svg>
                                 View Media
                             </a>
+                        </div>
+
+                        <div v-if="showDetails.damaged_items_terms">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Damaged Items Terms</div>
+                            <div class="whitespace-pre-wrap text-sm bg-yellow-50 p-3 rounded-md border border-yellow-200">{{ showDetails.damaged_items_terms }}</div>
                         </div>
 
                         <div v-if="showDetails.converted_refund_id">

@@ -43,9 +43,13 @@ interface ProductStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string; low_stock?: string }>(page.props.filters ? (page.props.filters as { search?: string; low_stock?: string }) : {});
+const filters = ref<{ search?: string; low_stock?: string; sort_by?: string; sort_order?: string }>(
+    page.props.filters ? (page.props.filters as { search?: string; low_stock?: string; sort_by?: string; sort_order?: string }) : {}
+);
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
 const lowStock = ref(typeof filters.value.low_stock === 'string' ? filters.value.low_stock : '');
+const sortBy = ref(typeof filters.value.sort_by === 'string' ? filters.value.sort_by : 'updated_at');
+const sortOrder = ref(typeof filters.value.sort_order === 'string' ? filters.value.sort_order : 'desc');
 const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -65,17 +69,60 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/products', { search: val, low_stock: lowStock.value }, { preserveState: true, replace: true });
+        router.get('/products', { 
+            search: val, 
+            low_stock: lowStock.value,
+            sort_by: sortBy.value,
+            sort_order: sortOrder.value
+        }, { preserveState: true, replace: true });
     }, 400);
+});
+
+watchEffect(() => {
+    sortBy.value = (page.props.filters && typeof (page.props.filters as { sort_by?: string }).sort_by === 'string')
+        ? (page.props.filters as { sort_by?: string }).sort_by!
+        : 'updated_at';
+    sortOrder.value = (page.props.filters && typeof (page.props.filters as { sort_order?: string }).sort_order === 'string')
+        ? (page.props.filters as { sort_order?: string }).sort_order!
+        : 'desc';
 });
 
 function toggleLowStock() {
     lowStock.value = lowStock.value ? '' : '1';
-    router.get('/products', { search: search.value, low_stock: lowStock.value }, { preserveState: true, replace: true });
+    router.get('/products', { 
+        search: search.value, 
+        low_stock: lowStock.value,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+    }, { preserveState: true, replace: true });
 }
 
 function goToPage(pageNum: number) {
-    router.get('/products', { search: search.value, low_stock: lowStock.value, page: pageNum }, { preserveState: true, replace: true });
+    router.get('/products', { 
+        search: search.value, 
+        low_stock: lowStock.value, 
+        page: pageNum,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+    }, { preserveState: true, replace: true });
+}
+
+function handleSort(field: string) {
+    if (sortBy.value === field) {
+        // Toggle sort order if clicking the same field
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+        // Set new sort field with default ascending order
+        sortBy.value = field;
+        sortOrder.value = 'asc';
+    }
+    
+    router.get('/products', { 
+        search: search.value, 
+        low_stock: lowStock.value,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+    }, { preserveState: true, replace: true });
 }
 
 function formatCurrency(amount: number) {
@@ -231,7 +278,32 @@ async function deleteProduct(id: number) {
                             <th class="px-4 py-2 text-left">Name</th>
                             <th class="px-4 py-2 text-left">Category</th>
                             <th class="px-4 py-2 text-left">Selling Price</th>
-                            <th class="px-4 py-2 text-left">Stock</th>
+                            <th 
+                                class="px-4 py-2 text-left cursor-pointer hover:bg-gray-50 select-none"
+                                @click="handleSort('stock')"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span>Stock</span>
+                                    <div class="flex flex-col">
+                                        <svg 
+                                            class="w-3 h-3" 
+                                            :class="sortBy === 'stock' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'"
+                                            fill="currentColor" 
+                                            viewBox="0 0 20 20"
+                                        >
+                                            <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                        <svg 
+                                            class="w-3 h-3 -mt-1" 
+                                            :class="sortBy === 'stock' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'"
+                                            fill="currentColor" 
+                                            viewBox="0 0 20 20"
+                                        >
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </th>
                             <th class="px-4 py-2 text-left">Unit</th>
                             <th class="px-4 py-2 text-left">SKU</th>
                             <th class="px-4 py-2 text-left">Actions</th>

@@ -25,6 +25,8 @@ class Refund extends Model
         'reference_number',
         'processed_at',
         'completed_at',
+        'exchange_product_id',
+        'exchange_quantity',
     ];
 
     protected $casts = [
@@ -60,6 +62,11 @@ class Refund extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function exchangeProduct()
+    {
+        return $this->belongsTo(Product::class, 'exchange_product_id');
     }
 }
 
