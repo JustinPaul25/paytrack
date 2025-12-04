@@ -51,7 +51,7 @@ class DeliveryController extends Controller
     public function create(Request $request)
     {
         // Get customers with properly cast location
-        $customers = Customer::select(['id', 'name', 'company_name', 'address', 'location', 'phone'])
+        $customers = Customer::select(['id', 'name', 'company_name', 'address', 'purok', 'barangay', 'city_municipality', 'province', 'location', 'phone'])
             ->get()
             ->map(function ($customer) {
                 // Ensure location is properly formatted as array or null
@@ -77,6 +77,10 @@ class DeliveryController extends Controller
                     'name' => $customer->name,
                     'company_name' => $customer->company_name,
                     'address' => $customer->address,
+                    'purok' => $customer->purok,
+                    'barangay' => $customer->barangay,
+                    'city_municipality' => $customer->city_municipality,
+                    'province' => $customer->province,
                     'phone' => $customer->phone,
                     'location' => $location,
                 ];

@@ -21,6 +21,10 @@ interface Customer {
     name: string;
     company_name?: string;
     address?: string;
+    purok?: string;
+    barangay?: string;
+    city_municipality?: string;
+    province?: string;
     phone?: string;
     location?: { lat: number; lng: number } | null;
 }
@@ -30,7 +34,7 @@ interface Invoice {
     customer_id: number;
     total_amount: number;
     reference_number: string;
-    customer: Customer;
+    customer: Customer | null;
 }
 
 const props = defineProps<{ 
@@ -192,6 +196,28 @@ function normalizePhoneNumber(phone: string | null | undefined): string {
     return phone; // Return original if can't normalize
 }
 
+// Helper function to concatenate address fields (purok, barangay, city_municipality, province)
+function formatDeliveryAddress(customer: Customer | null | undefined): string {
+    if (!customer) return '';
+    
+    const parts: string[] = [];
+    
+    if (customer.purok) {
+        parts.push(customer.purok);
+    }
+    if (customer.barangay) {
+        parts.push(customer.barangay);
+    }
+    if (customer.city_municipality) {
+        parts.push(customer.city_municipality);
+    }
+    if (customer.province) {
+        parts.push(customer.province);
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : '';
+}
+
 // Get selected customer location
 const selectedCustomerLocation = computed(() => {
     if (!form.customer_id) return null;
@@ -258,8 +284,9 @@ onMounted(() => {
             // Auto-fill customer details
             const customer = props.customers.find(c => c.id === invoice.customer_id);
             if (customer) {
-                if (customer.address && !form.delivery_address) {
-                    form.delivery_address = customer.address;
+                const deliveryAddress = formatDeliveryAddress(customer);
+                if (deliveryAddress && !form.delivery_address) {
+                    form.delivery_address = deliveryAddress;
                 }
                 if (customer.name && !form.contact_person) {
                     form.contact_person = customer.name;
@@ -277,8 +304,9 @@ watch(() => form.customer_id, (newCustomerId) => {
     if (newCustomerId) {
         const customer = props.customers.find(c => c.id === newCustomerId);
         if (customer) {
-            if (customer.address && !form.delivery_address) {
-                form.delivery_address = customer.address;
+            const deliveryAddress = formatDeliveryAddress(customer);
+            if (deliveryAddress && !form.delivery_address) {
+                form.delivery_address = deliveryAddress;
             }
             if (customer.name && !form.contact_person) {
                 form.contact_person = customer.name;
@@ -296,8 +324,13 @@ watch(() => form.invoice_id, (newInvoiceId) => {
         const invoice = props.invoices.find(inv => inv.id === newInvoiceId);
         if (invoice?.customer) {
             form.customer_id = invoice.customer_id;
-            if (invoice.customer.address && !form.delivery_address) {
-                form.delivery_address = invoice.customer.address;
+            // Find the full customer data from customers list to get address fields
+            const customer = props.customers.find(c => c.id === invoice.customer_id);
+            if (customer) {
+                const deliveryAddress = formatDeliveryAddress(customer);
+                if (deliveryAddress && !form.delivery_address) {
+                    form.delivery_address = deliveryAddress;
+                }
             }
             if (invoice.customer.name && !form.contact_person) {
                 form.contact_person = invoice.customer.name;
@@ -470,7 +503,7 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                 <CardContent>
                     <DeliveryRouteMap 
                         :customer-location="selectedCustomerLocation"
-                        :delivery-address="form.delivery_address || selectedCustomer?.address"
+                        :delivery-address="form.delivery_address || formatDeliveryAddress(selectedCustomer)"
                         map-height="400px"
                     />
                 </CardContent>

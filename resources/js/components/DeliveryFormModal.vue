@@ -22,6 +22,10 @@ interface Customer {
     name: string;
     company_name?: string;
     address?: string;
+    purok?: string;
+    barangay?: string;
+    city_municipality?: string;
+    province?: string;
     phone?: string;
     location?: { lat: number; lng: number } | null;
 }
@@ -45,10 +49,24 @@ const emit = defineEmits<{
     'update:open': [value: boolean];
 }>();
 
+// Get initial delivery address from customer's address fields
+const getInitialDeliveryAddress = (): string => {
+    if (props.invoice.customer) {
+        // Find the full customer data from customers list to get address fields
+        const customer = props.customers.find(c => c.id === props.invoice.customer_id);
+        if (customer) {
+            return formatDeliveryAddress(customer);
+        }
+        // Fallback to invoice customer if not found in customers list
+        return formatDeliveryAddress(props.invoice.customer);
+    }
+    return '';
+};
+
 const form = useForm({
     customer_id: props.invoice.customer_id,
     invoice_id: props.invoice.id,
-    delivery_address: props.invoice.customer?.address || '',
+    delivery_address: getInitialDeliveryAddress(),
     contact_person: props.invoice.customer?.name || '',
     contact_phone: normalizePhoneNumber(props.invoice.customer?.phone) || '',
     delivery_date: '',
@@ -119,6 +137,28 @@ function normalizePhoneNumber(phone: string | null | undefined): string {
     }
     
     return phone; // Return original if can't normalize
+}
+
+// Helper function to concatenate address fields (purok, barangay, city_municipality, province)
+function formatDeliveryAddress(customer: Customer | null | undefined): string {
+    if (!customer) return '';
+    
+    const parts: string[] = [];
+    
+    if (customer.purok) {
+        parts.push(customer.purok);
+    }
+    if (customer.barangay) {
+        parts.push(customer.barangay);
+    }
+    if (customer.city_municipality) {
+        parts.push(customer.city_municipality);
+    }
+    if (customer.province) {
+        parts.push(customer.province);
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : '';
 }
 
 // Customer options
@@ -202,8 +242,11 @@ const selectedCustomer = computed(() => {
 watch(() => form.customer_id, (newCustomerId) => {
     if (newCustomerId) {
         const customer = props.customers.find(c => c.id === newCustomerId);
-        if (customer?.address && !form.delivery_address) {
-            form.delivery_address = customer.address;
+        if (customer) {
+            const deliveryAddress = formatDeliveryAddress(customer);
+            if (deliveryAddress && !form.delivery_address) {
+                form.delivery_address = deliveryAddress;
+            }
         }
         // Reset distance and fee when customer changes
         routeDistance.value = null;
@@ -219,7 +262,9 @@ watch(() => props.open, (isOpen) => {
         form.reset();
         form.customer_id = props.invoice.customer_id;
         form.invoice_id = props.invoice.id;
-        form.delivery_address = props.invoice.customer?.address || '';
+        // Get delivery address from customer's address fields
+        const customer = props.customers.find(c => c.id === props.invoice.customer_id);
+        form.delivery_address = customer ? formatDeliveryAddress(customer) : '';
         form.contact_person = props.invoice.customer?.name || '';
         form.contact_phone = normalizePhoneNumber(props.invoice.customer?.phone) || '';
         form.clearErrors();
@@ -411,11 +456,11 @@ function closeModal() {
                 </div>
 
                 <!-- Route Map -->
-                <div v-if="selectedCustomerLocation || form.delivery_address || selectedCustomer?.address">
+                <div v-if="selectedCustomerLocation || form.delivery_address || formatDeliveryAddress(selectedCustomer)">
                     <Label class="mb-2 block">Delivery Route</Label>
                     <DeliveryRouteMap 
                         :customer-location="selectedCustomerLocation"
-                        :delivery-address="form.delivery_address || selectedCustomer?.address"
+                        :delivery-address="form.delivery_address || formatDeliveryAddress(selectedCustomer)"
                         map-height="300px"
                         @distance-calculated="handleDistanceCalculated"
                     />
