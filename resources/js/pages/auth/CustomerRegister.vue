@@ -39,16 +39,12 @@ const form = useForm({
     city_municipality: '',
     province: '',
     location: null as { lat: number; lng: number } | null,
-    
-    // Step 4: Profile Picture
-    profile_image: null as File | null,
 });
 
 const currentStep = ref(1);
-const totalSteps = 4;
+const totalSteps = 3;
 const showPassword = ref(false);
 const showPasswordConfirmation = ref(false);
-const profileImageUrl = ref<string | null>(null);
 const showErrorDialog = ref(false);
 
 // Get all error messages as an array
@@ -63,7 +59,6 @@ const steps = [
     { number: 1, title: 'Basic Information' },
     { number: 2, title: 'Contact Information' },
     { number: 3, title: 'Location & Address' },
-    { number: 4, title: 'Profile Picture' },
 ];
 
 const canGoNext = () => {
@@ -75,9 +70,6 @@ const canGoNext = () => {
     }
     if (currentStep.value === 3) {
         return true; // All fields optional in step 3
-    }
-    if (currentStep.value === 4) {
-        return true; // Profile picture is optional
     }
     return false;
 };
@@ -106,28 +98,6 @@ const prevStep = () => {
     }
 };
 
-function onFileChange(e: Event) {
-    const target = e.target as HTMLInputElement;
-    if (target.files && target.files.length > 0) {
-        const file = target.files[0];
-        const isValidType = ['image/jpeg', 'image/png'].includes(file.type);
-        const isValidSize = file.size <= 2 * 1024 * 1024; // 2MB
-        if (!isValidType || !isValidSize) {
-            form.profile_image = null;
-            target.value = '';
-            const reason = !isValidType ? 'Please select a JPG or PNG image.' : 'File is too large. Max size is 2MB.';
-            window.alert(reason);
-            return;
-        }
-        form.profile_image = file;
-        profileImageUrl.value = URL.createObjectURL(file);
-    } else {
-        form.profile_image = null;
-        profileImageUrl.value = null;
-    }
-}
-
-
 const submit = () => {
     // Clean up location - set to null if invalid (0,0 or not set)
     if (form.location && 
@@ -138,7 +108,7 @@ const submit = () => {
     
     form.post(route('customer.register'), {
         forceFormData: true,
-        onFinish: () => form.reset('password', 'password_confirmation', 'profile_image'),
+        onFinish: () => form.reset('password', 'password_confirmation'),
         onError: () => {
             showErrorDialog.value = true;
         },
@@ -394,25 +364,6 @@ const closeErrorDialog = () => {
                             <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location (Map)</Label>
                             <LocationInput v-model="form.location" />
                             <InputError :message="form.errors.location" />
-                        </div>
-                    </div>
-
-                    <!-- Step 4: Profile Picture -->
-                    <div v-show="currentStep === 4" class="space-y-6">
-                        <div>
-                            <Label for="profile_image" class="text-sm font-medium text-foreground mb-2 block">Profile Picture</Label>
-                            <Input
-                                id="profile_image"
-                                type="file"
-                                accept="image/jpeg,image/png"
-                                @change="onFileChange"
-                                class="w-full"
-                            />
-                            <p class="text-xs text-muted-foreground mt-1">Max 2MB, JPG or PNG.</p>
-                            <InputError :message="form.errors.profile_image" />
-                            <div v-if="profileImageUrl" class="mt-4">
-                                <img :src="profileImageUrl" alt="Profile Preview" class="w-32 h-32 object-cover rounded-full border-2 border-border" />
-                            </div>
                         </div>
                     </div>
 

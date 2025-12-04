@@ -13,6 +13,7 @@ use App\Http\Controllers\SalesAnalyticsController;
 use App\Http\Controllers\SalesTransactionController;
 use App\Http\Controllers\Admin\AdminSettingsController;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\GeocodingController;
 
 
 Route::get('/', function () {
@@ -20,6 +21,9 @@ Route::get('/', function () {
 })->name('home');
 
 Route::get('dashboard', [SalesAnalyticsController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+
+// Geocoding search (public route for location input)
+Route::get('api/geocoding/search', [GeocodingController::class, 'search'])->name('geocoding.search');
 
 // (refund routes removed)
 

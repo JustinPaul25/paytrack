@@ -57,9 +57,15 @@ async function runSearch(q: string) {
   }
   searching.value = true
   try {
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, {
+    // Use Laravel backend proxy to avoid CORS issues
+    const url = new URL(route('geocoding.search'), window.location.origin)
+    url.searchParams.set('q', query)
+    url.searchParams.set('limit', '5')
+    
+    const resp = await fetch(url.toString(), {
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
       }
     })
     if (!resp.ok) throw new Error('Search failed')

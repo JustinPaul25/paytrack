@@ -33,7 +33,6 @@ class CustomerRegistrationRequest extends FormRequest
             'location' => ['nullable', 'array'],
             'location.lat' => ['nullable', 'numeric', 'between:-90,90'],
             'location.lng' => ['nullable', 'numeric', 'between:-180,180'],
-            'profile_image' => ['nullable', 'image', 'max:2048'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ];
     }
@@ -50,7 +49,6 @@ class CustomerRegistrationRequest extends FormRequest
             'barangay' => 'barangay',
             'city_municipality' => 'city/municipality',
             'province' => 'province',
-            'profile_image' => 'profile picture',
             'password' => 'password',
         ];
     }
@@ -76,9 +74,6 @@ class CustomerRegistrationRequest extends FormRequest
             'location.lat.between' => 'Latitude must be between -90 and 90.',
             'location.lng.numeric' => 'Longitude must be a number between -180 and 180.',
             'location.lng.between' => 'Longitude must be between -180 and 180.',
-
-            'profile_image.image' => 'Please upload a valid image file.',
-            'profile_image.max' => 'Image is too large (max 2 MB).',
 
             'password.required' => 'Please enter a password.',
             'password.confirmed' => 'The password confirmation does not match.',
