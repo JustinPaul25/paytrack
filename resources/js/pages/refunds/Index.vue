@@ -38,9 +38,7 @@ interface RefundRequest {
     converted_refund_id?: number;
     created_at: string;
     updated_at: string;
-    request_type?: 'refund' | 'exchange';
-    exchange_product_id?: number;
-    exchange_quantity?: number;
+    request_type?: 'refund';
     damaged_items_terms?: string;
     invoice?: {
         id: number;
@@ -56,13 +54,7 @@ interface RefundRequest {
         selling_price: number;
         SKU?: string;
     };
-    exchange_product?: {
-        id: number;
-        name: string;
-        selling_price: number;
-        SKU?: string;
-    };
-    media?: Array<{
+    proof_images?: Array<{
         id: number;
         file_name: string;
         mime_type: string;
@@ -198,13 +190,8 @@ function reject(id: number) {
                                     <div v-if="r.reason" class="text-xs text-gray-500 truncate max-w-64">{{ r.reason }}</div>
                                 </td>
                                 <td class="px-4 py-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                        :class="{
-                                            'bg-blue-100 text-blue-800': r.request_type === 'refund' || !r.request_type,
-                                            'bg-purple-100 text-purple-800': r.request_type === 'exchange',
-                                        }"
-                                    >
-                                        {{ r.request_type === 'exchange' ? 'Exchange' : 'Refund' }}
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        Refund
                                     </span>
                                 </td>
                                 <td class="px-4 py-2">
@@ -356,22 +343,18 @@ function reject(id: number) {
                             <div class="whitespace-pre-wrap text-sm bg-blue-50 p-3 rounded-md border border-blue-200">{{ showDetails.review_notes }}</div>
                         </div>
 
-                        <div v-if="showDetails.request_type === 'exchange' && showDetails.exchange_product">
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Exchange Product</div>
-                            <div>
-                                <div class="font-medium">{{ showDetails.exchange_product.name }}</div>
-                                <div v-if="showDetails.exchange_product.SKU" class="text-sm text-gray-600">SKU: {{ showDetails.exchange_product.SKU }}</div>
-                                <div class="text-sm text-gray-600">Price: {{ formatCurrency(showDetails.exchange_product.selling_price) }}</div>
-                                <div v-if="showDetails.exchange_quantity" class="text-sm text-gray-600">Quantity: {{ showDetails.exchange_quantity }}</div>
-                            </div>
-                        </div>
-
-                        <div v-if="showDetails.media && showDetails.media.length > 0">
+                        <div v-if="showDetails.proof_images && showDetails.proof_images.length > 0">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Proof Images</div>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                                <a v-for="(media, index) in showDetails.media" :key="media.id" :href="media.url" target="_blank" rel="noopener noreferrer" class="relative group">
-                                    <img :src="media.url" :alt="`Proof image ${index + 1}`" class="w-full h-32 object-cover rounded-md border hover:opacity-75 transition-opacity" />
-                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity rounded-md flex items-center justify-center">
+                                <a v-for="(media, index) in showDetails.proof_images" :key="media.id || index" :href="media.url" target="_blank" rel="noopener noreferrer" class="relative group block">
+                                    <img 
+                                        :src="media.url" 
+                                        :alt="`Proof image ${index + 1}`" 
+                                        class="w-full h-32 object-cover rounded-md border hover:opacity-75 transition-opacity bg-gray-100"
+                                        @error="(e) => { e.target.style.display = 'none'; }"
+                                        loading="lazy"
+                                    />
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity rounded-md flex items-center justify-center pointer-events-none">
                                         <svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
                                         </svg>

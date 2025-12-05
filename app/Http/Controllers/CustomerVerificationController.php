@@ -73,12 +73,6 @@ class CustomerVerificationController extends Controller
         $customer->verified_at = now();
         $customer->save();
 
-        // Also mark the associated user's email as verified if not already
-        $user = User::where('email', $customer->email)->first();
-        if ($user && !$user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-        }
-
         return redirect()->back()->with('success', 'Customer verified successfully!');
     }
 

@@ -50,7 +50,7 @@ class CustomerRegistrationController extends Controller
             }
         }
         
-        // Create customer (unapproved by default - admin must approve)
+        // Create customer (unverified by default - admin must verify)
         $customer = Customer::create([
             'name' => $data['name'],
             'company_name' => $data['company_name'] ?? null,
@@ -62,7 +62,7 @@ class CustomerRegistrationController extends Controller
             'city_municipality' => $data['city_municipality'] ?? null,
             'province' => $data['province'] ?? null,
             'location' => $location,
-            'approved_at' => null, // Customer needs admin approval
+            'verified_at' => null, // Customer needs admin verification
         ]);
 
         // Create corresponding user account with customer's password
@@ -77,8 +77,7 @@ class CustomerRegistrationController extends Controller
             $user->syncRoles(['Customer']);
         }
 
-        // Mark email as verified for customers (admin will verify the customer separately)
-        $user->markEmailAsVerified();
+        // Do NOT mark email as verified - admin verification is required for login
 
         event(new Registered($user));
 

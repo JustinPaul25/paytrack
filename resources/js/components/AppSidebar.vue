@@ -164,14 +164,8 @@ const isFinancialInvoicesOpen = ref(false);
                                                 </SidebarMenuSubItem>
                                                 <SidebarMenuSubItem>
                                                     <SidebarMenuSubButton as-child>
-                                                        <Link href="/orders?status=pending" class="flex items-center justify-between w-full">
+                                                        <Link href="/orders?status=pending">
                                                             <span>Pending</span>
-                                                            <span 
-                                                                v-if="pendingOrderCount > 0"
-                                                                class="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
-                                                            >
-                                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
-                                                            </span>
                                                         </Link>
                                                     </SidebarMenuSubButton>
                                                 </SidebarMenuSubItem>
@@ -192,14 +186,6 @@ const isFinancialInvoicesOpen = ref(false);
                                         <Link href="/sales/transactions">
                                             <CreditCard />
                                             <span>Transactions</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('finance.cash-flow')">
-                                            <BarChart3 />
-                                            <span>Cash Flow</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

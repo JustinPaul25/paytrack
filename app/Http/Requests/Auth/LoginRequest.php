@@ -50,18 +50,18 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // Check if the user is a Customer and if their account is approved
+        // Check if the user is a Customer and if their account is verified by admin
         $user = Auth::user();
         if ($user && method_exists($user, 'hasRole') && $user->hasRole('Customer')) {
             $customer = Customer::where('email', $user->email)->first();
             
-            if ($customer && !$customer->isApproved()) {
-                // Log out the user since they're not approved
+            if ($customer && !$customer->isVerified()) {
+                // Log out the user since they're not verified by admin
                 Auth::logout();
                 RateLimiter::hit($this->throttleKey());
 
                 throw ValidationException::withMessages([
-                    'email' => 'Your account is pending approval. Please wait for admin approval before logging in.',
+                    'email' => 'Your account is pending admin verification. Please wait for admin verification before logging in.',
                 ]);
             }
         }

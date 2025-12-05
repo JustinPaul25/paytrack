@@ -32,7 +32,7 @@ interface Customer {
     address?: string;
     location?: { lat: number; lng: number };
     updated_at?: string;
-    approved_at?: string | null;
+    verified_at?: string | null;
 }
 
 interface CustomerStats {
@@ -100,24 +100,24 @@ function goToPage(pageNum: number) {
 
 async function approveCustomer(customer: Customer) {
     const result = await Swal.fire({
-        title: 'Approve Customer?',
-        text: `Are you sure you want to approve ${customer.name}? They will receive an email notification.`,
+        title: 'Verify Customer?',
+        text: `Are you sure you want to verify ${customer.name}? They will receive an email notification and be able to log in.`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#8f5be8',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, approve',
+        confirmButtonText: 'Yes, verify',
         cancelButtonText: 'Cancel',
     });
     
     if (result.isConfirmed) {
         router.post(`/customers/${customer.id}/approve`, {}, {
             onSuccess: () => {
-                Swal.fire('Customer Approved', 'The customer has been approved and notified via email.', 'success');
+                Swal.fire('Customer Verified', 'The customer has been verified and notified via email.', 'success');
             },
             onError: () => {
                 const flash = (page.props as unknown as { flash?: { error?: string } }).flash;
-                const message = flash?.error ?? 'Failed to approve customer.';
+                const message = flash?.error ?? 'Failed to verify customer.';
                 Swal.fire('Error', message, 'error');
             },
         });
@@ -396,24 +396,24 @@ async function deleteCustomer(id: number) {
                             <td class="px-4 py-2">{{ customer.email }}</td>
                             <td class="px-4 py-2">{{ customer.phone || '-' }}</td>
                             <td v-if="isAdmin" class="px-4 py-2">
-                                <span v-if="!customer.approved_at" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                    Pending Approval
+                                <span v-if="!customer.verified_at" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    Pending Verification
                                 </span>
                                 <span v-else class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Approved
+                                    Verified
                                 </span>
                             </td>
                             <td class="px-4 py-2">
                                 <div v-if="canModifyCustomers" class="flex gap-2">
                                     <Button 
-                                        v-if="!customer.approved_at" 
+                                        v-if="!customer.verified_at" 
                                         variant="default" 
                                         size="sm" 
                                         @click="approveCustomer(customer)"
                                         class="bg-green-600 hover:bg-green-700"
                                     >
                                         <Icon name="Check" class="h-4 w-4 mr-1" />
-                                        Approve
+                                        Verify
                                     </Button>
                                     <Link :href="route('customers.edit', customer.id)">
                                         <Button variant="ghost" size="sm">

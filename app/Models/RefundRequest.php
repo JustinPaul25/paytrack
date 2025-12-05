@@ -45,11 +45,6 @@ class RefundRequest extends Model implements HasMedia
         return $this->belongsTo(Product::class);
     }
 
-    public function exchangeProduct()
-    {
-        return $this->belongsTo(Product::class, 'exchange_product_id');
-    }
-
     // Media Library: register proof images collection
     public function registerMediaCollections(): void
     {

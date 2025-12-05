@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import { Label } from '@/components/ui/label';
+import SearchSelect from '@/components/ui/select/SearchSelect.vue';
+import { provinceOptions, getCitiesForProvince, getBarangaysForCity } from '@/lib/philippines';
 import {
     Dialog,
     DialogClose,
@@ -16,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Eye, EyeOff, ChevronRight, ChevronLeft, Check, AlertCircle } from 'lucide-vue-next';
-import { ref, defineAsyncComponent, computed } from 'vue';
+import { ref, defineAsyncComponent, computed, watch } from 'vue';
 
 // Dynamically import LocationInput to prevent initialization when not needed
 const LocationInput = defineAsyncComponent(() => import('@/components/ui/input/LocationInput.vue'));
@@ -118,6 +120,23 @@ const submit = () => {
 const closeErrorDialog = () => {
     showErrorDialog.value = false;
 };
+
+// Get cities/municipalities based on selected province
+const citySelectOptions = computed(() => getCitiesForProvince(form.province));
+
+// Get barangays based on selected city/municipality
+const barangaySelectOptions = computed(() => getBarangaysForCity(form.city_municipality));
+
+// Clear city/municipality when province changes
+watch(() => form.province, () => {
+    form.city_municipality = '';
+    form.barangay = '';
+});
+
+// Clear barangay when city/municipality changes
+watch(() => form.city_municipality, () => {
+    form.barangay = '';
+});
 </script>
 
 <template>
@@ -310,6 +329,48 @@ const closeErrorDialog = () => {
                             <InputError :message="form.errors.address" />
                         </div>
 
+                        <!-- Province first (searchable) -->
+                        <div>
+                            <Label for="province" class="text-sm font-medium text-foreground mb-2 block">Province</Label>
+                            <SearchSelect
+                                :model-value="form.province"
+                                :options="provinceOptions"
+                                placeholder="Select province"
+                                searchPlaceholder="Search province..."
+                                @update:modelValue="(v) => form.province = String(v ?? '')"
+                            />
+                            <InputError :message="form.errors.province" />
+                        </div>
+
+                        <!-- City/Municipality -->
+                        <div>
+                            <Label for="city_municipality" class="text-sm font-medium text-foreground mb-2 block">City/Municipality</Label>
+                            <SearchSelect
+                                :model-value="form.city_municipality"
+                                :options="citySelectOptions"
+                                placeholder="Select city or municipality"
+                                searchPlaceholder="Search city or municipality..."
+                                :disabled="!form.province"
+                                @update:modelValue="(v) => form.city_municipality = String(v ?? '')"
+                            />
+                            <InputError :message="form.errors.city_municipality" />
+                        </div>
+
+                        <!-- Barangay -->
+                        <div>
+                            <Label for="barangay" class="text-sm font-medium text-foreground mb-2 block">Barangay</Label>
+                            <SearchSelect
+                                :model-value="form.barangay"
+                                :options="barangaySelectOptions"
+                                placeholder="Select barangay"
+                                searchPlaceholder="Search barangay..."
+                                :disabled="!form.city_municipality"
+                                @update:modelValue="(v) => form.barangay = String(v ?? '')"
+                            />
+                            <InputError :message="form.errors.barangay" />
+                        </div>
+
+                        <!-- Purok last -->
                         <div>
                             <Label for="purok" class="text-sm font-medium text-foreground mb-2 block">Purok</Label>
                             <Input
@@ -320,44 +381,6 @@ const closeErrorDialog = () => {
                                 class="w-full"
                             />
                             <InputError :message="form.errors.purok" />
-                        </div>
-
-                        <div>
-                            <Label for="barangay" class="text-sm font-medium text-foreground mb-2 block">Barangay</Label>
-                            <Input
-                                id="barangay"
-                                type="text"
-                                v-model="form.barangay"
-                                placeholder="Enter barangay"
-                                class="w-full"
-                            />
-                            <InputError :message="form.errors.barangay" />
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <Label for="city_municipality" class="text-sm font-medium text-foreground mb-2 block">City/Municipality</Label>
-                                <Input
-                                    id="city_municipality"
-                                    type="text"
-                                    v-model="form.city_municipality"
-                                    placeholder="Enter city or municipality"
-                                    class="w-full"
-                                />
-                                <InputError :message="form.errors.city_municipality" />
-                            </div>
-
-                            <div>
-                                <Label for="province" class="text-sm font-medium text-foreground mb-2 block">Province</Label>
-                                <Input
-                                    id="province"
-                                    type="text"
-                                    v-model="form.province"
-                                    placeholder="Enter province"
-                                    class="w-full"
-                                />
-                                <InputError :message="form.errors.province" />
-                            </div>
                         </div>
 
                         <div>

@@ -8,7 +8,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import Label from '@/components/ui/label/Label.vue';
-import { SearchSelect } from '@/components/ui/select';
+import { SearchSelect, Select } from '@/components/ui/select';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
 import InputError from '@/components/InputError.vue';

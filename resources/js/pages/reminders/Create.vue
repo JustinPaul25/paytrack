@@ -62,7 +62,7 @@ const form = useForm({
     description: '',
     due_date: '',
     amount: '',
-    currency: 'USD',
+    currency: 'PHP',
     priority: 'medium',
     customer_id: '',
     expense_id: '',
@@ -118,7 +118,7 @@ const customerOptions = computed(() => {
 const expenseOptions = computed(() => {
     return props.expenses.map(e => ({
         value: e.id.toString(),
-        label: `${e.expense_type} - $${e.amount.toFixed(2)} (${new Date(e.date).toLocaleDateString()})`
+        label: `${e.expense_type} - ₱${e.amount.toFixed(2)} (${new Date(e.date).toLocaleDateString()})`
     }));
 });
 

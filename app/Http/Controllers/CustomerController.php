@@ -22,9 +22,9 @@ class CustomerController extends Controller
 
         $query = Customer::query();
 
-        // Filter by pending approvals if requested
+        // Filter by pending verifications if requested
         if ($pending) {
-            $query->whereNull('approved_at');
+            $query->whereNull('verified_at');
         }
 
         if ($search) {
@@ -47,7 +47,7 @@ class CustomerController extends Controller
             'customersWithCompany' => Customer::whereNotNull('company_name')->where('company_name', '!=', '')->count(),
             'customersWithPhone' => Customer::whereNotNull('phone')->where('phone', '!=', '')->count(),
             'recentlyAdded' => Customer::where('created_at', '>=', now()->subDays(7))->count(),
-            'pendingApprovals' => Customer::whereNull('approved_at')->count(),
+            'pendingApprovals' => Customer::whereNull('verified_at')->count(),
         ];
 
         return Inertia::render('customers/Index', [
@@ -161,21 +161,21 @@ class CustomerController extends Controller
 
     public function approve(Customer $customer)
     {
-        // Only admins can approve customers
+        // Only admins can verify customers
         if (!auth()->user()->hasRole('Admin')) {
             return redirect()->route('customers.index')
-                ->with('error', 'You do not have permission to approve customers.');
+                ->with('error', 'You do not have permission to verify customers.');
         }
 
-        // Check if already approved
-        if ($customer->isApproved()) {
+        // Check if already verified
+        if ($customer->isVerified()) {
             return redirect()->route('customers.index')
-                ->with('info', 'This customer is already approved.');
+                ->with('info', 'This customer is already verified.');
         }
 
-        // Approve the customer
+        // Verify the customer
         $customer->update([
-            'approved_at' => now(),
+            'verified_at' => now(),
         ]);
 
         // Send verification email to customer
@@ -183,6 +183,6 @@ class CustomerController extends Controller
         Mail::to($customer->email)->queue(new CustomerAccountVerified($customer->name, $loginUrl));
 
         return redirect()->route('customers.index', ['pending' => true])
-            ->with('success', "Customer {$customer->name} has been approved and notified via email.");
+            ->with('success', "Customer {$customer->name} has been verified and notified via email.");
     }
 } 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref, computed, onBeforeUnmount } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
@@ -32,18 +32,25 @@ const props = defineProps<{
         customer?: { name?: string; email?: string; phone?: string };
         invoice_items: InvoiceItemLite[];
     };
-    availableProducts?: Product[];
 }>();
 
-const requestType = ref<'refund' | 'exchange'>('refund');
-const description = ref('');
 const proofImages = ref<File[]>([]);
-const damagedItemsTerms = ref('');
+const proofImageUrls = ref<string[]>([]);
 const selections = ref<Record<number, {
     qty: number;
-    exchangeProductId?: number;
-    exchangeQuantity?: number;
 }>>({});
+
+const form = useForm({
+    request_type: 'refund' as 'refund',
+    description: '',
+    damaged_items_terms: '',
+    items: [] as Array<{
+        invoice_item_id: number;
+        product_id: number;
+        quantity: number;
+    }>,
+    proof_images: [] as File[],
+});
 
 function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
@@ -63,25 +70,61 @@ function setSelection(invoiceItemId: number, requested: number, maxQty: number) 
     selections.value[invoiceItemId].qty = clampQuantity(requested, maxQty);
 }
 
-function setExchangeSelection(invoiceItemId: number, productId: number | undefined, quantity: number) {
-    if (!selections.value[invoiceItemId]) {
-        selections.value[invoiceItemId] = { qty: 0 };
-    }
-    selections.value[invoiceItemId].exchangeProductId = productId;
-    selections.value[invoiceItemId].exchangeQuantity = quantity > 0 ? quantity : undefined;
-}
-
 function handleImageUpload(event: Event) {
     const target = event.target as HTMLInputElement;
     if (target.files) {
         const files = Array.from(target.files);
-        proofImages.value = [...proofImages.value, ...files].slice(0, 5); // Max 5 images
+        // Validate file size (5MB max per image)
+        const validFiles = files.filter(file => {
+            if (file.size > 5 * 1024 * 1024) {
+                alert(`File "${file.name}" is too large. Maximum size is 5MB.`);
+                return false;
+            }
+            return true;
+        });
+        
+        // Create object URLs for preview
+        const newUrls = validFiles.map(file => URL.createObjectURL(file));
+        
+        // Combine with existing images (max 5 total)
+        const combinedFiles = [...proofImages.value, ...validFiles].slice(0, 5);
+        const combinedUrls = [...proofImageUrls.value, ...newUrls].slice(0, 5);
+        
+        // Revoke URLs for files that were removed due to the 5-image limit
+        const removedCount = (proofImages.value.length + validFiles.length) - 5;
+        if (removedCount > 0) {
+            const startIndex = proofImageUrls.value.length;
+            for (let i = startIndex; i < startIndex + removedCount; i++) {
+                if (proofImageUrls.value[i]) {
+                    URL.revokeObjectURL(proofImageUrls.value[i]);
+                }
+            }
+        }
+        
+        proofImages.value = combinedFiles;
+        proofImageUrls.value = combinedUrls;
     }
+    // Reset the input so the same file can be selected again if needed
+    target.value = '';
 }
 
 function removeImage(index: number) {
+    // Revoke the object URL to free memory
+    if (proofImageUrls.value[index]) {
+        URL.revokeObjectURL(proofImageUrls.value[index]);
+    }
     proofImages.value.splice(index, 1);
+    proofImageUrls.value.splice(index, 1);
 }
+
+// Cleanup object URLs when component is unmounted
+onBeforeUnmount(() => {
+    proofImageUrls.value.forEach(url => {
+        if (url) {
+            URL.revokeObjectURL(url);
+        }
+    });
+});
 
 const canSubmit = computed(() => {
     const pairs = Object.entries(selections.value);
@@ -95,13 +138,6 @@ const canSubmit = computed(() => {
         const clamped = clampQuantity(selection.qty, item.quantity);
         if (clamped !== selection.qty) return false;
         if (clamped > 0) anyPositive = true;
-        
-        // If exchange, validate exchange product is selected
-        if (requestType.value === 'exchange' && clamped > 0) {
-            if (!selection.exchangeProductId || !selection.exchangeQuantity || selection.exchangeQuantity <= 0) {
-                return false;
-            }
-        }
     }
     return anyPositive;
 });
@@ -119,27 +155,24 @@ function submit() {
         .filter(([_, selection]) => selection.qty > 0)
         .map(([invoice_item_id, selection]) => {
             const item = props.invoice.invoice_items.find(i => i.id === Number(invoice_item_id))!;
-            const payload: any = {
+            return {
                 invoice_item_id: Number(invoice_item_id),
                 product_id: item.product_id,
                 quantity: Math.min(selection.qty, item.quantity),
             };
-            
-            if (requestType.value === 'exchange' && selection.exchangeProductId) {
-                payload.exchange_product_id = selection.exchangeProductId;
-                payload.exchange_quantity = selection.exchangeQuantity || 1;
-            }
-            
-            return payload;
         });
     
-    router.post(`/invoices/${props.invoice.id}/refund-request`, {
-        request_type: requestType.value,
-        description: description.value || undefined,
-        damaged_items_terms: damagedItemsTerms.value || undefined,
-        items: items,
-        proof_images: proofImages.value,
-    }, {
+    // Update form data directly
+    form.request_type = 'refund';
+    form.items = items;
+    // Set proof_images to the current files array (only set if there are files)
+    if (proofImages.value.length > 0) {
+        form.proof_images = proofImages.value;
+    } else {
+        form.proof_images = [];
+    }
+    
+    form.post(`/invoices/${props.invoice.id}/refund-request`, {
         forceFormData: true,
     });
 }
@@ -147,10 +180,10 @@ function submit() {
 
 <template>
     <AppLayout>
-        <Head :title="`${requestType === 'exchange' ? 'Exchange' : 'Refund'} Request - ${props.invoice.reference_number}`" />
+        <Head :title="`Refund Request - ${props.invoice.reference_number}`" />
 
         <div class="flex items-center justify-between my-6">
-            <h1 class="text-2xl font-bold">{{ requestType === 'exchange' ? 'Request Exchange' : 'Request Refund' }}</h1>
+            <h1 class="text-2xl font-bold">Request Refund</h1>
             <div class="flex gap-2">
                 <Link :href="route('invoices.show', props.invoice.id)">
                     <Button variant="ghost">Back to Invoice</Button>
@@ -160,40 +193,6 @@ function submit() {
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Request Type</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="flex gap-4">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    v-model="requestType"
-                                    value="refund"
-                                    class="w-4 h-4"
-                                />
-                                <div>
-                                    <div class="font-medium">Refund</div>
-                                    <div class="text-sm text-gray-500">Return item(s) for money back</div>
-                                </div>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    v-model="requestType"
-                                    value="exchange"
-                                    class="w-4 h-4"
-                                />
-                                <div>
-                                    <div class="font-medium">Exchange</div>
-                                    <div class="text-sm text-gray-500">Swap item(s) for different product(s)</div>
-                                </div>
-                            </label>
-                        </div>
-                    </CardContent>
-                </Card>
-
                 <Card>
                     <CardHeader>
                         <CardTitle>Invoice</CardTitle>
@@ -210,7 +209,7 @@ function submit() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>{{ requestType === 'exchange' ? 'Products to Exchange' : 'Products to Refund' }}</CardTitle>
+                        <CardTitle>Products to Refund</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div class="space-y-4">
@@ -220,7 +219,7 @@ function submit() {
                                         <th class="px-4 py-2 text-left">Product</th>
                                         <th class="px-4 py-2 text-left">Qty Purchased</th>
                                         <th class="px-4 py-2 text-left">Price</th>
-                                        <th class="px-4 py-2 text-left">{{ requestType === 'exchange' ? 'Exchange Qty' : 'Refund Qty' }}</th>
+                                        <th class="px-4 py-2 text-left">Refund Qty</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -247,53 +246,13 @@ function submit() {
                                         </td>
                                     </tr>
                                 </tbody>
-                                <tfoot v-if="requestType === 'refund'">
+                                <tfoot>
                                     <tr class="border-t">
                                         <td class="px-4 py-2 text-right font-medium" colspan="3">Total refund amount:</td>
                                         <td class="px-4 py-2 font-semibold">{{ formatCurrency(totalRefund) }}</td>
                                     </tr>
                                 </tfoot>
                             </table>
-
-                            <!-- Exchange Product Selection -->
-                            <div v-if="requestType === 'exchange'" class="space-y-4 mt-6 border-t pt-4">
-                                <h3 class="font-semibold">Exchange Products</h3>
-                                <div v-for="item in props.invoice.invoice_items" :key="`exchange-${item.id}`" class="space-y-2">
-                                    <div v-if="(selections[item.id]?.qty ?? 0) > 0" class="p-4 border rounded-md bg-gray-50">
-                                        <div class="mb-2">
-                                            <span class="font-medium">Exchanging {{ selections[item.id]?.qty }}x {{ item.product_name }}</span>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm text-gray-600 mb-1">Exchange Product</label>
-                                                <select
-                                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                                    :value="selections[item.id]?.exchangeProductId"
-                                                    @change="(e:any) => setExchangeSelection(item.id, e.target.value ? Number(e.target.value) : undefined, selections[item.id]?.exchangeQuantity || 1)"
-                                                >
-                                                    <option value="">Select product...</option>
-                                                    <option v-for="product in availableProducts" :key="product.id" :value="product.id">
-                                                        {{ product.name }} - {{ formatCurrency(product.price) }} (Stock: {{ product.stock }})
-                                                    </option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm text-gray-600 mb-1">Exchange Quantity</label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    :max="availableProducts?.find(p => p.id === selections[item.id]?.exchangeProductId)?.stock || 0"
-                                                    step="1"
-                                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                                    :value="selections[item.id]?.exchangeQuantity || 1"
-                                                    @input="(e:any) => setExchangeSelection(item.id, selections[item.id]?.exchangeProductId, Number(e.target.value))"
-                                                    :disabled="!selections[item.id]?.exchangeProductId"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -310,10 +269,10 @@ function submit() {
                                     <span class="text-gray-400 text-xs">(Required)</span>
                                 </label>
                                 <textarea
-                                    v-model="description"
+                                    v-model="form.description"
                                     rows="4"
                                     class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    :placeholder="requestType === 'exchange' ? 'Describe why you want to exchange this item' : 'Describe the reason for the refund'"
+                                    placeholder="Describe the reason for the refund"
                                     required
                                 ></textarea>
                                 <p class="text-xs text-gray-500 mt-1">Please provide a clear explanation for your request.</p>
@@ -335,7 +294,7 @@ function submit() {
                                 
                                 <div v-if="proofImages.length > 0" class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
                                     <div v-for="(image, index) in proofImages" :key="index" class="relative group">
-                                        <img :src="URL.createObjectURL(image)" alt="Proof image" class="w-full h-32 object-cover rounded-md border" />
+                                        <img v-if="proofImageUrls[index]" :src="proofImageUrls[index]" alt="Proof image" class="w-full h-32 object-cover rounded-md border" />
                                         <button
                                             type="button"
                                             @click="removeImage(index)"
@@ -353,7 +312,7 @@ function submit() {
                                     Terms for Damaged Items
                                 </label>
                                 <textarea
-                                    v-model="damagedItemsTerms"
+                                    v-model="form.damaged_items_terms"
                                     rows="3"
                                     class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                     placeholder="Any special terms or conditions regarding damaged items (e.g., partial refund for minor damage, etc.)"
@@ -363,7 +322,7 @@ function submit() {
 
                             <div class="pt-2">
                                 <Button :disabled="!canSubmit" @click="submit">
-                                    Submit {{ requestType === 'exchange' ? 'Exchange' : 'Refund' }} Request
+                                    Submit Refund Request
                                 </Button>
                             </div>
                         </div>
@@ -378,14 +337,6 @@ function submit() {
                     </CardHeader>
                     <CardContent>
                         <div class="space-y-4 text-sm">
-                            <div>
-                                <h4 class="font-semibold mb-2">Request Types:</h4>
-                                <ul class="list-disc pl-5 space-y-1 text-gray-600">
-                                    <li><strong>Refund:</strong> Return the item(s) and receive money back to your original payment method or as store credit.</li>
-                                    <li><strong>Exchange:</strong> Swap your item(s) for different product(s) of equal or different value. Price difference will be handled separately.</li>
-                                </ul>
-                            </div>
-                            
                             <div>
                                 <h4 class="font-semibold mb-2">Proof Images:</h4>
                                 <p class="text-gray-600">Upload clear photos showing:</p>
@@ -403,7 +354,7 @@ function submit() {
                                     <li>Submit your request</li>
                                     <li>Admin reviews your request (usually within 1-2 business days)</li>
                                     <li>You'll receive an email notification about the decision</li>
-                                    <li>If approved, follow instructions to return/exchange items</li>
+                                    <li>If approved, follow instructions to return items</li>
                                 </ol>
                             </div>
 
@@ -413,7 +364,6 @@ function submit() {
                                     <ul class="list-disc pl-5 space-y-1 text-gray-600 mt-1">
                                         <li>Full refund expected</li>
                                         <li>Partial refund acceptable</li>
-                                        <li>Exchange preferred</li>
                                     </ul>
                                 </p>
                             </div>

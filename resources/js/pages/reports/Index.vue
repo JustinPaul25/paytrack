@@ -248,9 +248,9 @@ function updateFilters() {
 
 function formatCurrency(amount: number | null | undefined) {
     const value = amount ?? 0;
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'PHP',
         minimumFractionDigits: 2
     }).format(value);
 }

@@ -44,30 +44,56 @@
         <InputError :message="form.errors.address" />
       </div>
     </div>
+    <!-- Province first (searchable) -->
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <Label for="province">Province</Label>
+        <SearchSelect
+          :model-value="form.province"
+          :options="provinceSelectOptions"
+          placeholder="Select province"
+          searchPlaceholder="Search province..."
+          @update:modelValue="(v) => form.province = String(v ?? '')"
+        />
+        <InputError :message="form.errors.province" />
+      </div>
+    </div>
+    <!-- City/Municipality -->
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <Label for="city_municipality">City/Municipality</Label>
+        <SearchSelect
+          :model-value="form.city_municipality"
+          :options="citySelectOptions"
+          placeholder="Select city or municipality"
+          searchPlaceholder="Search city or municipality..."
+          :disabled="!form.province"
+          @update:modelValue="(v) => form.city_municipality = String(v ?? '')"
+        />
+        <InputError :message="form.errors.city_municipality" />
+      </div>
+    </div>
+    <!-- Barangay -->
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <Label for="barangay">Barangay</Label>
+        <SearchSelect
+          :model-value="form.barangay"
+          :options="barangaySelectOptions"
+          placeholder="Select barangay"
+          searchPlaceholder="Search barangay..."
+          :disabled="!form.city_municipality"
+          @update:modelValue="(v) => form.barangay = String(v ?? '')"
+        />
+        <InputError :message="form.errors.barangay" />
+      </div>
+    </div>
+    <!-- Purok last -->
     <div class="flex gap-4">
       <div class="flex-1">
         <Label for="purok">Purok</Label>
         <Input id="purok" v-model="form.purok" placeholder="Enter purok" />
         <InputError :message="form.errors.purok" />
-      </div>
-    </div>
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <Label for="barangay">Barangay</Label>
-        <Input id="barangay" v-model="form.barangay" placeholder="Enter barangay" />
-        <InputError :message="form.errors.barangay" />
-      </div>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <Label for="city_municipality">City/Municipality</Label>
-        <Input id="city_municipality" v-model="form.city_municipality" placeholder="Enter city or municipality" />
-        <InputError :message="form.errors.city_municipality" />
-      </div>
-      <div>
-        <Label for="province">Province</Label>
-        <Input id="province" v-model="form.province" placeholder="Enter province" />
-        <InputError :message="form.errors.province" />
       </div>
     </div>
     <div class="flex gap-4">
@@ -95,6 +121,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, watch } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import Label from '@/components/ui/label/Label.vue';
@@ -103,6 +130,8 @@ import PhoneInput from '@/components/ui/input/PhoneInput.vue';
 import { Button } from '@/components/ui/button';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import LocationInput from '@/components/ui/input/LocationInput.vue';
+import SearchSelect from '@/components/ui/select/SearchSelect.vue';
+import { provinceOptions, getCitiesForProvince, getBarangaysForCity } from '@/lib/philippines';
 
 const props = defineProps({
   customer: Object,
@@ -149,6 +178,25 @@ const form = useForm({
   location: getLocationData()
 });
 
+// Build select options for provinces
+const provinceSelectOptions = provinceOptions;
+
+// Get cities/municipalities based on selected province
+const citySelectOptions = computed(() => getCitiesForProvince(form.province));
+
+// Get barangays based on selected city/municipality
+const barangaySelectOptions = computed(() => getBarangaysForCity(form.city_municipality));
+
+// Clear city/municipality when province changes
+watch(() => form.province, () => {
+  form.city_municipality = '';
+  form.barangay = '';
+});
+
+// Clear barangay when city/municipality changes
+watch(() => form.city_municipality, () => {
+  form.barangay = '';
+});
 
 
 function onFileChange(e: Event) {
