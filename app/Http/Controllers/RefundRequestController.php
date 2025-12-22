@@ -200,9 +200,14 @@ class RefundRequestController extends Controller
                 $fileArray = is_array($files) ? $files : [$files];
                 foreach ($fileArray as $image) {
                     if ($image && $image->isValid()) {
-                        $refundRequest->addMedia($image)
-                            ->usingName($image->getClientOriginalName())
-                            ->toMediaCollection('proof_images');
+                        try {
+                            $refundRequest->addMedia($image->getRealPath())
+                                ->usingFileName($image->hashName())
+                                ->usingName($image->getClientOriginalName())
+                                ->toMediaCollection('proof_images');
+                        } catch (\Exception $e) {
+                            \Log::error('Failed to upload proof image: ' . $e->getMessage());
+                        }
                     }
                 }
             }

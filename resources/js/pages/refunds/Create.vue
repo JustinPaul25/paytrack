@@ -339,13 +339,15 @@ function submit() {
                         <div class="space-y-4 text-sm">
                             <div>
                                 <h4 class="font-semibold mb-2">Proof Images:</h4>
-                                <p class="text-gray-600">Upload clear photos showing:</p>
-                                <ul class="list-disc pl-5 space-y-1 text-gray-600 mt-1">
-                                    <li>The item(s) condition</li>
-                                    <li>Any damage or defects</li>
-                                    <li>Package/receipt if applicable</li>
-                                </ul>
-                                <p class="text-gray-600 mt-2">This helps us process your request faster and ensures accurate assessment.</p>
+                                <div class="text-gray-600">
+                                    <p>Upload clear photos showing:</p>
+                                    <ul class="list-disc pl-5 space-y-1 text-gray-600 mt-1">
+                                        <li>The item(s) condition</li>
+                                        <li>Any damage or defects</li>
+                                        <li>Package/receipt if applicable</li>
+                                    </ul>
+                                    <p class="mt-2">This helps us process your request faster and ensures accurate assessment.</p>
+                                </div>
                             </div>
 
                             <div>
@@ -360,12 +362,13 @@ function submit() {
 
                             <div>
                                 <h4 class="font-semibold mb-2">Damaged Items:</h4>
-                                <p class="text-gray-600">If items are damaged, please specify your expectations:
+                                <div class="text-gray-600">
+                                    <p>If items are damaged, please specify your expectations:</p>
                                     <ul class="list-disc pl-5 space-y-1 text-gray-600 mt-1">
                                         <li>Full refund expected</li>
                                         <li>Partial refund acceptable</li>
                                     </ul>
-                                </p>
+                                </div>
                             </div>
                         </div>
                     </CardContent>

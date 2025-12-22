@@ -346,18 +346,22 @@ function reject(id: number) {
                         <div v-if="showDetails.proof_images && showDetails.proof_images.length > 0">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Proof Images</div>
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                                <a v-for="(media, index) in showDetails.proof_images" :key="media.id || index" :href="media.url" target="_blank" rel="noopener noreferrer" class="relative group block">
+                                <a v-for="(media, index) in showDetails.proof_images" :key="media.id || index" :href="media.url" target="_blank" rel="noopener noreferrer" class="relative group block overflow-hidden rounded-md border border-gray-300 hover:border-blue-500 transition-all">
                                     <img 
                                         :src="media.url" 
                                         :alt="`Proof image ${index + 1}`" 
-                                        class="w-full h-32 object-cover rounded-md border hover:opacity-75 transition-opacity bg-gray-100"
-                                        @error="(e) => { e.target.style.display = 'none'; }"
+                                        class="w-full h-32 object-cover transition-transform group-hover:scale-105 bg-gray-100"
+                                        @error="(e) => { e.target.src = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22100%22 height=%22100%22/%3E%3Ctext fill=%22%239ca3af%22 font-family=%22sans-serif%22 font-size=%2214%22 x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EImage%3C/text%3E%3C/svg%3E'; }"
                                         loading="lazy"
                                     />
-                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity rounded-md flex items-center justify-center pointer-events-none">
-                                        <svg class="w-6 h-6 text-white opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-                                        </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-1.5 shadow-lg">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                            View
+                                        </div>
                                     </div>
                                 </a>
                             </div>

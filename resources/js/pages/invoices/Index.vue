@@ -20,6 +20,7 @@ interface Invoice {
     total_amount: number;
     status: string;
     payment_method: string;
+    payment_status: string;
     payment_reference?: string;
     notes?: string;
     created_at: string;
@@ -43,6 +44,7 @@ interface InvoiceStats {
     totalAmount: number;
     pendingInvoices: number;
     paidInvoices: number;
+    pendingPaymentInvoices: number;
 }
 
 const page = usePage();
@@ -53,11 +55,12 @@ const isStaff = userRoles.includes('Staff');
 const canCreateInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can create invoices
 const canEditInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can edit invoices
 const canDeleteInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can delete invoices
-const filters = ref<{ search?: string; status?: string }>(
-    page.props.filters ? (page.props.filters as { search?: string; status?: string }) : {}
+const filters = ref<{ search?: string; status?: string; payment_status?: string }>(
+    page.props.filters ? (page.props.filters as { search?: string; status?: string; payment_status?: string }) : {}
 );
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
 const status = ref(typeof filters.value.status === 'string' ? filters.value.status : '');
+const paymentStatus = ref(typeof filters.value.payment_status === 'string' ? filters.value.payment_status : '');
 const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -71,6 +74,9 @@ watchEffect(() => {
     status.value = (page.props.filters && typeof (page.props.filters as { status?: string }).status === 'string')
         ? (page.props.filters as { status?: string }).status!
         : '';
+    paymentStatus.value = (page.props.filters && typeof (page.props.filters as { payment_status?: string }).payment_status === 'string')
+        ? (page.props.filters as { payment_status?: string }).payment_status!
+        : '';
 });
 
 // Status filter options
@@ -82,6 +88,13 @@ const statusOptions = [
     { value: 'cancelled', label: 'Cancelled' }
 ];
 
+// Payment status filter options
+const paymentStatusOptions = [
+    { value: '', label: 'All Payment Status' },
+    { value: 'pending', label: 'Pending Payment' },
+    { value: 'paid', label: 'Paid' }
+];
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
@@ -89,6 +102,7 @@ watch(search, (val) => {
         router.get('/invoices', {
             search: val || undefined,
             status: status.value || undefined,
+            payment_status: paymentStatus.value || undefined,
         }, { preserveState: true, replace: true });
     }, 400);
 });
@@ -97,6 +111,15 @@ watch(status, (val) => {
     router.get('/invoices', {
         search: search.value || undefined,
         status: val || undefined,
+        payment_status: paymentStatus.value || undefined,
+    }, { preserveState: true, replace: true });
+});
+
+watch(paymentStatus, (val) => {
+    router.get('/invoices', {
+        search: search.value || undefined,
+        status: status.value || undefined,
+        payment_status: val || undefined,
     }, { preserveState: true, replace: true });
 });
 
@@ -104,6 +127,7 @@ function goToPage(pageNum: number) {
     router.get('/invoices', {
         search: search.value || undefined,
         status: status.value || undefined,
+        payment_status: paymentStatus.value || undefined,
         page: pageNum,
     }, { preserveState: true, replace: true });
 }
@@ -153,6 +177,14 @@ function getStatusBadgeClass(status: string) {
     }
 }
 
+function getPaymentStatusBadgeClass(paymentStatus: string) {
+    switch (paymentStatus) {
+        case 'paid': return 'bg-emerald-100 text-emerald-800';
+        case 'pending': return 'bg-orange-100 text-orange-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
 function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', {
         style: 'currency',
@@ -184,7 +216,7 @@ function formatDateFriendly(dateString: string) {
             leave-from-class="opacity-100 transform translate-y-0"
             leave-to-class="opacity-0 transform -translate-y-4"
         >
-            <div v-show="showStats" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8 mb-6">
+            <div v-show="showStats" class="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-8 mb-6">
             <!-- Total Invoices -->
             <Card class="relative overflow-hidden">
                 <CardContent class="p-6">
@@ -236,6 +268,23 @@ function formatDateFriendly(dateString: string) {
                 </CardContent>
             </Card>
 
+            <!-- Pending Payment Invoices -->
+            <Card class="relative overflow-hidden">
+                <CardContent class="p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-muted-foreground">Pending Payment</p>
+                            <p class="text-xl font-bold text-orange-600">{{ (page.props.stats as InvoiceStats).pendingPaymentInvoices }}</p>
+                        </div>
+                        <div class="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
             <!-- Paid Invoices -->
             <Card class="relative overflow-hidden">
                 <CardContent class="p-6">
@@ -271,6 +320,13 @@ function formatDateFriendly(dateString: string) {
                         placeholder="Filter by status"
                     />
                 </div>
+                <div class="w-48">
+                    <Select
+                        v-model="paymentStatus"
+                        :options="paymentStatusOptions"
+                        placeholder="Filter by payment"
+                    />
+                </div>
             </div>
             <div class="flex items-center gap-2">
             <Link v-if="canCreateInvoice" :href="route('invoices.create')">
@@ -287,13 +343,13 @@ function formatDateFriendly(dateString: string) {
             <CardContent>
                 <div v-if="(page.props.invoices as Paginated<Invoice>).data.length === 0">
                     <!-- If filters are applied, show filtered empty state -->
-                    <div v-if="(search && search.trim().length) || (status && status.trim().length)" class="py-12 text-center">
+                    <div v-if="(search && search.trim().length) || (status && status.trim().length) || (paymentStatus && paymentStatus.trim().length)" class="py-12 text-center">
                         <div class="text-xl font-semibold mb-2">No results found</div>
                         <p class="text-sm text-gray-600 mb-6">
                             We couldn't find any invoices matching your search/filter.
                         </p>
                         <div class="flex items-center justify-center gap-2">
-                            <Button variant="outline" @click="search = ''; status = ''">Clear search</Button>
+                            <Button variant="outline" @click="search = ''; status = ''; paymentStatus = ''">Clear search</Button>
                             <Link v-if="canCreateInvoice" :href="route('invoices.create')">
                                 <Button variant="default">
                                     <span class="mr-2">+</span>
@@ -322,7 +378,8 @@ function formatDateFriendly(dateString: string) {
                                 <th class="px-4 py-2 text-left">Customer</th>
                                 <th class="px-4 py-2 text-left">Total</th>
                                 <th class="px-4 py-2 text-left">Status</th>
-                                <th class="px-4 py-2 text-left">Payment</th>
+                                <th class="px-4 py-2 text-left">Payment Status</th>
+                                <th class="px-4 py-2 text-left">Payment Method</th>
                                 <th class="px-4 py-2 text-left">Date</th>
                                 <th class="px-4 py-2 text-left">Actions</th>
                             </tr>
@@ -346,7 +403,14 @@ function formatDateFriendly(dateString: string) {
                                         {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-2">{{ invoice.payment_method.replace('_', ' ') }}</td>
+                                <td class="px-4 py-2">
+                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', getPaymentStatusBadgeClass(invoice.payment_status)]">
+                                        {{ invoice.payment_status === 'paid' ? 'Paid' : 'Pending Payment' }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2">
+                                    <span class="text-sm">{{ invoice.payment_method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) }}</span>
+                                </td>
                                 <td class="px-4 py-2 text-sm text-gray-500">{{ formatDateFriendly(invoice.created_at) }}</td>
                                 <td class="px-4 py-2">
                                     <div class="flex gap-2">
@@ -362,7 +426,7 @@ function formatDateFriendly(dateString: string) {
                                                 <span class="ml-1">Edit</span>
                                             </Button>
                                         </Link>
-                                        <Button v-if="canEditInvoice && invoice.status === 'pending'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
+                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
                                             <Icon name="check" class="h-4 w-4" />
                                             <span class="ml-1">Mark as Paid</span>
                                         </Button>

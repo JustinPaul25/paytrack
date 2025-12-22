@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -177,6 +178,17 @@ class CustomerController extends Controller
         $customer->update([
             'verified_at' => now(),
         ]);
+
+        // Mark all customer registration notifications as read for all admins
+        // Since the customer is now approved, no admin needs to see this notification anymore
+        Notification::where('type', 'customer.registered')
+            ->where('notifiable_type', Customer::class)
+            ->where('notifiable_id', $customer->id)
+            ->where('read', false)
+            ->update([
+                'read' => true,
+                'read_at' => now(),
+            ]);
 
         // Send verification email to customer
         $loginUrl = route('login', [], true);

@@ -336,7 +336,15 @@ const canReject = computed(() => {
 });
 
 const canCancel = computed(() => {
-    return (isCustomer || isStaff) && order.value.status === 'pending';
+    // Customers can only cancel pending orders (not approved/accepted orders)
+    if (isCustomer) {
+        return order.value.status === 'pending';
+    }
+    // Staff can cancel pending orders (backend handles additional restrictions for approved orders with invoices)
+    if (isStaff) {
+        return order.value.status === 'pending';
+    }
+    return false;
 });
 
 function addComment() {

@@ -419,6 +419,11 @@ class OrderController extends Controller
                 abort(403);
             }
             
+            // Customers cannot cancel approved/accepted orders
+            if ($order->status === 'approved') {
+                return redirect()->back()->with('error', 'Cannot cancel approved orders. Please contact support.');
+            }
+            
             // Only pending orders can be cancelled by customers
             if ($order->status !== 'pending') {
                 return redirect()->back()->with('error', 'Only pending orders can be cancelled.');

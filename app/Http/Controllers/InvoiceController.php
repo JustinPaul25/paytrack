@@ -35,6 +35,7 @@ class InvoiceController extends Controller
         }
         $search = $request->input('search');
         $status = $request->input('status');
+        $paymentStatus = $request->input('payment_status');
 
         if ($search) {
             $query->whereHas('customer', function ($q) use ($search) {
@@ -44,6 +45,10 @@ class InvoiceController extends Controller
 
         if ($status) {
             $query->where('status', $status);
+        }
+
+        if ($paymentStatus) {
+            $query->where('payment_status', $paymentStatus);
         }
 
         $invoices = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
@@ -62,18 +67,22 @@ class InvoiceController extends Controller
         $totalAmount = ((clone $statsBase)->sum('total_amount')) / 100;
         $pendingInvoices = (clone $statsBase)->where('status', 'pending')->count();
         $completedInvoices = (clone $statsBase)->where('status', 'completed')->count();
+        $paidInvoices = (clone $statsBase)->where('payment_status', 'paid')->count();
+        $pendingPaymentInvoices = (clone $statsBase)->where('payment_status', 'pending')->count();
 
         return inertia('invoices/Index', [
             'invoices' => $invoices,
             'filters' => [
                 'search' => $search,
                 'status' => $status,
+                'payment_status' => $paymentStatus,
             ],
             'stats' => [
                 'totalInvoices' => $totalInvoices,
                 'totalAmount' => $totalAmount,
                 'pendingInvoices' => $pendingInvoices,
-                'paidInvoices' => $completedInvoices,
+                'paidInvoices' => $paidInvoices,
+                'pendingPaymentInvoices' => $pendingPaymentInvoices,
             ],
         ]);
     }

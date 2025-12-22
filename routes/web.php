@@ -105,18 +105,19 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:Customer')->group(function () {
         Route::get('orders/create', [\App\Http\Controllers\OrderController::class, 'create'])->name('orders.create');
         Route::post('orders', [\App\Http\Controllers\OrderController::class, 'store'])->name('orders.store');
-        Route::post('orders/{order}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
     });
     
     // Order routes (all authenticated can view, but scope differs by role)
     Route::get('orders', [\App\Http\Controllers\OrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{order}', [\App\Http\Controllers\OrderController::class, 'show'])->name('orders.show');
     
+    // Order cancellation (Customers and Staff can cancel orders with restrictions)
+    Route::post('orders/{order}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
+    
     // Order approval/rejection (Admin|Staff only)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::post('orders/{order}/approve', [\App\Http\Controllers\OrderController::class, 'approve'])->name('orders.approve');
         Route::post('orders/{order}/reject', [\App\Http\Controllers\OrderController::class, 'reject'])->name('orders.reject');
-        Route::post('orders/{order}/cancel', [\App\Http\Controllers\OrderController::class, 'cancel'])->name('orders.cancel');
     });
 
     // Order comments (all authenticated users can comment on their orders)
