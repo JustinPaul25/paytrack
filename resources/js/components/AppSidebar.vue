@@ -123,13 +123,6 @@ const isFinancialInvoicesOpen = ref(false);
                                                         </Link>
                                                     </SidebarMenuSubButton>
                                                 </SidebarMenuSubItem>
-                                                <SidebarMenuSubItem>
-                                                    <SidebarMenuSubButton as-child>
-                                                        <Link href="/invoices?status=pending">
-                                                            <span>Pending</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
                                             </SidebarMenuSub>
                                         </CollapsibleContent>
                                     </Collapsible>
@@ -277,14 +270,6 @@ const isFinancialInvoicesOpen = ref(false);
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
-                                        <Link href="/roles">
-                                            <Shield />
-                                            <span>Roles</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
                                         <Link :href="route('users.archives')">
                                             <FileText />
                                             <span>Archives</span>
@@ -334,13 +319,6 @@ const isFinancialInvoicesOpen = ref(false);
                                                     <SidebarMenuSubButton as-child>
                                                         <Link href="/invoices">
                                                             <span>All Invoices</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                                <SidebarMenuSubItem>
-                                                    <SidebarMenuSubButton as-child>
-                                                        <Link href="/invoices?status=pending">
-                                                            <span>Pending</span>
                                                         </Link>
                                                     </SidebarMenuSubButton>
                                                 </SidebarMenuSubItem>
