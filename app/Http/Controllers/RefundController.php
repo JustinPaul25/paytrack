@@ -14,21 +14,8 @@ class RefundController extends Controller
         if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
             abort(403);
         }
-        $status = $request->get('status', ''); // approved, processed, completed, cancelled, or empty for all
-        $isDamaged = $request->get('is_damaged');
-        $query = Refund::with(['invoice', 'product', 'user'])->orderByDesc('created_at');
-        if ($status && $status !== 'all') {
-            $query->where('status', $status);
-        }
-        if ($isDamaged !== null && $isDamaged !== '') {
-            $query->where('is_damaged', filter_var($isDamaged, FILTER_VALIDATE_BOOLEAN));
-        }
-        $refunds = $query->paginate(10)->withQueryString();
-
-        return inertia('refunds/Manage', [
-            'refunds' => $refunds,
-            'filters' => ['status' => $status, 'is_damaged' => $isDamaged],
-        ]);
+        // Redirect to the combined refund page
+        return redirect()->route('refundRequests.index', ['refund_status' => $request->get('status', '')]);
     }
 
     public function process(Refund $refund, Request $request)

@@ -6,6 +6,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Swal from 'sweetalert2';
 import { ref } from 'vue';
 
@@ -35,7 +36,7 @@ interface RefundRequest {
     media_link?: string;
     status: string;
     review_notes?: string;
-    converted_refund_id?: number;
+    completed_refund_id?: number;
     created_at: string;
     updated_at: string;
     request_type?: 'refund';
@@ -62,6 +63,21 @@ interface RefundRequest {
         size: number;
         url: string;
     }>;
+}
+
+interface Refund {
+    id: number;
+    refund_number: string;
+    invoice_id: number;
+    product?: { id:number; name:string };
+    user?: { id:number; name:string };
+    quantity_refunded: number;
+    refund_amount: number;
+    refund_method: string;
+    status: string;
+    reference_number?: string;
+    created_at: string;
+    is_damaged?: boolean;
 }
 
 interface Paginated<T> {
@@ -105,7 +121,7 @@ function approve(id: number) {
 function reject(id: number) {
     Swal.fire({
         title: 'Decline this refund request?',
-        text: 'This will mark the request as rejected. You can’t undo this.',
+        text: 'This will mark the request as rejected. You can't undo this.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Decline',
@@ -126,123 +142,320 @@ function reject(id: number) {
         }
     });
 }
+
+function processRefund(id: number) {
+    Swal.fire({
+        title: 'Mark as Processed',
+        html: `
+        <div style="text-align:left">
+            <label style="display:block;margin-bottom:4px;font-size:12px">Method</label>
+            <select id="method" class="swal2-input" style="width:100%">
+                <option value="cash">cash</option>
+                <option value="bank_transfer">bank_transfer</option>
+                <option value="e-wallet">e-wallet</option>
+                <option value="credit_note">credit_note</option>
+            </select>
+            <label style="display:block;margin:10px 0 4px;font-size:12px">Reference #</label>
+            <input id="ref" class="swal2-input" placeholder="Reference number (optional)" />
+            <label style="display:block;margin:10px 0 4px;font-size:12px">Notes</label>
+            <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)"></textarea>
+        </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        preConfirm: () => {
+            const method = (document.getElementById('method') as HTMLSelectElement).value;
+            const ref = (document.getElementById('ref') as HTMLInputElement).value;
+            const notes = (document.getElementById('notes') as HTMLTextAreaElement).value;
+            return { refund_method: method, reference_number: ref || undefined, notes: notes || undefined };
+        },
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('refunds.process', id), res.value, { preserveScroll: true });
+        }
+    });
+}
+
+function completeRefund(id: number) {
+    const refund = (page.props.refunds as Paginated<Refund>).data.find(r => r.id === id);
+    const isDamaged = refund?.is_damaged ?? false;
+    
+    Swal.fire({
+        title: 'Complete refund',
+        html: `
+        <div style="text-align:left">
+            ${isDamaged ? '<div style="background:#fef3c7;border:1px solid #fbbf24;padding:8px;border-radius:4px;margin-bottom:12px;font-size:13px;color:#92400e;"><strong>⚠️ Damaged Items:</strong> These items will not be returned to inventory stock.</div>' : ''}
+            <label style="display:flex;align-items:center;gap:8px;">
+                <input id="return" type="checkbox" ${isDamaged ? '' : 'checked'} ${isDamaged ? 'disabled' : ''} />
+                Return to stock
+            </label>
+            ${isDamaged ? '<p style="font-size:11px;color:#6b7280;margin-top:4px;margin-left:24px;">Disabled for damaged items</p>' : ''}
+            <label style="display:block;margin:10px 0 4px;font-size:12px">Inspection notes</label>
+            <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)"></textarea>
+        </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Complete',
+        confirmButtonColor: '#10b981',
+        preConfirm: () => {
+            const rtn = isDamaged ? false : (document.getElementById('return') as HTMLInputElement).checked;
+            const notes = (document.getElementById('notes') as HTMLTextAreaElement).value;
+            return { return_to_stock: rtn, notes: notes || undefined };
+        }
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('refunds.complete', id), res.value, { preserveScroll: true });
+        }
+    });
+}
+
+function cancelRefund(id: number) {
+    Swal.fire({
+        title: 'Cancel this refund?',
+        text: 'This will mark the refund as cancelled. A short reason is required.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Cancel refund',
+        confirmButtonColor: '#ef4444',
+        input: 'textarea',
+        inputLabel: 'Reason (required)',
+        inputPlaceholder: 'Provide a brief reason...',
+        inputAttributes: { 'aria-label': 'Reason (required)' },
+        inputValidator: (value) => {
+            if (!value || !value.trim()) {
+                return 'Please provide a brief reason.';
+            }
+            return undefined as any;
+        },
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('refunds.cancel', id), { review_notes: res.value }, { preserveScroll: true });
+        }
+    });
+}
 </script>
 
 <template>
     <AppLayout>
-        <Head title="Refund Requests" />
+        <Head title="Refunds" />
 
         <div class="flex items-center justify-between my-6">
-            <h1 class="text-2xl font-bold">{{ isCustomer ? 'My Refund Requests' : 'Refund Requests' }}</h1>
-            <div class="flex gap-2">
-                <select
-                    class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    :value="filters.status || 'all'"
-                    @change="(e:any) => {
-                        const status = e.target.value === 'all' ? '' : e.target.value;
-                        router.get(route('refundRequests.index'), status ? { status } : {}, { preserveState: true, replace: true });
-                    }"
-                >
-                    <option value="all">All</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="converted">Converted</option>
-                </select>
-            </div>
+            <h1 class="text-2xl font-bold">{{ isCustomer ? 'My Refunds' : 'Refunds' }}</h1>
         </div>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div v-if="!(page.props.refundRequests as Paginated<RefundRequest>).data.length" class="py-8 text-center text-sm text-gray-500">
-                    <div v-if="(filters.status && filters.status !== '' && filters.status !== 'all')">
-                        No refund requests for the selected filter.
-                        <div class="mt-3">
-                            <Button variant="outline" @click="router.get(route('refundRequests.index'), {}, { preserveState: true, replace: true })">
-                                Clear filters
-                            </Button>
+        <Tabs default-value="requests" class="w-full">
+            <TabsList class="grid w-full grid-cols-2">
+                <TabsTrigger value="requests">Refund Requests</TabsTrigger>
+                <TabsTrigger value="refunds">Refunds</TabsTrigger>
+            </TabsList>
+
+            <!-- Refund Requests Tab -->
+            <TabsContent value="requests">
+                <Card>
+                    <CardHeader>
+                        <div class="flex items-center justify-between">
+                            <CardTitle>Refund Requests</CardTitle>
+                            <select
+                                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                :value="filters.status || 'all'"
+                                @change="(e:any) => {
+                                    const status = e.target.value === 'all' ? '' : e.target.value;
+                                    router.get(route('refundRequests.index'), status ? { status } : {}, { preserveState: true, replace: true });
+                                }"
+                            >
+                                <option value="all">All</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="completed">Completed</option>
+                            </select>
                         </div>
-                    </div>
-                    <div v-else>
-                        No refund requests.
-                    </div>
-                </div>
-                <div v-else>
-                    <table class="min-w-full divide-y divide-border">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 text-left">Tracking</th>
-                                <th class="px-4 py-2 text-left">Type</th>
-                                <th class="px-4 py-2 text-left">Invoice</th>
-                                <th v-if="!isCustomer" class="px-4 py-2 text-left">Customer</th>
-                                <th class="px-4 py-2 text-left">Qty</th>
-                                <th class="px-4 py-2 text-left">Status</th>
-                                <th class="px-4 py-2 text-left">Submitted</th>
-                                <th class="px-4 py-2 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="r in (page.props.refundRequests as Paginated<RefundRequest>).data" :key="r.id" class="hover:bg-muted">
-                                <td class="px-4 py-2">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-medium">{{ r.tracking_number }}</span>
-                                        <span v-if="r.is_damaged" class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="Damaged items">
-                                            ⚠️
-                                        </span>
-                                    </div>
-                                    <div v-if="r.reason" class="text-xs text-gray-500 truncate max-w-64">{{ r.reason }}</div>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        Refund
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)" class="text-sm text-blue-600 hover:underline">
-                                        {{ r.invoice_reference || ('#' + r.invoice_id) }}
-                                    </Link>
-                                    <div v-else class="text-sm">{{ r.invoice_reference || ('#' + r.invoice_id) }}</div>
-                                </td>
-                                <td v-if="!isCustomer" class="px-4 py-2">
-                                    <div class="text-sm">{{ r.customer_name }}</div>
-                                    <div v-if="r.email" class="text-xs text-gray-500">{{ r.email }}</div>
-                                </td>
-                                <td class="px-4 py-2">{{ r.quantity }}</td>
-                                <td class="px-4 py-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                        :class="{
-                                            'bg-yellow-100 text-yellow-800': r.status === 'pending',
-                                            'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'converted',
-                                            'bg-red-100 text-red-800': r.status === 'rejected',
-                                        }"
-                                    >
-                                        {{ r.status }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(r.created_at).toLocaleString() }}</td>
-                                <td class="px-4 py-2">
-                                    <div class="flex gap-2">
-                                        <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
-                                            Approve
-                                        </Button>
-                                        <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
-                                            Decline
-                                        </Button>
-                                        <Button size="sm" variant="outline" @click="showDetails = r">View details</Button>
-                                        <Link v-if="r.invoice_id && !isCustomer" :href="route('invoices.show', r.invoice_id)">
-                                            <Button size="sm" variant="ghost">View Invoice</Button>
-                                        </Link>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </CardContent>
-        </Card>
+                    </CardHeader>
+                    <CardContent>
+                        <div v-if="!(page.props.refundRequests as Paginated<RefundRequest>).data.length" class="py-8 text-center text-sm text-gray-500">
+                            <div v-if="(filters.status && filters.status !== '' && filters.status !== 'all')">
+                                No refund requests for the selected filter.
+                                <div class="mt-3">
+                                    <Button variant="outline" @click="router.get(route('refundRequests.index'), {}, { preserveState: true, replace: true })">
+                                        Clear filters
+                                    </Button>
+                                </div>
+                            </div>
+                            <div v-else>
+                                No refund requests.
+                            </div>
+                        </div>
+                        <div v-else>
+                            <table class="min-w-full divide-y divide-border">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-2 text-left">Tracking</th>
+                                        <th class="px-4 py-2 text-left">Type</th>
+                                        <th class="px-4 py-2 text-left">Invoice</th>
+                                        <th v-if="!isCustomer" class="px-4 py-2 text-left">Customer</th>
+                                        <th class="px-4 py-2 text-left">Qty</th>
+                                        <th class="px-4 py-2 text-left">Status</th>
+                                        <th class="px-4 py-2 text-left">Submitted</th>
+                                        <th class="px-4 py-2 text-left">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="r in (page.props.refundRequests as Paginated<RefundRequest>).data" :key="r.id" class="hover:bg-muted">
+                                        <td class="px-4 py-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-medium">{{ r.tracking_number }}</span>
+                                                <span v-if="r.is_damaged" class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="Damaged items">
+                                                    ⚠️
+                                                </span>
+                                            </div>
+                                            <div v-if="r.reason" class="text-xs text-gray-500 truncate max-w-64">{{ r.reason }}</div>
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                Refund
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)" class="text-sm text-blue-600 hover:underline">
+                                                {{ r.invoice_reference || ('#' + r.invoice_id) }}
+                                            </Link>
+                                            <div v-else class="text-sm">{{ r.invoice_reference || ('#' + r.invoice_id) }}</div>
+                                        </td>
+                                        <td v-if="!isCustomer" class="px-4 py-2">
+                                            <div class="text-sm">{{ r.customer_name }}</div>
+                                            <div v-if="r.email" class="text-xs text-gray-500">{{ r.email }}</div>
+                                        </td>
+                                        <td class="px-4 py-2">{{ r.quantity }}</td>
+                                        <td class="px-4 py-2">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                                :class="{
+                                                    'bg-yellow-100 text-yellow-800': r.status === 'pending',
+                                                    'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'completed',
+                                                    'bg-red-100 text-red-800': r.status === 'rejected',
+                                                }"
+                                            >
+                                                {{ r.status }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(r.created_at).toLocaleString() }}</td>
+                                        <td class="px-4 py-2">
+                                            <div class="flex gap-2">
+                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
+                                                    Approve
+                                                </Button>
+                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
+                                                    Decline
+                                                </Button>
+                                                <Button size="sm" variant="outline" @click="showDetails = r">View details</Button>
+                                                <Link v-if="r.invoice_id && !isCustomer" :href="route('invoices.show', r.invoice_id)">
+                                                    <Button size="sm" variant="ghost">View Invoice</Button>
+                                                </Link>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            <!-- Refunds Tab -->
+            <TabsContent value="refunds">
+                <Card>
+                    <CardHeader>
+                        <div class="flex items-center justify-between">
+                            <CardTitle>Refunds</CardTitle>
+                            <select
+                                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                :value="filters.status || 'all'"
+                                @change="(e:any) => {
+                                    const status = e.target.value === 'all' ? '' : e.target.value;
+                                    router.get(route('refunds.index'), status ? { status } : {}, { preserveState: true, replace: true });
+                                }"
+                            >
+                                <option value="all">All</option>
+                                <option value="approved">Approved</option>
+                                <option value="processed">Processed</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div v-if="!(page.props.refunds as Paginated<Refund>).data.length" class="py-8 text-center text-sm text-gray-500">
+                            <div v-if="(filters.status && filters.status !== '' && filters.status !== 'all')">
+                                No refunds found for the selected filter.
+                                <div class="mt-3">
+                                    <Button variant="outline" @click="router.get(route('refunds.index'), {}, { preserveState: true, replace: true })">
+                                        Clear filters
+                                    </Button>
+                                </div>
+                            </div>
+                            <div v-else>
+                                No refunds found.
+                            </div>
+                        </div>
+                        <div v-else>
+                            <table class="min-w-full divide-y divide-border">
+                                <thead>
+                                    <tr>
+                                        <th class="px-4 py-2 text-left">Refund #</th>
+                                        <th class="px-4 py-2 text-left">Invoice</th>
+                                        <th class="px-4 py-2 text-left">Product</th>
+                                        <th class="px-4 py-2 text-left">Qty</th>
+                                        <th class="px-4 py-2 text-left">Amount</th>
+                                        <th class="px-4 py-2 text-left">Status</th>
+                                        <th class="px-4 py-2 text-left">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="r in (page.props.refunds as Paginated<Refund>).data" :key="r.id" class="hover:bg-muted">
+                                        <td class="px-4 py-2 font-medium">{{ r.refund_number }}</td>
+                                        <td class="px-4 py-2">
+                                            <Link :href="route('invoices.show', r.invoice_id)" class="text-blue-500 underline">#{{ r.invoice_id }}</Link>
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <div class="flex items-center gap-2">
+                                                <span>{{ (r as any).product?.name || '—' }}</span>
+                                                <span v-if="r.is_damaged" class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="Damaged items will not be returned to stock">
+                                                    ⚠️ Damaged
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-2">{{ r.quantity_refunded }}</td>
+                                        <td class="px-4 py-2 font-medium">{{ formatCurrency(r.refund_amount) }}</td>
+                                        <td class="px-4 py-2">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                                :class="{
+                                                    'bg-blue-100 text-blue-800': r.status === 'approved',
+                                                    'bg-yellow-100 text-yellow-800': r.status === 'processed',
+                                                    'bg-green-100 text-green-800': r.status === 'completed',
+                                                    'bg-red-100 text-red-800': r.status === 'cancelled',
+                                                }"
+                                            >{{ r.status }}</span>
+                                        </td>
+                                        <td class="px-4 py-2">
+                                            <div class="flex gap-2">
+                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="outline" @click="processRefund(r.id)">
+                                                    Process
+                                                </Button>
+                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="default" @click="completeRefund(r.id)">
+                                                    Complete
+                                                </Button>
+                                                <Button v-if="canProcessRefunds && r.status !== 'completed' && r.status !== 'cancelled'" size="sm" variant="destructive" @click="cancelRefund(r.id)">
+                                                    Cancel
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
 
         <!-- Details Modal -->
         <div v-if="showDetails" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -266,7 +479,7 @@ function reject(id: number) {
                             <span class="px-3 py-1 rounded-full text-sm font-medium inline-block"
                                 :class="{
                                     'bg-yellow-100 text-yellow-800': showDetails.status === 'pending',
-                                    'bg-green-100 text-green-800': showDetails.status === 'approved' || showDetails.status === 'converted',
+                                    'bg-green-100 text-green-800': showDetails.status === 'approved' || showDetails.status === 'completed',
                                     'bg-red-100 text-red-800': showDetails.status === 'rejected',
                                 }"
                             >
@@ -396,9 +609,9 @@ function reject(id: number) {
                             <div class="whitespace-pre-wrap text-sm bg-yellow-50 p-3 rounded-md border border-yellow-200">{{ showDetails.damaged_items_terms }}</div>
                         </div>
 
-                        <div v-if="showDetails.converted_refund_id">
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Converted to Refund</div>
-                            <div class="text-sm font-medium text-green-600">Refund ID: #{{ showDetails.converted_refund_id }}</div>
+                        <div v-if="showDetails.completed_refund_id">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Completed to Refund</div>
+                            <div class="text-sm font-medium text-green-600">Refund ID: #{{ showDetails.completed_refund_id }}</div>
                         </div>
                     </div>
                 </div>
@@ -413,5 +626,3 @@ function reject(id: number) {
         </div>
     </AppLayout>
 </template>
-
-

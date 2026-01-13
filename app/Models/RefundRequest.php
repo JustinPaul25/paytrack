@@ -28,7 +28,7 @@ class RefundRequest extends Model implements HasMedia
         'media_link',
         'status',
         'review_notes',
-        'converted_refund_id',
+        'completed_refund_id',
         'request_type',
         'exchange_product_id',
         'exchange_quantity',

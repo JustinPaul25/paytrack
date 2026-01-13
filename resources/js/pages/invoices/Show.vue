@@ -652,7 +652,7 @@ watch(() => (page.props as any).flash, (flash) => {
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
                                         :class="{
                                             'bg-yellow-100 text-yellow-800': r.status === 'pending',
-                                            'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'converted',
+                                            'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'completed',
                                             'bg-red-100 text-red-800': r.status === 'rejected',
                                         }"
                                     >

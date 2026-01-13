@@ -19,7 +19,7 @@ class RefundRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $status = $request->get('status', ''); // pending, approved, rejected, converted, or empty for all
+        $status = $request->get('status', ''); // pending, approved, rejected, completed, or empty for all
         $query = RefundRequest::query()->with(['invoice', 'product', 'media']);
 
         // Customer role: restrict to own refund requests only
@@ -65,8 +65,20 @@ class RefundRequestController extends Controller
             return $refundRequest;
         });
 
+        // Get refunds data for the combined page (Admin/Staff only)
+        $refunds = collect([]);
+        if ($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff')) {
+            $refundStatus = $request->get('refund_status', $request->get('status', ''));
+            $refundsQuery = Refund::with(['invoice', 'product', 'user'])->orderByDesc('created_at');
+            if ($refundStatus && $refundStatus !== 'all') {
+                $refundsQuery->where('status', $refundStatus);
+            }
+            $refunds = $refundsQuery->paginate(10)->withQueryString();
+        }
+
         return inertia('refunds/Index', [
             'refundRequests' => $refundRequests,
+            'refunds' => $refunds,
             'filters' => [
                 'status' => $status,
             ],
@@ -286,11 +298,11 @@ class RefundRequestController extends Controller
             'is_damaged' => $refundRequest->is_damaged ?? false,
         ]);
 
-        // Link refund back to request and mark as converted
+        // Link refund back to request and mark as completed
         $refundRequest->update([
-            'status' => 'converted',
+            'status' => 'completed',
             'review_notes' => $request->get('review_notes'),
-            'converted_refund_id' => $refund->id,
+            'completed_refund_id' => $refund->id,
         ]);
 
         // For credit invoices: Check if refund fully settles the invoice

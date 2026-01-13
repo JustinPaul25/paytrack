@@ -487,7 +487,7 @@ function updateRequestFilter(status: string) {
                         <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
                         <option value="rejected">Rejected</option>
-                        <option value="converted">Converted</option>
+                        <option value="completed">Completed</option>
                     </select>
                 </div>
             </CardHeader>
@@ -533,7 +533,7 @@ function updateRequestFilter(status: string) {
                                             'bg-yellow-100 text-yellow-800': r.status === 'pending',
                                             'bg-green-100 text-green-800': r.status === 'approved',
                                             'bg-red-100 text-red-800': r.status === 'rejected',
-                                            'bg-blue-100 text-blue-800': r.status === 'converted',
+                                            'bg-blue-100 text-blue-800': r.status === 'completed',
                                         }"
                                     >{{ r.status }}</span>
                                 </td>
@@ -700,7 +700,7 @@ function updateRequestFilter(status: string) {
                                     'bg-yellow-100 text-yellow-800': showDetails.status === 'pending',
                                     'bg-green-100 text-green-800': showDetails.status === 'approved',
                                     'bg-red-100 text-red-800': showDetails.status === 'rejected',
-                                    'bg-blue-100 text-blue-800': showDetails.status === 'converted',
+                                    'bg-blue-100 text-blue-800': showDetails.status === 'completed',
                                 }"
                             >{{ showDetails.status }}</span>
                         </div>
