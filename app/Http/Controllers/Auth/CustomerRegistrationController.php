@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerRegistrationRequest;
 use App\Models\Customer;
+use App\Models\CustomerLog;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -83,6 +84,17 @@ class CustomerRegistrationController extends Controller
 
         // Dispatch event to notify admins of new customer registration
         event(new \App\Events\CustomerRegistered($customer));
+
+        // Log the customer self-registration (user_id will be null since it's self-registration)
+        CustomerLog::create([
+            'customer_id' => $customer->id,
+            'user_id' => null, // Self-registration, no admin/staff involved
+            'action' => 'registered',
+            'description' => "Customer {$customer->name} registered themselves.",
+            'changes' => null,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
 
         return redirect()->route('login')->with('status', 'registration-successful');
     }

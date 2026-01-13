@@ -96,6 +96,14 @@ class Customer extends Model implements HasMedia
     }
 
     /**
+     * Get the logs for the customer.
+     */
+    public function logs()
+    {
+        return $this->hasMany(CustomerLog::class);
+    }
+
+    /**
      * Check if the customer is verified.
      */
     public function isVerified(): bool

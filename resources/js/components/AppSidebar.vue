@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download, CheckCircle2 } from 'lucide-vue-next';
+import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download, History, AlertTriangle } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -72,13 +72,11 @@ const footerNavItems: NavItem[] = [
     // },
 ];
 
-const isUsersOpen = ref(true);
 const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
 const isFinancialOpen = ref(true);
 const isInvoicesOpen = ref(false);
 const isOrdersOpen = ref(false);
-const isFinancialInvoicesOpen = ref(false);
 </script>
 
 <template>
@@ -206,6 +204,22 @@ const isFinancialInvoicesOpen = ref(false);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('refunds.damaged-items')">
+                                            <AlertTriangle class="h-4 w-4" />
+                                            <span>Damaged Items</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('customers.logs.index')">
+                                            <History class="h-4 w-4" />
+                                            <span>Customer Logs</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
                             </SidebarMenuSub>
                         </CollapsibleContent>
                     </Collapsible>
@@ -250,43 +264,12 @@ const isFinancialInvoicesOpen = ref(false);
             <!-- Users Group (Admin only) -->
             <SidebarMenu v-if="isAdmin" class="px-2">
                 <SidebarMenuItem>
-                    <Collapsible v-model:open="isUsersOpen">
-                        <CollapsibleTrigger as-child>
-                            <SidebarMenuButton tooltip="Users">
-                                <Users class="h-4 w-4" />
-                                <span>Users</span>
-                                <ChevronDown class="ml-auto h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isUsersOpen }" />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                            <SidebarMenuSub>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link href="/users">
-                                            <Folder class="h-4 w-4" />
-                                            <span>Users</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('users.archives')">
-                                            <FileText class="h-4 w-4" />
-                                            <span>Archives</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('users.customer-verification')">
-                                            <CheckCircle2 class="h-4 w-4" />
-                                            <span>Customer Verification</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                            </SidebarMenuSub>
-                        </CollapsibleContent>
-                    </Collapsible>
+                    <SidebarMenuButton as-child>
+                        <Link href="/users">
+                            <Users class="h-4 w-4" />
+                            <span>Users</span>
+                        </Link>
+                    </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
 
@@ -304,27 +287,12 @@ const isFinancialInvoicesOpen = ref(false);
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <Collapsible v-model:open="isFinancialInvoicesOpen">
-                                        <CollapsibleTrigger as-child>
-                                            <SidebarMenuSubButton>
-                                                <Receipt class="h-4 w-4" />
-                                                <span>Invoices</span>
-                                                <span class="ml-auto text-xs text-muted-foreground">(View Only)</span>
-                                                <ChevronDown class="ml-1 h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isFinancialInvoicesOpen }" />
-                                            </SidebarMenuSubButton>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent>
-                                            <SidebarMenuSub>
-                                                <SidebarMenuSubItem>
-                                                    <SidebarMenuSubButton as-child>
-                                                        <Link href="/invoices">
-                                                            <span>All Invoices</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            </SidebarMenuSub>
-                                        </CollapsibleContent>
-                                    </Collapsible>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/invoices">
+                                            <Receipt class="h-4 w-4" />
+                                            <span>Invoices</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>

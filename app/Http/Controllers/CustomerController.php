@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\CustomerLog;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,6 +23,15 @@ class CustomerController extends Controller
         $pending = $request->boolean('pending', false);
 
         $query = Customer::query();
+
+        // Exclude customers with trashed (deleted) user accounts
+        // These customers are considered archived and should only appear in archived views
+        $query->where(function ($q) {
+            $q->whereDoesntHave('user')
+              ->orWhereHas('user', function ($subQ) {
+                  $subQ->whereNull('deleted_at');
+              });
+        });
 
         // Filter by pending verifications if requested
         if ($pending) {
@@ -100,6 +110,9 @@ class CustomerController extends Controller
         // Email credentials to the customer
         Mail::to($customer->email)->queue(new CustomerCredentials($customer->name, $customer->email, $generatedPassword));
 
+        // Log the customer creation
+        $this->logCustomerActivity($customer, 'created', "Customer {$customer->name} was created by admin.");
+
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
 
@@ -127,11 +140,32 @@ class CustomerController extends Controller
         }
         
         $data = $request->validated();
+        $originalData = $customer->getOriginal();
         $customer->update($data);
+        
+        // Track changes
+        $changes = [];
+        foreach ($data as $key => $value) {
+            if (isset($originalData[$key]) && $originalData[$key] != $value) {
+                $changes[$key] = [
+                    'old' => $originalData[$key],
+                    'new' => $value,
+                ];
+            }
+        }
+        
         if ($request->hasFile('profile_image')) {
             $customer->clearMediaCollection('profile_image');
             $customer->addMediaFromRequest('profile_image')->toMediaCollection('profile_image');
+            $changes['profile_image'] = ['old' => 'previous image', 'new' => 'new image uploaded'];
         }
+        
+        // Log the customer update
+        $description = !empty($changes) 
+            ? "Customer {$customer->name} was updated. Fields changed: " . implode(', ', array_keys($changes))
+            : "Customer {$customer->name} was updated.";
+        $this->logCustomerActivity($customer, 'updated', $description, $changes);
+        
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
     }
 
@@ -143,21 +177,40 @@ class CustomerController extends Controller
                 ->with('error', 'You do not have permission to delete customer data.');
         }
         
-        // Block delete if related records exist to avoid FK errors
+        // Check if related records exist (for informational purposes)
         $hasInvoices = \App\Models\Invoice::where('customer_id', $customer->id)->exists();
         $hasDeliveries = \App\Models\Delivery::where('customer_id', $customer->id)->exists();
 
-        if ($hasInvoices || $hasDeliveries) {
-            return redirect()
-                ->back()
-                ->with('error', 'Cannot delete this customer because there are related records (invoices or deliveries). Please remove or reassign those first.');
-        }
+        // Log the customer deletion before deleting
+        $this->logCustomerActivity($customer, 'deleted', "Customer {$customer->name} was deleted by admin.");
 
         // Remove profile image if present
         $customer->clearMediaCollection('profile_image');
-        $customer->delete();
+        
+        // Always soft delete the associated user account to archive the customer
+        // This allows the customer to appear in archived when filtering
+        // The customer record itself is kept for historical data (invoices/deliveries)
+        // Find user by email, including trashed users (in case it was already soft deleted)
+        $user = User::withTrashed()->where('email', $customer->email)->first();
+        if ($user && !$user->trashed()) {
+            $user->delete(); // Soft delete the user (archives the customer)
+        } elseif ($user && $user->trashed()) {
+            // User is already soft deleted, nothing to do
+        } else {
+            // If no user exists and no related records, we can safely delete the customer
+            if (!$hasInvoices && !$hasDeliveries) {
+                $customer->delete();
+            }
+            // If no user but has related records, we can't delete the customer record
+            // but there's nothing to archive, so just return success
+        }
 
-        return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
+        // Redirect back to the previous page (could be users management or customers page)
+        $message = 'Customer archived successfully.';
+        if ($hasInvoices || $hasDeliveries) {
+            $message .= ' Customer record kept for historical data (invoices/deliveries).';
+        }
+        return redirect()->back()->with('success', $message);
     }
 
     public function approve(Customer $customer)
@@ -179,6 +232,12 @@ class CustomerController extends Controller
             'verified_at' => now(),
         ]);
 
+        // Also verify the associated user account's email
+        $user = $customer->user;
+        if ($user && !$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
         // Mark all customer registration notifications as read for all admins
         // Since the customer is now approved, no admin needs to see this notification anymore
         Notification::where('type', 'customer.registered')
@@ -194,7 +253,30 @@ class CustomerController extends Controller
         $loginUrl = route('login', [], true);
         Mail::to($customer->email)->queue(new CustomerAccountVerified($customer->name, $loginUrl));
 
+        // Log the customer verification
+        $this->logCustomerActivity($customer, 'verified', "Customer {$customer->name} was verified by admin.");
+
         return redirect()->route('customers.index', ['pending' => true])
             ->with('success', "Customer {$customer->name} has been verified and notified via email.");
+    }
+
+    /**
+     * Helper method to log customer activities.
+     */
+    protected function logCustomerActivity(
+        Customer $customer,
+        string $action,
+        string $description,
+        ?array $changes = null
+    ): void {
+        CustomerLog::create([
+            'customer_id' => $customer->id,
+            'user_id' => auth()->id(),
+            'action' => $action,
+            'description' => $description,
+            'changes' => $changes,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
     }
 } 

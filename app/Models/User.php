@@ -82,11 +82,20 @@ class User extends Authenticatable implements HasMedia, MustVerifyEmail
 
     /**
      * Send the email verification notification.
+     * 
+     * Note: Customers should NOT receive verification emails.
+     * Only admins can verify customers through the admin panel.
      *
      * @return void
      */
     public function sendEmailVerificationNotification()
     {
+        // Skip sending verification email for customers
+        // Customers must be verified by admin through the admin panel
+        if ($this->hasRole('Customer')) {
+            return;
+        }
+
         $this->notify(new VerifyEmail);
     }
 }

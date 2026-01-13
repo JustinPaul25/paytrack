@@ -11,6 +11,7 @@ import CardFooter from '@/components/ui/card/CardFooter.vue';
 import { type BreadcrumbItem } from '@/types';
 import CustomerForm from './Form.vue';
 import Swal from 'sweetalert2';
+import Icon from '@/components/Icon.vue';
 
 const props = defineProps<{ customer: any, profile_image_url?: string }>();
 
@@ -18,10 +19,24 @@ const page = usePage();
 const isAdmin = computed(() => Array.isArray((page.props as any).auth?.userRoles) && 
     (page.props as any).auth.userRoles.includes('Admin'));
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Customers', href: '/customers' },
-    { title: 'Edit Customer', href: `/customers/${props.customer.id}/edit` },
-];
+// Check if we're coming from the users management page
+const fromUsers = computed(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('from') === 'users';
+});
+
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+    if (fromUsers.value) {
+        return [
+            { title: 'Users', href: '/users' },
+            { title: 'Edit User', href: `/customers/${props.customer.id}/edit?from=users` },
+        ];
+    }
+    return [
+        { title: 'Customers', href: '/customers' },
+        { title: 'Edit Customer', href: `/customers/${props.customer.id}/edit` },
+    ];
+});
 
 // Redirect staff users who try to access edit page
 onMounted(() => {
@@ -41,18 +56,24 @@ onMounted(() => {
 
 <template>
     <AppLayout v-if="isAdmin" :breadcrumbs="breadcrumbs">
-        <Head title="Edit Customer" />
+        <Head :title="fromUsers ? 'Edit User' : 'Edit Customer'" />
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-bold">Edit Customer</h1>
+            <h1 class="text-2xl font-bold">{{ fromUsers ? 'Edit User' : 'Edit Customer' }}</h1>
+            <Link :href="route('customers.logs.show', customer.id)">
+                <Button variant="outline">
+                    <Icon name="file-text" class="h-4 w-4 mr-2" />
+                    View Logs
+                </Button>
+            </Link>
         </div>
         <Card>
             <CardHeader>
-                <CardTitle>Edit Customer</CardTitle>
+                <CardTitle>{{ fromUsers ? 'Edit User' : 'Edit Customer' }}</CardTitle>
             </CardHeader>
             <CardContent>
 				<CustomerForm :customer="customer" :profileImageUrl="profile_image_url">
 					<template #footer>
-						<Link :href="route('customers.index')">
+						<Link :href="fromUsers ? route('users.index') : route('customers.index')">
 							<Button type="button" variant="ghost">Cancel</Button>
 						</Link>
 					</template>

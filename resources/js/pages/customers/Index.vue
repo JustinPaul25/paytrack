@@ -331,12 +331,20 @@ async function deleteCustomer(id: number) {
                     </span>
                 </Button>
             </div>
-            <Link v-if="canModifyCustomers" :href="route('customers.create')">
-                <Button variant="default">
-                    <span class="mr-2">+</span>
-                    Add New Customer
-                </Button>
-            </Link>
+            <div class="flex gap-2">
+                <Link :href="route('customers.logs.index')">
+                    <Button variant="outline">
+                        <Icon name="file-text" class="h-4 w-4 mr-2" />
+                        View All Logs
+                    </Button>
+                </Link>
+                <Link v-if="canModifyCustomers" :href="route('customers.create')">
+                    <Button variant="default">
+                        <span class="mr-2">+</span>
+                        Add New Customer
+                    </Button>
+                </Link>
+            </div>
         </div>
 
         <Card>
@@ -404,27 +412,34 @@ async function deleteCustomer(id: number) {
                                 </span>
                             </td>
                             <td class="px-4 py-2">
-                                <div v-if="canModifyCustomers" class="flex gap-2">
-                                    <Button 
-                                        v-if="!customer.verified_at" 
-                                        variant="default" 
-                                        size="sm" 
-                                        @click="approveCustomer(customer)"
-                                        class="bg-green-600 hover:bg-green-700"
-                                    >
-                                        <Icon name="Check" class="h-4 w-4 mr-1" />
-                                        Verify
-                                    </Button>
-                                    <Link :href="route('customers.edit', customer.id)">
-                                        <Button variant="ghost" size="sm">
-                                            <Icon name="edit" class="h-4 w-4" />
+                                <div class="flex gap-2 items-center">
+                                    <Link :href="route('customers.logs.show', customer.id)">
+                                        <Button variant="ghost" size="sm" title="View Logs">
+                                            <Icon name="file-text" class="h-4 w-4" />
                                         </Button>
                                     </Link>
-                                    <Button variant="ghost" size="sm" @click="deleteCustomer(customer.id)">
-                                        <Icon name="trash" class="h-4 w-4" />
-                                    </Button>
+                                    <div v-if="canModifyCustomers" class="flex gap-2">
+                                        <Button 
+                                            v-if="!customer.verified_at" 
+                                            variant="default" 
+                                            size="sm" 
+                                            @click="approveCustomer(customer)"
+                                            class="bg-green-600 hover:bg-green-700"
+                                        >
+                                            <Icon name="Check" class="h-4 w-4 mr-1" />
+                                            Verify
+                                        </Button>
+                                        <Link :href="route('customers.edit', customer.id)">
+                                            <Button variant="ghost" size="sm">
+                                                <Icon name="edit" class="h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                        <Button variant="ghost" size="sm" @click="deleteCustomer(customer.id)">
+                                            <Icon name="trash" class="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <span v-else class="text-sm text-muted-foreground">View only</span>
                                 </div>
-                                <span v-else class="text-sm text-muted-foreground">View only</span>
                             </td>
                         </tr>
                     </tbody>

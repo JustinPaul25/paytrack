@@ -69,6 +69,11 @@ class Refund extends Model
     {
         return $this->belongsTo(Product::class, 'exchange_product_id');
     }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
 }
 
 

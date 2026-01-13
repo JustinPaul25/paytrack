@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Refund;
+use App\Models\RefundRequest;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 
 class RefundController extends Controller
@@ -13,15 +15,19 @@ class RefundController extends Controller
             abort(403);
         }
         $status = $request->get('status', ''); // approved, processed, completed, cancelled, or empty for all
+        $isDamaged = $request->get('is_damaged');
         $query = Refund::with(['invoice', 'product', 'user'])->orderByDesc('created_at');
         if ($status && $status !== 'all') {
             $query->where('status', $status);
+        }
+        if ($isDamaged !== null && $isDamaged !== '') {
+            $query->where('is_damaged', filter_var($isDamaged, FILTER_VALIDATE_BOOLEAN));
         }
         $refunds = $query->paginate(10)->withQueryString();
 
         return inertia('refunds/Manage', [
             'refunds' => $refunds,
-            'filters' => ['status' => $status],
+            'filters' => ['status' => $status, 'is_damaged' => $isDamaged],
         ]);
     }
 
@@ -210,6 +216,68 @@ class RefundController extends Controller
             'status' => 'cancelled',
         ]);
         return redirect()->back();
+    }
+
+    public function damagedItems(Request $request)
+    {
+        if (!($request->user()?->hasRole('Admin') || $request->user()?->hasRole('Staff'))) {
+            abort(403);
+        }
+
+        $status = $request->get('status', ''); // Filter by status for refunds
+        $requestStatus = $request->get('request_status', ''); // Filter by status for refund requests
+
+        // Get damaged refunds with stock movements
+        $refundsQuery = Refund::with(['invoice', 'product', 'user'])
+            ->where('is_damaged', true)
+            ->orderByDesc('created_at');
+        
+        if ($status && $status !== 'all') {
+            $refundsQuery->where('status', $status);
+        }
+        
+        $refunds = $refundsQuery->paginate(10, ['*'], 'refunds_page')->withQueryString();
+
+        // Get damaged refund requests
+        $requestsQuery = RefundRequest::with(['invoice', 'product'])
+            ->where('is_damaged', true)
+            ->orderByDesc('created_at');
+        
+        if ($requestStatus && $requestStatus !== 'all') {
+            $requestsQuery->where('status', $requestStatus);
+        }
+        
+        $refundRequests = $requestsQuery->paginate(10, ['*'], 'requests_page')->withQueryString();
+
+        // Get all stock movements for damaged items (writeoffs)
+        $damagedStockMovements = StockMovement::whereHas('refund', function ($query) {
+                $query->where('is_damaged', true);
+            })
+            ->with(['refund', 'product', 'invoice', 'user'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        // Calculate statistics
+        $stats = [
+            'total_damaged_refunds' => Refund::where('is_damaged', true)->count(),
+            'total_damaged_requests' => RefundRequest::where('is_damaged', true)->count(),
+            'pending_requests' => RefundRequest::where('is_damaged', true)->where('status', 'pending')->count(),
+            'total_damaged_value' => Refund::where('is_damaged', true)->sum('refund_amount') / 100, // Convert from cents
+            'total_writeoffs' => StockMovement::whereHas('refund', function ($query) {
+                $query->where('is_damaged', true);
+            })->where('type', 'writeoff')->count(),
+        ];
+
+        return inertia('refunds/DamagedItems', [
+            'refunds' => $refunds,
+            'refundRequests' => $refundRequests,
+            'stockMovements' => $damagedStockMovements,
+            'stats' => $stats,
+            'filters' => [
+                'status' => $status,
+                'request_status' => $requestStatus,
+            ],
+        ]);
     }
 }
 

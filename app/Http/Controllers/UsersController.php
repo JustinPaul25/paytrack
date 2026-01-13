@@ -18,18 +18,8 @@ class UsersController extends Controller
 {
     public function index(Request $request)
     {
-        // Main users page - show overview with links to staff and customers
-        $totalUsers = User::count();
-        $totalStaff = User::role(['Admin', 'Staff'])->count();
-        $totalCustomers = Customer::count();
-
-        return Inertia::render('users/Index', [
-            'stats' => [
-                'totalUsers' => $totalUsers,
-                'totalStaff' => $totalStaff,
-                'totalCustomers' => $totalCustomers,
-            ],
-        ]);
+        // Unified user management table
+        return $this->adminManagement($request);
     }
 
     public function staff(Request $request)
@@ -327,7 +317,7 @@ class UsersController extends Controller
     public function destroy(User $user)
     {
         $user->delete();
-        // return redirect()->route('users.index')->with('success', 'User deleted successfully!');
+        return redirect()->route('users.index')->with('success', 'User deleted successfully!');
     }
 
     public function archives(Request $request)
@@ -374,5 +364,159 @@ class UsersController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $user->forceDelete();
         return redirect()->route('users.archives')->with('success', 'User permanently deleted!');
+    }
+
+    public function adminManagement(Request $request)
+    {
+        $search = $request->input('search');
+        $verificationStatus = $request->input('verification_status'); // 'verified', 'unverified', null (all)
+        $userRole = $request->input('user_role'); // 'admin', 'staff', 'customer', null (all)
+        $archived = $request->boolean('archived', false);
+
+        $allUsers = collect();
+
+        // Get staff/admin users (not archived unless requested)
+        if (!$archived) {
+            $staffQuery = User::role(['Admin', 'Staff'])->whereNull('deleted_at');
+        } else {
+            $staffQuery = User::onlyTrashed()->role(['Admin', 'Staff']);
+        }
+
+        if ($search) {
+            $staffQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $staffUsers = $staffQuery->get();
+        $staffUsers->transform(function ($user) {
+            $roles = $user->roles->pluck('name')->toArray();
+            $primaryRole = in_array('Admin', $roles) ? 'Admin' : (in_array('Staff', $roles) ? 'Staff' : 'User');
+            return [
+                'id' => $user->id,
+                'type' => 'staff',
+                'name' => $user->name,
+                'company' => null,
+                'email' => $user->email,
+                'user_role' => $primaryRole,
+                'phone' => null,
+                'status' => 'Active',
+                'is_verified' => true,
+                'is_archived' => $user->trashed(),
+                'deleted_at' => $user->deleted_at,
+                'updated_at' => $user->updated_at,
+            ];
+        });
+
+        // Apply role filter for staff users
+        if ($userRole === 'admin') {
+            $staffUsers = $staffUsers->filter(function ($user) {
+                return $user['user_role'] === 'Admin';
+            });
+        } elseif ($userRole === 'staff') {
+            $staffUsers = $staffUsers->filter(function ($user) {
+                return $user['user_role'] === 'Staff';
+            });
+        }
+
+        $allUsers = $allUsers->merge($staffUsers);
+
+        // Get customers (only if not filtering by admin/staff role, or if filtering by customer role)
+        if (!$userRole || $userRole === 'customer') {
+            $customerQuery = Customer::query();
+            
+            if ($archived) {
+                // For archived customers, we need to check if their associated user is deleted
+                // Since Customer doesn't have soft deletes, we'll check via User relationship
+                $customerQuery->whereHas('user', function ($q) {
+                    $q->onlyTrashed();
+                });
+            } else {
+                // Show non-archived customers: those without a user OR with a non-deleted user
+                // whereHas excludes trashed models by default, so this will only match non-trashed users
+                $customerQuery->where(function ($q) {
+                    // Customers without any user
+                    $q->whereDoesntHave('user')
+                      // OR customers with a non-trashed user (whereHas excludes trashed by default)
+                      ->orWhereHas('user');
+                });
+                // Explicitly exclude customers that have a trashed user using whereNotExists
+                $customerQuery->whereNotExists(function ($query) {
+                    $query->select(DB::raw(1))
+                        ->from('users')
+                        ->whereColumn('users.email', 'customers.email')
+                        ->whereNotNull('users.deleted_at');
+                });
+            }
+
+            // Apply verification filter for customers
+            if ($verificationStatus === 'verified') {
+                $customerQuery->whereNotNull('verified_at');
+            } elseif ($verificationStatus === 'unverified') {
+                $customerQuery->whereNull('verified_at');
+            }
+
+            if ($search) {
+                $customerQuery->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('company_name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%");
+                });
+            }
+
+            $customers = $customerQuery->get();
+            $customers->transform(function ($customer) {
+                $user = $customer->user;
+                return [
+                    'id' => $customer->id,
+                    'type' => 'customer',
+                    'name' => $customer->name,
+                    'company' => $customer->company_name,
+                    'email' => $customer->email,
+                    'user_role' => 'Customer',
+                    'phone' => $customer->phone,
+                    'status' => $customer->isVerified() ? 'Verified' : 'Unverified',
+                    'is_verified' => $customer->isVerified(),
+                    'is_archived' => $user ? $user->trashed() : false,
+                    'deleted_at' => $user ? $user->deleted_at : null,
+                    'updated_at' => $customer->updated_at,
+                ];
+            });
+
+            $allUsers = $allUsers->merge($customers);
+        }
+
+        // Sort by updated_at descending
+        $allUsers = $allUsers->sortByDesc('updated_at')->values();
+
+        // Paginate manually
+        $currentPage = $request->input('page', 1);
+        $perPage = 10;
+        $total = $allUsers->count();
+        $items = $allUsers->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        // Create paginator manually
+        $paginatedUsers = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $currentPage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+
+        return Inertia::render('users/Index', [
+            'users' => $paginatedUsers,
+            'filters' => [
+                'search' => $search,
+                'verification_status' => $verificationStatus,
+                'user_role' => $userRole,
+                'archived' => $archived,
+            ],
+        ]);
     }
 } 

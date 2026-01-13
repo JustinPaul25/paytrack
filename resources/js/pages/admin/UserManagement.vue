@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
+import CardHeader from '@/components/ui/card/CardHeader.vue';
+import CardTitle from '@/components/ui/card/CardTitle.vue';
 import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
@@ -40,17 +42,16 @@ const page = usePage();
 const filters = ref<{ 
     search?: string; 
     verification_status?: string; 
-    user_role?: string;
     archived?: boolean 
-}>(page.props.filters ? (page.props.filters as { search?: string; verification_status?: string; user_role?: string; archived?: boolean }) : {});
+}>(page.props.filters ? (page.props.filters as { search?: string; verification_status?: string; archived?: boolean }) : {});
 
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
 const verificationStatus = ref(typeof filters.value.verification_status === 'string' ? filters.value.verification_status : '');
-const userRole = ref(typeof filters.value.user_role === 'string' ? filters.value.user_role : '');
 const archived = ref(typeof filters.value.archived === 'boolean' ? filters.value.archived : false);
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Users', href: '/users' },
+    { title: 'Admin', href: '#' },
+    { title: 'User Management', href: '/admin/users' },
 ];
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -61,7 +62,7 @@ watch(search, (val) => {
     }, 400);
 });
 
-watch([verificationStatus, userRole, archived], () => {
+watch([verificationStatus, archived], () => {
     updateFilters();
 });
 
@@ -69,20 +70,18 @@ function updateFilters() {
     const params: any = {};
     if (search.value) params.search = search.value;
     if (verificationStatus.value) params.verification_status = verificationStatus.value;
-    if (userRole.value) params.user_role = userRole.value;
     if (archived.value) params.archived = '1';
     
-    router.get('/users', params, { preserveState: true, replace: true });
+    router.get('/admin/users', params, { preserveState: true, replace: true });
 }
 
 function goToPage(pageNum: number) {
     const params: any = { page: pageNum };
     if (search.value) params.search = search.value;
     if (verificationStatus.value) params.verification_status = verificationStatus.value;
-    if (userRole.value) params.user_role = userRole.value;
     if (archived.value) params.archived = '1';
     
-    router.get('/users', params, { preserveState: true, replace: true });
+    router.get('/admin/users', params, { preserveState: true, replace: true });
 }
 
 async function deleteUser(user: UnifiedUser) {
@@ -101,16 +100,12 @@ async function deleteUser(user: UnifiedUser) {
             router.delete(`/users/${user.id}`, {
                 onSuccess: () => {
                     Swal.fire('User deleted', 'User deleted successfully.', 'success');
-                    // Reload the page with current filters to show updated list
-                    updateFilters();
                 },
             });
         } else {
             router.delete(`/customers/${user.id}`, {
                 onSuccess: () => {
                     Swal.fire('Customer deleted', 'Customer deleted successfully.', 'success');
-                    // Reload the page with current filters to show updated list
-                    updateFilters();
                 },
             });
         }
@@ -150,13 +145,28 @@ function editUser(user: UnifiedUser) {
         
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-2xl font-bold">User Management</h1>
-            <Link :href="route('users.create')">
-                <Button variant="default">
-                    <span class="mr-2">+</span>
-                    Add New User
-                </Button>
-            </Link>
         </div>
+
+        <!-- Customer Logs Card -->
+        <Card class="mb-4">
+            <CardHeader>
+                <CardTitle class="flex items-center gap-2">
+                    <Icon name="file-text" class="h-5 w-5" />
+                    Customer Activity Logs
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p class="text-sm text-muted-foreground mb-4">
+                    View and track all customer-related activities, including registrations, updates, verifications, and more.
+                </p>
+                <Link :href="route('customers.logs.index')">
+                    <Button variant="default">
+                        <Icon name="file-text" class="h-4 w-4 mr-2" />
+                        View Customer Logs
+                    </Button>
+                </Link>
+            </CardContent>
+        </Card>
 
         <!-- Filters -->
         <Card class="mb-4">
@@ -175,20 +185,6 @@ function editUser(user: UnifiedUser) {
 
                     <!-- Filter Options -->
                     <div class="flex flex-wrap gap-4">
-                        <!-- User Role Filter -->
-                        <div>
-                            <label class="block text-sm font-medium mb-2">User Role</label>
-                            <select 
-                                v-model="userRole" 
-                                class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            >
-                                <option value="">All Roles</option>
-                                <option value="admin">Admin</option>
-                                <option value="staff">Staff</option>
-                                <option value="customer">Customer</option>
-                            </select>
-                        </div>
-
                         <!-- Verification Status Filter (for customers) -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Customer Verification</label>
@@ -260,6 +256,11 @@ function editUser(user: UnifiedUser) {
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">
                                     <div class="flex gap-2">
+                                        <Link v-if="user.type === 'customer'" :href="route('customers.logs.show', user.id)">
+                                            <Button variant="ghost" size="sm" title="View Logs">
+                                                <Icon name="file-text" class="h-4 w-4" />
+                                            </Button>
+                                        </Link>
                                         <Button variant="ghost" size="sm" @click="editUser(user)">
                                             <Icon name="edit" class="h-4 w-4" />
                                         </Button>
@@ -275,10 +276,10 @@ function editUser(user: UnifiedUser) {
                                 <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
                                     No users found.
                                     <button 
-                                        v-if="(search && search.toString().trim().length) || verificationStatus || userRole || archived" 
+                                        v-if="(search && search.toString().trim().length) || verificationStatus || archived" 
                                         type="button" 
                                         class="underline underline-offset-4 ml-1" 
-                                        @click="search = ''; verificationStatus = ''; userRole = ''; archived = false; updateFilters()"
+                                        @click="search = ''; verificationStatus = ''; archived = false; updateFilters()"
                                     >
                                         Clear filters
                                     </button>

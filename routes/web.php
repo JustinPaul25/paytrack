@@ -55,6 +55,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update');
         Route::delete('users/{user}', [UsersController::class, 'destroy'])->name('users.destroy');
         
+        // Admin User Management (unified table)
+        Route::get('admin/users', [UsersController::class, 'adminManagement'])->name('admin.users');
+        
         // Admin Settings
         Route::get('admin/settings', [AdminSettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::post('admin/settings', [AdminSettingsController::class, 'update'])->name('admin.settings.update');
@@ -97,8 +100,12 @@ Route::middleware(['auth'])->group(function () {
 
     // Customers (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
-        Route::resource('customers', CustomerController::class)->except(['update']);
+        Route::resource('customers', CustomerController::class)->except(['update', 'show']);
         Route::post('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        
+        // Customer Logs
+        Route::get('customers/logs', [\App\Http\Controllers\CustomerLogController::class, 'index'])->name('customers.logs.index');
+        Route::get('customers/{customer}/logs', [\App\Http\Controllers\CustomerLogController::class, 'show'])->name('customers.logs.show');
     });
 
     // Order routes (Customers can create and view their orders, Staff can view all and approve/reject)
@@ -151,6 +158,7 @@ Route::middleware(['auth'])->group(function () {
     // Refunds (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::get('refunds', [\App\Http\Controllers\RefundController::class, 'index'])->name('refunds.index');
+        Route::get('refunds/damaged-items', [\App\Http\Controllers\RefundController::class, 'damagedItems'])->name('refunds.damaged-items');
         Route::post('refunds/{refund}/process', [\App\Http\Controllers\RefundController::class, 'process'])->name('refunds.process');
         Route::post('refunds/{refund}/complete', [\App\Http\Controllers\RefundController::class, 'complete'])->name('refunds.complete');
         Route::post('refunds/{refund}/cancel', [\App\Http\Controllers\RefundController::class, 'cancel'])->name('refunds.cancel');
