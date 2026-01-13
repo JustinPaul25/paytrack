@@ -118,35 +118,48 @@ class DeliveryController extends Controller
         try {
             $delivery = Delivery::create($validated);
             
-            // Update invoice status when delivery is created
+            // Update invoice status and total when delivery is created
             if ($validated['invoice_id']) {
                 $invoice = Invoice::find($validated['invoice_id']);
                 
                 if ($invoice) {
+                    // Calculate new total: subtotal + all delivery fees (including the one being created)
+                    $subtotal = $invoice->subtotal_amount; // Already in dollars (accessor)
+                    $allDeliveryFees = $invoice->deliveries()
+                        ->sum('delivery_fee') / 100; // Sum all deliveries in cents, convert to dollars
+                    // Add the new delivery fee (it's not in the database yet, so add it manually)
+                    $newDeliveryFee = $validated['delivery_fee']; // In dollars from form
+                    $allDeliveryFees = $allDeliveryFees + $newDeliveryFee;
+                    $newTotal = $subtotal + $allDeliveryFees;
+                    
+                    // Update invoice total to include all delivery fees
+                    $invoice->total_amount = $newTotal;
+                    
                     // If delivery is created with 'pending' status (Out for Delivery), update invoice status to 'pending'
                     // This indicates the invoice is now "out for delivery"
                     if ($validated['status'] === 'pending' && !in_array($invoice->status, ['completed', 'cancelled'])) {
-                        $invoice->update(['status' => 'pending']);
+                        $invoice->status = 'pending';
                     }
                     // If delivery is created as completed, also mark the associated invoice as completed
                     // Only mark as paid if payment method is NOT credit (credit invoices must be manually marked as paid by staff)
                     elseif ($validated['status'] === 'completed') {
                         if ($invoice->status !== 'completed') {
-                            $updateData = ['status' => 'completed'];
+                            $invoice->status = 'completed';
                             // Only auto-mark as paid if payment method is not credit
                             if ($invoice->payment_method !== 'credit') {
-                                $updateData['payment_status'] = 'paid';
+                                $invoice->payment_status = 'paid';
                             }
-                            $invoice->update($updateData);
                             // Deduct stock for the invoice if not already done
                             $this->deductStockForInvoice($invoice);
                         } elseif ($invoice->status === 'completed') {
                             // If invoice is already completed, only update payment status if not credit
                             if ($invoice->payment_method !== 'credit') {
-                                $invoice->update(['payment_status' => 'paid']);
+                                $invoice->payment_status = 'paid';
                             }
                         }
                     }
+                    
+                    $invoice->save();
                 }
             }
             
@@ -201,27 +214,47 @@ class DeliveryController extends Controller
 
         DB::beginTransaction();
         try {
+            $oldDeliveryFee = $delivery->delivery_fee; // Get old fee before update
             $delivery->update($validated);
             $delivery->refresh(); // Refresh to get the latest data
             
-            // If delivery is being marked as completed, also mark the associated invoice as completed
-            // Only mark as paid if payment method is NOT credit (credit invoices must be manually marked as paid by staff)
+            // Update invoice total if delivery fee changed
             $invoiceId = $validated['invoice_id'] ?? $delivery->invoice_id;
-            if ($newStatus === 'completed' && $oldStatus !== 'completed' && $invoiceId) {
+            if ($invoiceId) {
                 $invoice = Invoice::find($invoiceId);
-                if ($invoice && $invoice->status !== 'completed') {
-                    $updateData = ['status' => 'completed'];
-                    // Only auto-mark as paid if payment method is not credit
-                    if ($invoice->payment_method !== 'credit') {
-                        $updateData['payment_status'] = 'paid';
-                    }
-                    $invoice->update($updateData);
-                    // Deduct stock for the invoice if not already done
-                    $this->deductStockForInvoice($invoice);
-                } elseif ($invoice && $invoice->status === 'completed') {
-                    // If invoice is already completed, only update payment status if not credit
-                    if ($invoice->payment_method !== 'credit') {
-                        $invoice->update(['payment_status' => 'paid']);
+                if ($invoice) {
+                    // Recalculate total with all delivery fees
+                    // Get all deliveries except the one being updated (since it's not saved yet)
+                    $subtotal = $invoice->subtotal_amount; // Already in dollars (accessor)
+                    $existingDeliveryFees = $invoice->deliveries()
+                        ->where('id', '!=', $delivery->id)
+                        ->sum('delivery_fee') / 100; // Sum in cents, convert to dollars
+                    $newDeliveryFee = $validated['delivery_fee']; // In dollars from form
+                    $allDeliveryFees = $existingDeliveryFees + $newDeliveryFee;
+                    $newTotal = $subtotal + $allDeliveryFees;
+                    
+                    // Update invoice total
+                    $invoice->total_amount = $newTotal;
+                    $invoice->save();
+                    
+                    // If delivery is being marked as completed, also mark the associated invoice as completed
+                    // Only mark as paid if payment method is NOT credit (credit invoices must be manually marked as paid by staff)
+                    if ($newStatus === 'completed' && $oldStatus !== 'completed') {
+                        if ($invoice->status !== 'completed') {
+                            $updateData = ['status' => 'completed'];
+                            // Only auto-mark as paid if payment method is not credit
+                            if ($invoice->payment_method !== 'credit') {
+                                $updateData['payment_status'] = 'paid';
+                            }
+                            $invoice->update($updateData);
+                            // Deduct stock for the invoice if not already done
+                            $this->deductStockForInvoice($invoice);
+                        } elseif ($invoice->status === 'completed') {
+                            // If invoice is already completed, only update payment status if not credit
+                            if ($invoice->payment_method !== 'credit') {
+                                $invoice->update(['payment_status' => 'paid']);
+                            }
+                        }
                     }
                 }
             }

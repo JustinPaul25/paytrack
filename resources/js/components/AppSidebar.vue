@@ -75,7 +75,6 @@ const footerNavItems: NavItem[] = [
 const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
 const isFinancialOpen = ref(true);
-const isInvoicesOpen = ref(false);
 const isOrdersOpen = ref(false);
 </script>
 
@@ -104,26 +103,12 @@ const isOrdersOpen = ref(false);
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <Collapsible v-model:open="isInvoicesOpen">
-                                        <CollapsibleTrigger as-child>
-                                            <SidebarMenuSubButton>
-                                                <Receipt class="h-4 w-4" />
-                                                <span>Invoices</span>
-                                                <ChevronDown class="ml-auto h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isInvoicesOpen }" />
-                                            </SidebarMenuSubButton>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent>
-                                            <SidebarMenuSub>
-                                                <SidebarMenuSubItem>
-                                                    <SidebarMenuSubButton as-child>
-                                                        <Link href="/invoices">
-                                                            <span>All Invoices</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            </SidebarMenuSub>
-                                        </CollapsibleContent>
-                                    </Collapsible>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/invoices">
+                                            <Receipt class="h-4 w-4" />
+                                            <span>Invoices</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <Collapsible v-model:open="isOrdersOpen">

@@ -164,11 +164,13 @@ class OrderController extends Controller
                 ])->withInput();
             }
 
-            // VAT is already included in product prices, so total = subtotal
+            // VAT is already included in product prices
+            // Calculate VAT amount for display: VAT = subtotal * (vat_rate / (100 + vat_rate))
             $vatRate = 12.00;
-            $vatAmount = 0; // VAT already included in product prices
+            $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
             
             // Total amount equals subtotal (VAT already included)
+            // Delivery fee will be added when delivery is created
             $totalAmount = $subtotalAmount;
 
             // Validate minimum order amount for delivery

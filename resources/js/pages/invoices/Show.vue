@@ -74,6 +74,7 @@ interface Invoice {
     payment_reference?: string;
     due_date?: string;
     notes?: string;
+    invoice_type?: string;
     created_at: string;
     updated_at: string;
     invoice_items: InvoiceItem[];
@@ -136,6 +137,13 @@ const netBalanceDiffers = computed(() => {
 
 const isCreditInvoice = computed(() => {
     return props.invoice.payment_method === 'credit';
+});
+
+const totalDeliveryFee = computed(() => {
+    if (!props.deliveries || props.deliveries.length === 0) {
+        return 0;
+    }
+    return props.deliveries.reduce((sum, delivery) => sum + (delivery.delivery_fee || 0), 0);
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -496,10 +504,16 @@ watch(() => (page.props as any).flash, (flash) => {
                                         <td class="px-4 py-2 font-medium">{{ formatCurrency(props.invoice.subtotal_amount) }}</td>
                                     </tr>
                                     <tr v-if="props.invoice.vat_rate > 0">
-                                        <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-500 italic">
-                                            VAT ({{ props.invoice.vat_rate }}%) included in prices
+                                        <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-600">
+                                            VAT ({{ props.invoice.vat_rate }}%):
                                         </td>
-                                        <td class="px-4 py-2 text-sm text-gray-500 italic">—</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600">{{ formatCurrency(props.invoice.vat_amount) }}</td>
+                                    </tr>
+                                    <tr v-if="props.invoice.invoice_type === 'delivery' && totalDeliveryFee > 0">
+                                        <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-600">
+                                            Delivery Fee:
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-gray-600">{{ formatCurrency(totalDeliveryFee) }}</td>
                                     </tr>
                                     <tr class="border-t">
                                         <td colspan="3" class="px-4 py-2 text-right font-bold text-lg">Total Amount:</td>

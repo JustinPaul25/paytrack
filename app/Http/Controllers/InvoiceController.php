@@ -160,11 +160,13 @@ class InvoiceController extends Controller
                 $subtotalAmount += $item['quantity'] * $item['price'];
             }
 
-            // VAT is already included in product prices, so total = subtotal
+            // VAT is already included in product prices
+            // Calculate VAT amount for display: VAT = subtotal * (vat_rate / (100 + vat_rate))
             $vatRate = 12.00;
-            $vatAmount = 0; // VAT already included in product prices
+            $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
             
             // Total amount equals subtotal (VAT already included)
+            // Delivery fee will be added when delivery is created for delivery invoices
             $totalAmount = $subtotalAmount;
 
             // Create invoice
@@ -363,11 +365,13 @@ class InvoiceController extends Controller
                 $subtotalAmount += $item['quantity'] * $item['price'];
             }
 
-            // VAT is already included in product prices, so total = subtotal
+            // VAT is already included in product prices
+            // Calculate VAT amount for display: VAT = subtotal * (vat_rate / (100 + vat_rate))
             $vatRate = 12.00;
-            $vatAmount = 0; // VAT already included in product prices
+            $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
             
             // Total amount equals subtotal (VAT already included)
+            // Delivery fee will be added when delivery is created for delivery invoices
             $totalAmount = $subtotalAmount;
 
             // If old status was completed, restore stock before deleting items
