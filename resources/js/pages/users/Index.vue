@@ -145,28 +145,43 @@ function editUser(user: UnifiedUser) {
 
 async function setUserActive(user: UnifiedUser) {
     const result = await Swal.fire({
-        title: 'Set User to Active?',
-        text: `Are you sure you want to set this ${user.type} to active?`,
+        title: 'Restore User to Active?',
+        text: `Are you sure you want to restore this ${user.type} to active status?`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#8f5be8',
         cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, set active',
+        confirmButtonText: 'Yes, restore',
         cancelButtonText: 'Cancel',
     });
     
     if (result.isConfirmed) {
-        router.post(`/users/${user.id}/set-active`, {
-            type: user.type,
-        }, {
-            onSuccess: () => {
-                Swal.fire('Success', `${user.type === 'staff' ? 'User' : 'Customer'} set to active successfully.`, 'success');
-                updateFilters();
-            },
-            onError: () => {
-                Swal.fire('Error', 'Failed to set user to active.', 'error');
-            },
-        });
+        if (user.type === 'staff') {
+            router.post(`/users/${user.id}/set-active`, {
+                type: user.type,
+            }, {
+                onSuccess: () => {
+                    Swal.fire('Success', 'User restored to active successfully.', 'success');
+                    updateFilters();
+                },
+                onError: () => {
+                    Swal.fire('Error', 'Failed to restore user to active.', 'error');
+                },
+            });
+        } else {
+            // For customers, use the users route with customer ID
+            router.post(`/users/${user.id}/set-active`, {
+                type: user.type,
+            }, {
+                onSuccess: () => {
+                    Swal.fire('Success', 'Customer restored to active successfully.', 'success');
+                    updateFilters();
+                },
+                onError: () => {
+                    Swal.fire('Error', 'Failed to restore customer to active.', 'error');
+                },
+            });
+        }
     }
 }
 </script>
@@ -291,11 +306,11 @@ async function setUserActive(user: UnifiedUser) {
                                             <Icon name="edit" class="h-4 w-4" />
                                         </Button>
                                         <Button 
+                                            v-if="archived"
                                             variant="ghost" 
                                             size="sm" 
                                             @click="setUserActive(user)" 
-                                            title="Set to Active"
-                                            :disabled="user.status === 'Active' || (user.status === 'Verified' && user.type === 'customer')"
+                                            title="Restore to Active"
                                         >
                                             <Icon name="check-circle-2" class="h-4 w-4" />
                                         </Button>

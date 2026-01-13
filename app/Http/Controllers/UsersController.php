@@ -386,38 +386,48 @@ class UsersController extends Controller
                 return redirect()->back()->with('info', 'User is already active.');
             }
         } else {
-            // For customers, verify them
+            // For customers, restore the soft-deleted user
             $customer = Customer::findOrFail($id);
             
-            if ($customer->isVerified()) {
-                // Check if user is soft-deleted and restore if needed
-                $user = $customer->user;
-                if ($user && $user->trashed()) {
-                    $user->restore();
-                    return redirect()->back()->with('success', 'Customer user restored and set to active successfully!');
+            // Find the user by email, including trashed users
+            $user = User::withTrashed()->where('email', $customer->email)->first();
+            
+            if ($user && $user->trashed()) {
+                // Restore the soft-deleted user
+                $user->restore();
+                
+                // Also verify the customer if not already verified
+                if (!$customer->isVerified()) {
+                    $customer->update([
+                        'verified_at' => now(),
+                    ]);
                 }
-                return redirect()->back()->with('info', 'Customer is already verified.');
-            }
-
-            // Verify the customer
-            $customer->update([
-                'verified_at' => now(),
-            ]);
-
-            // Also verify the associated user account's email
-            $user = $customer->user;
-            if ($user) {
+                
+                // Verify the user's email if not already verified
                 if (!$user->hasVerifiedEmail()) {
                     $user->markEmailAsVerified();
                 }
                 
-                // If user is soft-deleted, restore it
-                if ($user->trashed()) {
-                    $user->restore();
+                return redirect()->back()->with('success', 'Customer user restored and set to active successfully!');
+            } elseif ($user && !$user->trashed()) {
+                // User is not deleted, just verify the customer if needed
+                if (!$customer->isVerified()) {
+                    $customer->update([
+                        'verified_at' => now(),
+                    ]);
+                    return redirect()->back()->with('success', 'Customer verified and set to active successfully!');
                 }
+                return redirect()->back()->with('info', 'Customer is already active.');
+            } else {
+                // No user exists, just verify the customer
+                if (!$customer->isVerified()) {
+                    $customer->update([
+                        'verified_at' => now(),
+                    ]);
+                    return redirect()->back()->with('success', 'Customer verified successfully!');
+                }
+                return redirect()->back()->with('info', 'Customer is already verified.');
             }
-
-            return redirect()->back()->with('success', 'Customer verified and set to active successfully!');
         }
     }
 
