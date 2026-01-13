@@ -56,6 +56,11 @@ class Invoice extends Model
                     : now();
                 $invoice->due_date = $baseDate->copy()->addDays($invoice->credit_term_days)->toDateString();
             }
+            
+            // If status is being changed to cancelled, set payment_status to 'Cancelled Order'
+            if ($invoice->isDirty('status') && $invoice->status === 'cancelled') {
+                $invoice->payment_status = 'Cancelled Order';
+            }
         });
     }
 

@@ -169,6 +169,12 @@ class InvoiceController extends Controller
             // Delivery fee will be added when delivery is created for delivery invoices
             $totalAmount = $subtotalAmount;
 
+            // Determine payment status based on invoice status
+            $paymentStatus = 'pending';
+            if ($validated['status'] === 'cancelled') {
+                $paymentStatus = 'Cancelled Order';
+            }
+
             // Create invoice
             $invoice = Invoice::create([
                 'customer_id' => $customerId,
@@ -179,6 +185,7 @@ class InvoiceController extends Controller
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
+                'payment_status' => $paymentStatus,
                 'invoice_type' => $validated['invoice_type'],
                 'credit_term_days' => $validated['credit_term_days'] ?? null,
                 'notes' => $validated['notes'] ?? null,
@@ -379,8 +386,8 @@ class InvoiceController extends Controller
                 $this->restoreStockForInvoice($invoice);
             }
 
-            // Update invoice
-            $invoice->update([
+            // Determine payment status based on invoice status
+            $updateData = [
                 'customer_id' => $validated['customer_id'],
                 'subtotal_amount' => $subtotalAmount,
                 'vat_amount' => $vatAmount,
@@ -391,7 +398,15 @@ class InvoiceController extends Controller
                 'invoice_type' => $validated['invoice_type'],
                 'credit_term_days' => $validated['credit_term_days'] ?? null,
                 'notes' => $validated['notes'] ?? null,
-            ]);
+            ];
+
+            // If status is cancelled, set payment_status to 'Cancelled Order'
+            if ($validated['status'] === 'cancelled') {
+                $updateData['payment_status'] = 'Cancelled Order';
+            }
+
+            // Update invoice
+            $invoice->update($updateData);
 
             // Delete existing invoice items
             $invoice->invoiceItems()->delete();

@@ -19,7 +19,9 @@
 - Invoice Show view: Delivery fee is shown separately, not in the total calculation
 
 **Impact:**
-- Customers see incorrect totals (missing delivery fee)
+- Customers see incorrect totals (missing delivery fee)Invoice status:
+- If the status is cancelled, payment satus will be "Cancelled Order"
+
 - Financial reports may be inaccurate
 - Invoice totals don't reflect the actual amount due
 

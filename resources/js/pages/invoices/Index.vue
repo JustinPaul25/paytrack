@@ -92,7 +92,8 @@ const statusOptions = [
 const paymentStatusOptions = [
     { value: '', label: 'All Payment Status' },
     { value: 'pending', label: 'Pending Payment' },
-    { value: 'paid', label: 'Paid' }
+    { value: 'paid', label: 'Paid' },
+    { value: 'Cancelled Order', label: 'Cancelled Order' }
 ];
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -181,6 +182,7 @@ function getPaymentStatusBadgeClass(paymentStatus: string) {
     switch (paymentStatus) {
         case 'paid': return 'bg-emerald-100 text-emerald-800';
         case 'pending': return 'bg-orange-100 text-orange-800';
+        case 'Cancelled Order': return 'bg-red-100 text-red-800';
         default: return 'bg-gray-100 text-gray-800';
     }
 }
@@ -405,7 +407,7 @@ function formatDateFriendly(dateString: string) {
                                 </td>
                                 <td class="px-4 py-2">
                                     <span :class="['px-2 py-1 rounded-full text-xs font-medium', getPaymentStatusBadgeClass(invoice.payment_status)]">
-                                        {{ invoice.payment_status === 'paid' ? 'Paid' : 'Pending Payment' }}
+                                        {{ invoice.payment_status === 'paid' ? 'Paid' : invoice.payment_status === 'Cancelled Order' ? 'Cancelled Order' : 'Pending Payment' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-2">
@@ -426,7 +428,7 @@ function formatDateFriendly(dateString: string) {
                                                 <span class="ml-1">Edit</span>
                                             </Button>
                                         </Link>
-                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
+                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
                                             <Icon name="check" class="h-4 w-4" />
                                             <span class="ml-1">Mark as Paid</span>
                                         </Button>
