@@ -366,6 +366,61 @@ class UsersController extends Controller
         return redirect()->route('users.archives')->with('success', 'User permanently deleted!');
     }
 
+    /**
+     * Set a user to active status.
+     * For staff users: restores if soft-deleted
+     * For customers: verifies the customer and restores if soft-deleted
+     */
+    public function setActive(Request $request, $id)
+    {
+        $type = $request->input('type'); // 'staff' or 'customer'
+
+        if ($type === 'staff') {
+            // Check if user is soft-deleted, if so restore them
+            $user = User::withTrashed()->findOrFail($id);
+            
+            if ($user->trashed()) {
+                $user->restore();
+                return redirect()->back()->with('success', 'User restored and set to active successfully!');
+            } else {
+                return redirect()->back()->with('info', 'User is already active.');
+            }
+        } else {
+            // For customers, verify them
+            $customer = Customer::findOrFail($id);
+            
+            if ($customer->isVerified()) {
+                // Check if user is soft-deleted and restore if needed
+                $user = $customer->user;
+                if ($user && $user->trashed()) {
+                    $user->restore();
+                    return redirect()->back()->with('success', 'Customer user restored and set to active successfully!');
+                }
+                return redirect()->back()->with('info', 'Customer is already verified.');
+            }
+
+            // Verify the customer
+            $customer->update([
+                'verified_at' => now(),
+            ]);
+
+            // Also verify the associated user account's email
+            $user = $customer->user;
+            if ($user) {
+                if (!$user->hasVerifiedEmail()) {
+                    $user->markEmailAsVerified();
+                }
+                
+                // If user is soft-deleted, restore it
+                if ($user->trashed()) {
+                    $user->restore();
+                }
+            }
+
+            return redirect()->back()->with('success', 'Customer verified and set to active successfully!');
+        }
+    }
+
     public function adminManagement(Request $request)
     {
         $search = $request->input('search');

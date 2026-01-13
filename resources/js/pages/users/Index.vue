@@ -142,6 +142,33 @@ function editUser(user: UnifiedUser) {
         router.visit(`/customers/${user.id}/edit?from=users`);
     }
 }
+
+async function setUserActive(user: UnifiedUser) {
+    const result = await Swal.fire({
+        title: 'Set User to Active?',
+        text: `Are you sure you want to set this ${user.type} to active?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8f5be8',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, set active',
+        cancelButtonText: 'Cancel',
+    });
+    
+    if (result.isConfirmed) {
+        router.post(`/users/${user.id}/set-active`, {
+            type: user.type,
+        }, {
+            onSuccess: () => {
+                Swal.fire('Success', `${user.type === 'staff' ? 'User' : 'Customer'} set to active successfully.`, 'success');
+                updateFilters();
+            },
+            onError: () => {
+                Swal.fire('Error', 'Failed to set user to active.', 'error');
+            },
+        });
+    }
+}
 </script>
 
 <template>
@@ -260,10 +287,19 @@ function editUser(user: UnifiedUser) {
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">
                                     <div class="flex gap-2">
-                                        <Button variant="ghost" size="sm" @click="editUser(user)">
+                                        <Button variant="ghost" size="sm" @click="editUser(user)" title="Edit">
                                             <Icon name="edit" class="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" @click="deleteUser(user)">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            @click="setUserActive(user)" 
+                                            title="Set to Active"
+                                            :disabled="user.status === 'Active' || (user.status === 'Verified' && user.type === 'customer')"
+                                        >
+                                            <Icon name="check-circle-2" class="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" @click="deleteUser(user)" title="Delete">
                                             <Icon name="trash" class="h-4 w-4" />
                                         </Button>
                                     </div>

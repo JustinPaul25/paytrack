@@ -48,6 +48,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('users/customers', [UsersController::class, 'customers'])->name('users.customers');
         Route::get('users/archives', [UsersController::class, 'archives'])->name('users.archives');
         Route::post('users/{id}/restore', [UsersController::class, 'restore'])->name('users.restore');
+        Route::post('users/{id}/set-active', [UsersController::class, 'setActive'])->name('users.setActive');
         Route::delete('users/{id}/force-delete', [UsersController::class, 'forceDelete'])->name('users.forceDelete');
         Route::get('users/create', [UsersController::class, 'create'])->name('users.create');
         Route::post('users', [UsersController::class, 'store'])->name('users.store');
