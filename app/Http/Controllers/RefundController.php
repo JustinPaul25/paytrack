@@ -57,12 +57,15 @@ class RefundController extends Controller
             return redirect()->back();
         }
 
-        $returnToStock = (bool) $request->get('return_to_stock', true);
+        // If items are damaged, automatically set return_to_stock to false
+        $defaultReturnToStock = $refund->is_damaged ? false : true;
+        $returnToStock = (bool) $request->get('return_to_stock', $defaultReturnToStock);
         $notes = $request->get('notes');
 
         // Handle inventory
         // For exchanges: return original item to stock AND deduct exchange item from stock
         // For refunds: return item to stock (if returnToStock) or write-off
+        // Note: Damaged items are automatically written off (not returned to stock)
         
         if ($refund->refund_type === 'exchange' && $refund->exchange_product_id && $refund->exchange_quantity) {
             // EXCHANGE: Handle both returned item and exchanged item

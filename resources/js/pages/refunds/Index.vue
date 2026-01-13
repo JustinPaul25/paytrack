@@ -40,6 +40,7 @@ interface RefundRequest {
     updated_at: string;
     request_type?: 'refund';
     damaged_items_terms?: string;
+    is_damaged?: boolean;
     invoice?: {
         id: number;
         reference_number: string;
@@ -186,7 +187,12 @@ function reject(id: number) {
                         <tbody>
                             <tr v-for="r in (page.props.refundRequests as Paginated<RefundRequest>).data" :key="r.id" class="hover:bg-muted">
                                 <td class="px-4 py-2">
-                                    <div class="font-medium">{{ r.tracking_number }}</div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium">{{ r.tracking_number }}</span>
+                                        <span v-if="r.is_damaged" class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="Damaged items">
+                                            ⚠️
+                                        </span>
+                                    </div>
                                     <div v-if="r.reason" class="text-xs text-gray-500 truncate max-w-64">{{ r.reason }}</div>
                                 </td>
                                 <td class="px-4 py-2">
@@ -375,6 +381,14 @@ function reject(id: number) {
                                 </svg>
                                 View Media
                             </a>
+                        </div>
+
+                        <div v-if="showDetails.is_damaged">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Item Status</div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-orange-100 text-orange-800 text-sm font-medium">
+                                ⚠️ Damaged Items
+                            </div>
+                            <p class="text-xs text-gray-600 mt-2">These items will not be returned to inventory stock when the refund is completed.</p>
                         </div>
 
                         <div v-if="showDetails.damaged_items_terms">

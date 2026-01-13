@@ -27,6 +27,7 @@ class Refund extends Model
         'completed_at',
         'exchange_product_id',
         'exchange_quantity',
+        'is_damaged',
     ];
 
     protected $casts = [

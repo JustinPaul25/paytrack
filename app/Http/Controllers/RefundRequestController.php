@@ -159,6 +159,7 @@ class RefundRequestController extends Controller
             'proof_images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // 5MB max per image
             'request_type' => ['required', 'in:refund'],
             'damaged_items_terms' => ['nullable', 'string', 'max:2000'],
+            'is_damaged' => ['nullable', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.invoice_item_id' => ['required', 'exists:invoice_items,id'],
             'items.*.product_id' => ['required', 'exists:products,id'],
@@ -191,6 +192,7 @@ class RefundRequestController extends Controller
                 'status' => 'pending',
                 'request_type' => 'refund',
                 'damaged_items_terms' => $validated['damaged_items_terms'] ?? null,
+                'is_damaged' => (bool) ($validated['is_damaged'] ?? false),
             ]);
 
             // Handle proof images upload
@@ -281,6 +283,7 @@ class RefundRequestController extends Controller
             'notes' => $refundRequest->media_link ? ('Media: ' . $refundRequest->media_link) : null,
             'reference_number' => $refundRequest->invoice_reference,
             'processed_at' => now(),
+            'is_damaged' => $refundRequest->is_damaged ?? false,
         ]);
 
         // Link refund back to request and mark as converted

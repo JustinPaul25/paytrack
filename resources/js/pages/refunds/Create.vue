@@ -44,6 +44,7 @@ const form = useForm({
     request_type: 'refund' as 'refund',
     description: '',
     damaged_items_terms: '',
+    is_damaged: false,
     items: [] as Array<{
         invoice_item_id: number;
         product_id: number;
@@ -305,6 +306,18 @@ function submit() {
                                         <div class="text-xs text-gray-500 mt-1 truncate">{{ image.name }}</div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label class="flex items-center gap-2 mb-3">
+                                    <input
+                                        type="checkbox"
+                                        v-model="form.is_damaged"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span class="text-sm font-medium text-gray-700">Damaged Items</span>
+                                </label>
+                                <p class="text-xs text-gray-500 mb-3">Check this box if the items you are returning are damaged. Damaged items will not be restored to inventory stock.</p>
                             </div>
 
                             <div>

@@ -20,6 +20,7 @@ interface Refund {
     status: string;
     reference_number?: string;
     created_at: string;
+    is_damaged?: boolean;
 }
 
 interface Paginated<T> {
@@ -70,14 +71,19 @@ function processRefund(id: number) {
 }
 
 function completeRefund(id: number) {
+    const refund = (page.props.refunds as Paginated<Refund>).data.find(r => r.id === id);
+    const isDamaged = refund?.is_damaged ?? false;
+    
     Swal.fire({
         title: 'Complete refund',
         html: `
         <div style="text-align:left">
+            ${isDamaged ? '<div style="background:#fef3c7;border:1px solid #fbbf24;padding:8px;border-radius:4px;margin-bottom:12px;font-size:13px;color:#92400e;"><strong>⚠️ Damaged Items:</strong> These items will not be returned to inventory stock.</div>' : ''}
             <label style="display:flex;align-items:center;gap:8px;">
-                <input id="return" type="checkbox" checked />
+                <input id="return" type="checkbox" ${isDamaged ? '' : 'checked'} ${isDamaged ? 'disabled' : ''} />
                 Return to stock
             </label>
+            ${isDamaged ? '<p style="font-size:11px;color:#6b7280;margin-top:4px;margin-left:24px;">Disabled for damaged items</p>' : ''}
             <label style="display:block;margin:10px 0 4px;font-size:12px">Inspection notes</label>
             <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)"></textarea>
         </div>
@@ -86,7 +92,7 @@ function completeRefund(id: number) {
         confirmButtonText: 'Complete',
         confirmButtonColor: '#10b981',
         preConfirm: () => {
-            const rtn = (document.getElementById('return') as HTMLInputElement).checked;
+            const rtn = isDamaged ? false : (document.getElementById('return') as HTMLInputElement).checked;
             const notes = (document.getElementById('notes') as HTMLTextAreaElement).value;
             return { return_to_stock: rtn, notes: notes || undefined };
         }
@@ -188,7 +194,14 @@ function formatCurrency(amount: number) {
                                 <td class="px-4 py-2">
                                     <Link :href="route('invoices.show', r.invoice_id)" class="text-blue-500 underline">#{{ r.invoice_id }}</Link>
                                 </td>
-                                <td class="px-4 py-2">{{ (r as any).product?.name || '—' }}</td>
+                                <td class="px-4 py-2">
+                                    <div class="flex items-center gap-2">
+                                        <span>{{ (r as any).product?.name || '—' }}</span>
+                                        <span v-if="r.is_damaged" class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="Damaged items will not be returned to stock">
+                                            ⚠️ Damaged
+                                        </span>
+                                    </div>
+                                </td>
                                 <td class="px-4 py-2">{{ r.quantity_refunded }}</td>
                                 <td class="px-4 py-2 font-medium">{{ formatCurrency(r.refund_amount) }}</td>
                                 <td class="px-4 py-2">

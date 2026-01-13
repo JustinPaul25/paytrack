@@ -33,6 +33,7 @@ class RefundRequest extends Model implements HasMedia
         'exchange_product_id',
         'exchange_quantity',
         'damaged_items_terms',
+        'is_damaged',
     ];
 
     public function invoice()
