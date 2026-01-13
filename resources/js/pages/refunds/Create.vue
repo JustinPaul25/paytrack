@@ -266,8 +266,7 @@ function submit() {
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm text-gray-600 mb-1">
-                                    Description / Reason
-                                    <span class="text-gray-400 text-xs">(Required)</span>
+                                    Description / Reason *
                                 </label>
                                 <textarea
                                     v-model="form.description"

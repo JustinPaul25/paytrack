@@ -60,7 +60,7 @@ function submit() {
                 <form @submit.prevent="submit()" class="space-y-6">
                     <div class="flex gap-4">
                         <div class="flex-1">
-                            <Label for="name">Name</Label>
+                            <Label for="name">Name *</Label>
 							<input id="name" v-model="form.name" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., Paper, Ink, Accessories" />
                             <InputError :message="form.errors.name" />
                         </div>

@@ -221,7 +221,7 @@ function getProductOptions() {
                 <CardContent class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="customer_id">Customer</Label>
+                            <Label for="customer_id">Customer *</Label>
                             <SearchSelect
                                 v-model="form.customer_id"
                                 :options="customerOptions"
@@ -234,7 +234,7 @@ function getProductOptions() {
                         </div>
                         
                         <div>
-                            <Label for="status">Status</Label>
+                            <Label for="status">Status *</Label>
                             <Select
                                 v-model="form.status"
                                 :options="statusOptions"
@@ -251,7 +251,7 @@ function getProductOptions() {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="payment_method">Payment Method</Label>
+                            <Label for="payment_method">Payment Method *</Label>
                             <Select
                                 v-model="form.payment_method"
                                 :options="paymentMethodOptions"
@@ -266,7 +266,7 @@ function getProductOptions() {
                         </div>
                         
                         <div>
-                            <Label for="invoice_type">Invoice Type</Label>
+                            <Label for="invoice_type">Invoice Type *</Label>
                             <Select
                                 v-model="form.invoice_type"
                                 :options="invoiceTypeOptions"
@@ -324,7 +324,7 @@ function getProductOptions() {
                             
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                                 <div>
-                                    <Label :for="`product_id_${index}`" class="text-xs">Product</Label>
+                                    <Label :for="`product_id_${index}`" class="text-xs">Product *</Label>
                                     <SearchSelect
                                         v-model="item.product_id"
                                         :options="getProductOptions()"
@@ -338,7 +338,7 @@ function getProductOptions() {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`quantity_${index}`" class="text-xs">Quantity</Label>
+                                    <Label :for="`quantity_${index}`" class="text-xs">Quantity *</Label>
                                     <input 
                                         :id="`quantity_${index}`" 
                                         v-model.number="item.quantity" 
@@ -355,7 +355,7 @@ function getProductOptions() {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`price_${index}`" class="text-xs">Price</Label>
+                                    <Label :for="`price_${index}`" class="text-xs">Price *</Label>
                                     <input 
                                         :id="`price_${index}`" 
                                         v-model.number="item.price" 

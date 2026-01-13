@@ -403,7 +403,7 @@ watch(isWalkInCustomer, (newValue) => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="status">Status</Label>
+                            <Label for="status">Status *</Label>
                             <Select
                                 v-model="form.status"
                                 :options="statusOptions"
@@ -418,7 +418,7 @@ watch(isWalkInCustomer, (newValue) => {
                         </div>
                         
                         <div>
-                            <Label for="payment_method">Payment Method</Label>
+                            <Label for="payment_method">Payment Method *</Label>
                             <Select
                                 v-model="form.payment_method"
                                 :options="paymentMethodOptions"
@@ -508,7 +508,7 @@ watch(isWalkInCustomer, (newValue) => {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`product_id_${index}`" class="text-xs">Product</Label>
+                                    <Label :for="`product_id_${index}`" class="text-xs">Product *</Label>
                                     <SearchSelect
                                         v-model="item.product_id"
                                         :options="getProductOptions(index)"
@@ -522,7 +522,7 @@ watch(isWalkInCustomer, (newValue) => {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`quantity_${index}`" class="text-xs">Quantity</Label>
+                                    <Label :for="`quantity_${index}`" class="text-xs">Quantity *</Label>
                                     <input 
                                         :id="`quantity_${index}`" 
                                         v-model.number="item.quantity" 
@@ -539,7 +539,7 @@ watch(isWalkInCustomer, (newValue) => {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`price_${index}`" class="text-xs">Price</Label>
+                                    <Label :for="`price_${index}`" class="text-xs">Price *</Label>
                                     <input 
                                         :id="`price_${index}`" 
                                         v-model.number="item.price" 
@@ -575,7 +575,7 @@ watch(isWalkInCustomer, (newValue) => {
                     
                     <!-- Invoice Type -->
                     <div class="mt-4 pt-3 border-t">
-                        <Label for="invoice_type">Invoice Type</Label>
+                        <Label for="invoice_type">Invoice Type *</Label>
                         <Select
                             v-model="form.invoice_type"
                             :options="invoiceTypeOptions"

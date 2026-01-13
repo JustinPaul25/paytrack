@@ -88,7 +88,7 @@ function submit() {
                 <CardContent class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="expense_type">Expense Type</Label>
+                            <Label for="expense_type">Expense Type *</Label>
                             <Select
                                 v-model="form.expense_type"
                                 :options="expenseTypes"
@@ -100,7 +100,7 @@ function submit() {
                         </div>
                         
                         <div>
-                            <Label for="amount">Amount</Label>
+                            <Label for="amount">Amount *</Label>
                             <input
                                 v-model="form.amount"
                                 type="number"
@@ -118,7 +118,7 @@ function submit() {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="date">Date</Label>
+                            <Label for="date">Date *</Label>
                             <input
                                 v-model="form.date"
                                 type="date"
@@ -144,7 +144,7 @@ function submit() {
                     </div>
                     
                     <div>
-                        <Label for="description">Description</Label>
+                        <Label for="description">Description *</Label>
                         <input
                             v-model="form.description"
                             type="text"

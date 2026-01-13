@@ -36,7 +36,6 @@ const form = useForm({
     
     // Step 3: Location & Address
     address: '',
-    purok: '',
     barangay: '',
     city_municipality: '',
     province: '',
@@ -317,7 +316,7 @@ watch(() => form.city_municipality, () => {
                     <!-- Step 3: Location & Address -->
                     <div v-if="currentStep === 3" class="space-y-6">
                         <div>
-                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Street Address (Optional)</Label>
+                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Street Address/Purok (Optional)</Label>
                             <textarea
                                 id="address"
                                 v-model="form.address"
@@ -368,19 +367,6 @@ watch(() => form.city_municipality, () => {
                                 @update:modelValue="(v) => form.barangay = String(v ?? '')"
                             />
                             <InputError :message="form.errors.barangay" />
-                        </div>
-
-                        <!-- Purok last -->
-                        <div>
-                            <Label for="purok" class="text-sm font-medium text-foreground mb-2 block">Purok</Label>
-                            <Input
-                                id="purok"
-                                type="text"
-                                v-model="form.purok"
-                                placeholder="Enter purok"
-                                class="w-full"
-                            />
-                            <InputError :message="form.errors.purok" />
                         </div>
 
                         <div>

@@ -347,7 +347,7 @@ const removeImage = () => {
                 <CardContent class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="customer_id">Customer</Label>
+                            <Label for="customer_id">Customer *</Label>
                             <SearchSelect
                                 v-model="form.customer_id"
                                 :options="customerOptions"
@@ -372,7 +372,7 @@ const removeImage = () => {
                     </div>
                     
                     <div>
-                        <Label for="delivery_address">Delivery Address</Label>
+                        <Label for="delivery_address">Delivery Address *</Label>
                         <textarea
                             v-model="form.delivery_address"
                             id="delivery_address"
@@ -386,7 +386,7 @@ const removeImage = () => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="contact_person">Contact Person</Label>
+                            <Label for="contact_person">Contact Person *</Label>
                             <input
                                 v-model="form.contact_person"
                                 type="text"
@@ -399,7 +399,7 @@ const removeImage = () => {
                         </div>
                         
                         <div>
-                            <Label for="contact_phone">Contact Phone</Label>
+                            <Label for="contact_phone">Contact Phone *</Label>
                             <PhoneInput
                                 v-model="form.contact_phone"
                                 id="contact_phone"
@@ -413,7 +413,7 @@ const removeImage = () => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <Label for="delivery_date">Delivery Date</Label>
+                            <Label for="delivery_date">Delivery Date *</Label>
                             <input
                                 v-model="form.delivery_date"
                                 type="date"
@@ -426,7 +426,7 @@ const removeImage = () => {
                         </div>
                         
                         <div>
-                            <Label for="delivery_time">Delivery Time</Label>
+                            <Label for="delivery_time">Delivery Time *</Label>
                             <Select
                                 v-model="form.delivery_time"
                                 :options="deliveryTimeOptions"
@@ -438,7 +438,7 @@ const removeImage = () => {
                         </div>
                         
                         <div>
-                            <Label for="status">Status</Label>
+                            <Label for="status">Status *</Label>
                             <Select
                                 v-model="form.status"
                                 :options="statusOptions"
@@ -452,7 +452,7 @@ const removeImage = () => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="delivery_fee">Delivery Fee</Label>
+                            <Label for="delivery_fee">Delivery Fee *</Label>
                             <input
                                 v-model="form.delivery_fee"
                                 type="number"

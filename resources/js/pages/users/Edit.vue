@@ -81,12 +81,12 @@ function submit() {
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="flex gap-4">
                         <div class="flex-1">
-                            <Label for="name">Name</Label>
+                            <Label for="name">Name *</Label>
                             <input id="name" v-model="form.name" class="w-full rounded border px-3 py-2 mt-1" required />
                             <div v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</div>
                         </div>
                         <div class="flex-1">
-                            <Label for="email">Email</Label>
+                            <Label for="email">Email *</Label>
                             <input id="email" v-model="form.email" class="w-full rounded border px-3 py-2 mt-1" required />
                             <div v-if="form.errors.email" class="text-red-500 text-xs mt-1">{{ form.errors.email }}</div>
                         </div>

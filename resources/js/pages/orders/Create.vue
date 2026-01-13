@@ -394,7 +394,7 @@ function getItemTotal(index: number): number {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`product_id_${index}`" class="text-xs">Product</Label>
+                                    <Label :for="`product_id_${index}`" class="text-xs">Product *</Label>
                                     <SearchSelect
                                         v-model="item.product_id"
                                         :options="getProductOptions(index)"
@@ -408,7 +408,7 @@ function getItemTotal(index: number): number {
                                 </div>
                                 
                                 <div>
-                                    <Label :for="`quantity_${index}`" class="text-xs">Quantity</Label>
+                                    <Label :for="`quantity_${index}`" class="text-xs">Quantity *</Label>
                                     <input 
                                         :id="`quantity_${index}`" 
                                         v-model.number="item.quantity" 

@@ -157,7 +157,7 @@ function submit() {
                 <CardContent class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="type">Reminder Type</Label>
+                            <Label for="type">Reminder Type *</Label>
                             <Select
                                 v-model="form.type"
                                 :options="typeOptions"
@@ -172,7 +172,7 @@ function submit() {
                         </div>
                         
                         <div>
-                            <Label for="priority">Priority</Label>
+                            <Label for="priority">Priority *</Label>
                             <Select
                                 v-model="form.priority"
                                 :options="priorityOptions"
@@ -188,7 +188,7 @@ function submit() {
                     </div>
                     
                     <div>
-                        <Label for="title">Title</Label>
+                        <Label for="title">Title *</Label>
                         <input
                             v-model="form.title"
                             type="text"
@@ -220,7 +220,7 @@ function submit() {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <Label for="due_date">Due Date</Label>
+                            <Label for="due_date">Due Date *</Label>
                             <div class="relative">
                                 <input
                                     v-model="form.due_date"

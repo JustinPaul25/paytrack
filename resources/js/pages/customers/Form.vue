@@ -2,7 +2,7 @@
   <form @submit.prevent="submit" class="space-y-6" enctype="multipart/form-data">
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="name">Full name</Label>
+        <Label for="name">Full name *</Label>
         <Input id="name" v-model="form.name" placeholder="e.g., Aisha Bello" required />
         <p class="text-xs text-muted-foreground mt-1">This is the customer’s name.</p>
         <InputError :message="form.errors.name" />
@@ -18,7 +18,7 @@
     </div>
     <div class="flex gap-4">
       <div class="flex-1">
-        <Label for="email">Email address</Label>
+        <Label for="email">Email address *</Label>
         <Input id="email" v-model="form.email" type="email" placeholder="name@company.com" required />
         <p class="text-xs text-muted-foreground mt-1">We’ll use this to send receipts.</p>
         <InputError :message="form.errors.email" />
