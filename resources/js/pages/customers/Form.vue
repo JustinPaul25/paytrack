@@ -88,14 +88,6 @@
         <InputError :message="form.errors.barangay" />
       </div>
     </div>
-    <!-- Purok last -->
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <Label for="purok">Purok</Label>
-        <Input id="purok" v-model="form.purok" placeholder="Enter purok" />
-        <InputError :message="form.errors.purok" />
-      </div>
-    </div>
     <div class="flex gap-4">
       <div class="flex-1">
         <Label for="location">Location</Label>
@@ -169,7 +161,6 @@ const form = useForm({
   email: props.customer?.email || '',
   phone: props.customer?.phone || '',
   address: props.customer?.address || '',
-  purok: props.customer?.purok || '',
   barangay: props.customer?.barangay || '',
   city_municipality: props.customer?.city_municipality || '',
   province: props.customer?.province || '',
