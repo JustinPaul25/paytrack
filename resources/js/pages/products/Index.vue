@@ -10,6 +10,17 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import InputError from '@/components/InputError.vue';
 
 interface Product {
     id: number;
@@ -19,6 +30,7 @@ interface Product {
     purchase_price: number;
     selling_price: number;
     stock: number;
+    initial_stock: number;
     unit?: string;
     SKU: string;
     updated_at: string;
@@ -51,6 +63,13 @@ const lowStock = ref(typeof filters.value.low_stock === 'string' ? filters.value
 const sortBy = ref(typeof filters.value.sort_by === 'string' ? filters.value.sort_by : 'updated_at');
 const sortOrder = ref(typeof filters.value.sort_order === 'string' ? filters.value.sort_order : 'desc');
 const showStats = ref(false);
+
+// Add stock dialog state
+const showAddStockDialog = ref(false);
+const selectedProduct = ref<Product | null>(null);
+const stockQuantity = ref<number>(1);
+const stockNotes = ref<string>('');
+const stockErrors = ref<{ quantity?: string; notes?: string }>({});
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Products', href: '/products' },
@@ -149,6 +168,62 @@ async function deleteProduct(id: number) {
                 Swal.fire('Product deleted', 'Product deleted successfully.', 'success');
             },
         });
+    }
+}
+
+function openAddStockDialog(product: Product) {
+    selectedProduct.value = product;
+    stockQuantity.value = 1;
+    stockNotes.value = '';
+    stockErrors.value = {};
+    showAddStockDialog.value = true;
+}
+
+function closeAddStockDialog() {
+    showAddStockDialog.value = false;
+    selectedProduct.value = null;
+    stockQuantity.value = 1;
+    stockNotes.value = '';
+    stockErrors.value = {};
+}
+
+async function submitAddStock() {
+    if (!selectedProduct.value) return;
+
+    // Validate
+    stockErrors.value = {};
+    if (!stockQuantity.value || stockQuantity.value < 1) {
+        stockErrors.value.quantity = 'Quantity must be at least 1';
+        return;
+    }
+
+    try {
+        const response = await fetch(route('products.addStock', selectedProduct.value.id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({
+                quantity: stockQuantity.value,
+                notes: stockNotes.value,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            Swal.fire('Success', data.message, 'success');
+            closeAddStockDialog();
+            // Reload the page to refresh product data
+            router.reload({ only: ['products', 'stats'] });
+        } else {
+            Swal.fire('Error', data.message || 'Failed to add stock', 'error');
+        }
+    } catch (error) {
+        Swal.fire('Error', 'An error occurred while adding stock', 'error');
     }
 }
 </script>
@@ -280,10 +355,36 @@ async function deleteProduct(id: number) {
                             <th class="px-4 py-2 text-left">Selling Price</th>
                             <th 
                                 class="px-4 py-2 text-left cursor-pointer hover:bg-gray-50 select-none"
-                                @click="handleSort('stock')"
+                                @click="handleSort('initial_stock')"
                             >
                                 <div class="flex items-center gap-2">
                                     <span>Stock</span>
+                                    <div class="flex flex-col">
+                                        <svg 
+                                            class="w-3 h-3" 
+                                            :class="sortBy === 'initial_stock' && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'"
+                                            fill="currentColor" 
+                                            viewBox="0 0 20 20"
+                                        >
+                                            <path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                        <svg 
+                                            class="w-3 h-3 -mt-1" 
+                                            :class="sortBy === 'initial_stock' && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'"
+                                            fill="currentColor" 
+                                            viewBox="0 0 20 20"
+                                        >
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </th>
+                            <th 
+                                class="px-4 py-2 text-left cursor-pointer hover:bg-gray-50 select-none"
+                                @click="handleSort('stock')"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <span>Remaining Stock</span>
                                     <div class="flex flex-col">
                                         <svg 
                                             class="w-3 h-3" 
@@ -315,6 +416,11 @@ async function deleteProduct(id: number) {
                             <td class="px-4 py-2 text-sm text-gray-500">{{ product.category ? product.category.name : 'No category' }}</td>
                             <td class="px-4 py-2 font-medium">{{ formatCurrency(product.selling_price) }}</td>
                             <td class="px-4 py-2">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {{ product.initial_stock ?? 0 }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2">
                                 <span :class="[
                                     'px-2 py-1 rounded-full text-xs font-medium',
                                     product.stock <= 10 ? 'bg-red-100 text-red-800' : 
@@ -328,6 +434,14 @@ async function deleteProduct(id: number) {
                             <td class="px-4 py-2 text-sm text-gray-500">{{ product.SKU }}</td>
                             <td class="px-4 py-2">
                                 <div class="flex gap-2">
+                                    <Button variant="ghost" size="sm" @click="openAddStockDialog(product)" title="Add Stock">
+                                        <Icon name="plus" class="h-4 w-4" />
+                                    </Button>
+                                    <Link :href="route('products.stockHistory', product.id)">
+                                        <Button variant="ghost" size="sm" title="View Stock History">
+                                            <Icon name="history" class="h-4 w-4" />
+                                        </Button>
+                                    </Link>
                                     <Link :href="route('products.edit', product.id)">
                                         <Button variant="ghost" size="sm">
                                             <Icon name="edit" class="h-4 w-4" />
@@ -394,5 +508,58 @@ async function deleteProduct(id: number) {
                 </svg>
             </button>
         </div>
+
+        <!-- Add Stock Dialog -->
+        <Dialog v-model:open="showAddStockDialog">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add Stock</DialogTitle>
+                    <DialogDescription v-if="selectedProduct">
+                        Add stock to <strong>{{ selectedProduct.name }}</strong>. This will increment both initial stock and remaining stock.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form @submit.prevent="submitAddStock" class="space-y-4">
+                    <div>
+                        <Label for="stock-quantity">Quantity *</Label>
+                        <input
+                            id="stock-quantity"
+                            v-model.number="stockQuantity"
+                            type="number"
+                            min="1"
+                            step="1"
+                            class="w-full rounded border px-3 py-2 mt-1"
+                            required
+                            placeholder="Enter quantity to add"
+                        />
+                        <InputError :message="stockErrors.quantity" />
+                    </div>
+
+                    <div>
+                        <Label for="stock-notes">Notes (Optional)</Label>
+                        <textarea
+                            id="stock-notes"
+                            v-model="stockNotes"
+                            rows="3"
+                            class="w-full rounded border px-3 py-2 mt-1"
+                            placeholder="Add any notes about this stock addition..."
+                            maxlength="500"
+                        ></textarea>
+                        <InputError :message="stockErrors.notes" />
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose as-child>
+                            <Button type="button" variant="outline" @click="closeAddStockDialog">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" variant="default">
+                            Add Stock
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template> 

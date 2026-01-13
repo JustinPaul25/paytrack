@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,7 +19,7 @@ class ProductController extends Controller
         $sortOrder = $request->input('sort_order', 'desc');
         
         // Validate sort parameters
-        $allowedSortFields = ['name', 'stock', 'selling_price', 'updated_at'];
+        $allowedSortFields = ['name', 'stock', 'initial_stock', 'selling_price', 'updated_at'];
         $sortBy = in_array($sortBy, $allowedSortFields) ? $sortBy : 'updated_at';
         $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
         
@@ -79,6 +80,10 @@ class ProductController extends Controller
             'SKU' => 'nullable|string|max:255|unique:products,SKU,NULL,id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);
+        
+        // Set initial_stock to stock value when creating a new product
+        $validated['initial_stock'] = $validated['stock'];
+        
         $product = Product::create($validated);
         if ($request->hasFile('image')) {
             $product->addMediaFromRequest('image')->toMediaCollection('images');
@@ -178,5 +183,94 @@ class ProductController extends Controller
         $product->restore();
 
         return redirect()->back()->with('success', 'Product restored successfully.');
+    }
+
+    /**
+     * Add stock to a product (increments both initial_stock and stock, and logs the movement)
+     */
+    public function addStock(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $quantity = (int) $validated['quantity'];
+        $beforeStock = (int) $product->stock;
+        $beforeInitialStock = (int) $product->initial_stock;
+
+        // Increment both initial_stock and stock
+        $product->increment('initial_stock', $quantity);
+        $product->increment('stock', $quantity);
+
+        // Refresh to get updated values
+        $product->refresh();
+
+        // Log the stock movement
+        StockMovement::create([
+            'product_id' => $product->id,
+            'user_id' => auth()->id(),
+            'type' => 'adjustment',
+            'quantity' => $quantity,
+            'quantity_before' => $beforeStock,
+            'quantity_after' => $product->stock,
+            'notes' => $validated['notes'] ?? "Stock added: {$quantity} units",
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Successfully added {$quantity} units to stock.",
+            'product' => [
+                'stock' => $product->stock,
+                'initial_stock' => $product->initial_stock,
+            ],
+        ]);
+    }
+
+    /**
+     * Display stock history for a product
+     */
+    public function stockHistory(Request $request, Product $product)
+    {
+        $type = $request->input('type');
+        $search = $request->input('search');
+
+        $query = StockMovement::where('product_id', $product->id)
+            ->with(['user', 'invoice', 'refund'])
+            ->orderBy('created_at', 'desc');
+
+        // Filter by type if specified
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        // Search functionality
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('notes', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $movements = $query->paginate(20)->withQueryString();
+
+        // Get unique types for filter dropdown
+        $types = StockMovement::where('product_id', $product->id)
+            ->distinct()
+            ->pluck('type')
+            ->sort()
+            ->values();
+
+        return inertia('products/StockHistory', [
+            'product' => $product->load('category'),
+            'movements' => $movements,
+            'filters' => [
+                'type' => $type,
+                'search' => $search,
+            ],
+            'types' => $types,
+        ]);
     }
 } 

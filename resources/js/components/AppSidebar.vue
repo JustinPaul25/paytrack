@@ -41,7 +41,7 @@ const mainNavItems: NavItem[] = isCustomer
             icon: Truck,
         },
         {
-            title: 'My Refund Requests',
+            title: 'My Refunds',
             href: '/refund-requests',
             icon: RotateCcw,
         },
@@ -75,7 +75,6 @@ const footerNavItems: NavItem[] = [
 const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
 const isFinancialOpen = ref(true);
-const isOrdersOpen = ref(false);
 </script>
 
 <template>
@@ -111,43 +110,20 @@ const isOrdersOpen = ref(false);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <Collapsible v-model:open="isOrdersOpen">
-                                        <CollapsibleTrigger as-child>
-                                            <SidebarMenuSubButton class="flex items-center justify-between w-full">
-                                                <div class="flex items-center gap-2">
-                                                    <ShoppingCart class="h-4 w-4" />
-                                                    <span>Orders</span>
-                                                </div>
-                                                <div class="flex items-center gap-1">
-                                                    <span 
-                                                        v-if="pendingOrderCount > 0"
-                                                        class="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
-                                                    >
-                                                        {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
-                                                    </span>
-                                                    <ChevronDown class="h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isOrdersOpen }" />
-                                                </div>
-                                            </SidebarMenuSubButton>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent>
-                                            <SidebarMenuSub>
-                                                <SidebarMenuSubItem>
-                                                    <SidebarMenuSubButton as-child>
-                                                        <Link href="/orders">
-                                                            <span>All Orders</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                                <SidebarMenuSubItem>
-                                                    <SidebarMenuSubButton as-child>
-                                                        <Link href="/orders?status=pending">
-                                                            <span>Pending</span>
-                                                        </Link>
-                                                    </SidebarMenuSubButton>
-                                                </SidebarMenuSubItem>
-                                            </SidebarMenuSub>
-                                        </CollapsibleContent>
-                                    </Collapsible>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link href="/orders" class="flex items-center justify-between w-full">
+                                            <div class="flex items-center gap-2">
+                                                <ShoppingCart class="h-4 w-4" />
+                                                <span>Orders</span>
+                                            </div>
+                                            <span 
+                                                v-if="pendingOrderCount > 0"
+                                                class="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-yellow-500 px-1.5 text-xs font-semibold text-white"
+                                            >
+                                                {{ pendingOrderCount > 99 ? '99+' : pendingOrderCount }}
+                                            </span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
                                     <SidebarMenuSubButton as-child>
@@ -170,7 +146,7 @@ const isOrdersOpen = ref(false);
                                         <Link :href="route('refundRequests.index')" class="flex items-center justify-between w-full">
                                             <div class="flex items-center gap-2">
                                                 <RotateCcw class="h-4 w-4" />
-                                                <span>Refund Requests</span>
+                                                <span>Refunds</span>
                                             </div>
                                             <span 
                                                 v-if="pendingRefundCount > 0"
@@ -178,14 +154,6 @@ const isOrdersOpen = ref(false);
                                             >
                                                 {{ pendingRefundCount > 99 ? '99+' : pendingRefundCount }}
                                             </span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('refunds.index')">
-                                            <RotateCcw class="h-4 w-4" />
-                                            <span>Refunds</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

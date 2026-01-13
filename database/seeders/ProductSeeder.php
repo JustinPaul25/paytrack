@@ -456,6 +456,8 @@ class ProductSeeder extends Seeder
 
         // Create products
         foreach ($products as $product) {
+            // Set initial_stock to the same value as stock when creating a new product
+            $product['initial_stock'] = $product['stock'];
             Product::create($product);
         }
 

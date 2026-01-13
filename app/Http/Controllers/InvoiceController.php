@@ -396,9 +396,13 @@ class InvoiceController extends Controller
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
                 'invoice_type' => $validated['invoice_type'],
-                'credit_term_days' => $validated['credit_term_days'] ?? null,
                 'notes' => $validated['notes'] ?? null,
             ];
+
+            // Only update credit_term_days if it's provided in the request
+            if (array_key_exists('credit_term_days', $validated)) {
+                $updateData['credit_term_days'] = $validated['credit_term_days'];
+            }
 
             // If status is cancelled, set payment_status to 'Cancelled Order'
             if ($validated['status'] === 'cancelled') {

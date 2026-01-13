@@ -417,24 +417,20 @@ function formatDateFriendly(dateString: string) {
                                 <td class="px-4 py-2">
                                     <div class="flex gap-2">
                                         <Link :href="route('invoices.show', invoice.id)">
-                                            <Button variant="ghost" size="sm">
+                                            <Button variant="ghost" size="sm" title="View">
                                                 <Icon name="eye" class="h-4 w-4" />
-                                                <span class="ml-1">View</span>
                                             </Button>
                                         </Link>
                                         <Link v-if="canEditInvoice" :href="route('invoices.edit', invoice.id)">
-                                            <Button variant="ghost" size="sm">
+                                            <Button variant="ghost" size="sm" title="Edit">
                                                 <Icon name="edit" class="h-4 w-4" />
-                                                <span class="ml-1">Edit</span>
                                             </Button>
                                         </Link>
-                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)">
+                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)" title="Mark as Paid">
                                             <Icon name="check" class="h-4 w-4" />
-                                            <span class="ml-1">Mark as Paid</span>
                                         </Button>
-                                        <Button v-if="canDeleteInvoice" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)">
+                                        <Button v-if="canDeleteInvoice" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)" title="Delete">
                                             <Icon name="trash" class="h-4 w-4" />
-                                            <span class="ml-1">Delete</span>
                                         </Button>
                                     </div>
                                 </td>

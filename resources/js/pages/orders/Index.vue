@@ -304,9 +304,8 @@ function formatDateFriendly(dateString: string) {
                                 <td class="px-4 py-2">
                                     <div class="flex gap-2">
                                         <Link :href="route('orders.show', order.id)">
-                                            <Button variant="ghost" size="sm">
+                                            <Button variant="ghost" size="sm" title="View">
                                                 <Icon name="eye" class="h-4 w-4" />
-                                                <span class="ml-1">View</span>
                                             </Button>
                                         </Link>
                                     </div>

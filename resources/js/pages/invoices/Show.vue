@@ -146,6 +146,13 @@ const totalDeliveryFee = computed(() => {
     return props.deliveries.reduce((sum, delivery) => sum + (delivery.delivery_fee || 0), 0);
 });
 
+const calculatedVatAmount = computed(() => {
+    if (props.invoice.vat_rate > 0 && props.invoice.subtotal_amount > 0) {
+        return props.invoice.subtotal_amount * (props.invoice.vat_rate / 100);
+    }
+    return 0;
+});
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Invoices',
@@ -500,15 +507,11 @@ watch(() => (page.props as any).flash, (flash) => {
                                     </tr>
                                 </tbody>
                                 <tfoot>
-                                    <tr class="border-t">
-                                        <td colspan="3" class="px-4 py-2 text-right font-medium">Subtotal:</td>
-                                        <td class="px-4 py-2 font-medium">{{ formatCurrency(props.invoice.subtotal_amount) }}</td>
-                                    </tr>
                                     <tr v-if="props.invoice.vat_rate > 0">
                                         <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-600">
                                             VAT ({{ props.invoice.vat_rate }}%):
                                         </td>
-                                        <td class="px-4 py-2 text-sm text-gray-600">{{ formatCurrency(props.invoice.vat_amount) }}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600">{{ formatCurrency(calculatedVatAmount) }}</td>
                                     </tr>
                                     <tr v-if="props.invoice.invoice_type === 'delivery' && totalDeliveryFee > 0">
                                         <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-600">

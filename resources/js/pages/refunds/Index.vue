@@ -7,6 +7,7 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { ref } from 'vue';
 
@@ -121,7 +122,7 @@ function approve(id: number) {
 function reject(id: number) {
     Swal.fire({
         title: 'Decline this refund request?',
-        text: 'This will mark the request as rejected. You can't undo this.',
+        text: "This will mark the request as rejected. You can't undo this.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Decline',
@@ -340,15 +341,19 @@ function cancelRefund(id: number) {
                                         <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(r.created_at).toLocaleString() }}</td>
                                         <td class="px-4 py-2">
                                             <div class="flex gap-2">
-                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
-                                                    Approve
+                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)" title="Approve">
+                                                    <Icon name="check" class="h-4 w-4" />
                                                 </Button>
-                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
-                                                    Decline
+                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)" title="Decline">
+                                                    <Icon name="x" class="h-4 w-4" />
                                                 </Button>
-                                                <Button size="sm" variant="outline" @click="showDetails = r">View details</Button>
+                                                <Button size="sm" variant="ghost" @click="showDetails = r" title="View details">
+                                                    <Icon name="eye" class="h-4 w-4" />
+                                                </Button>
                                                 <Link v-if="r.invoice_id && !isCustomer" :href="route('invoices.show', r.invoice_id)">
-                                                    <Button size="sm" variant="ghost">View Invoice</Button>
+                                                    <Button size="sm" variant="ghost" title="View Invoice">
+                                                        <Icon name="file-text" class="h-4 w-4" />
+                                                    </Button>
                                                 </Link>
                                             </div>
                                         </td>
@@ -437,14 +442,14 @@ function cancelRefund(id: number) {
                                         </td>
                                         <td class="px-4 py-2">
                                             <div class="flex gap-2">
-                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="outline" @click="processRefund(r.id)">
-                                                    Process
+                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="outline" @click="processRefund(r.id)" title="Process">
+                                                    <Icon name="play" class="h-4 w-4" />
                                                 </Button>
-                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="default" @click="completeRefund(r.id)">
-                                                    Complete
+                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="default" @click="completeRefund(r.id)" title="Complete">
+                                                    <Icon name="check-circle" class="h-4 w-4" />
                                                 </Button>
-                                                <Button v-if="canProcessRefunds && r.status !== 'completed' && r.status !== 'cancelled'" size="sm" variant="destructive" @click="cancelRefund(r.id)">
-                                                    Cancel
+                                                <Button v-if="canProcessRefunds && r.status !== 'completed' && r.status !== 'cancelled'" size="sm" variant="destructive" @click="cancelRefund(r.id)" title="Cancel">
+                                                    <Icon name="x-circle" class="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </td>

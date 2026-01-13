@@ -347,6 +347,13 @@ const canCancel = computed(() => {
     return false;
 });
 
+const calculatedVatAmount = computed(() => {
+    if (order.value.vat_rate > 0 && order.value.subtotal_amount > 0) {
+        return order.value.subtotal_amount * (order.value.vat_rate / 100);
+    }
+    return 0;
+});
+
 function addComment() {
     if (!commentForm.comment.trim()) {
         Swal.fire({
@@ -652,8 +659,7 @@ onUnmounted(() => {
                         <div class="mt-6 pt-4 border-t">
                             <div class="flex justify-end">
                                 <div class="text-right space-y-1">
-                                    <div class="text-sm text-gray-600">Subtotal: {{ formatCurrency(order.subtotal_amount) }}</div>
-                                    <div class="text-sm text-gray-600">VAT ({{ order.vat_rate }}%): {{ formatCurrency(order.vat_amount) }}</div>
+                                    <div v-if="order.vat_rate > 0" class="text-sm text-gray-600">VAT ({{ order.vat_rate }}%): {{ formatCurrency(calculatedVatAmount) }}</div>
                                     <div class="text-lg font-semibold">Total: {{ formatCurrency(order.total_amount) }}</div>
                                 </div>
                             </div>

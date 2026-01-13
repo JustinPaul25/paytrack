@@ -94,6 +94,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('products/trashed', [ProductController::class, 'trashedIndex'])->name('products.trashed.index'); // Inertia page
         Route::get('products-trashed', [ProductController::class, 'trashed'])->name('products.trashed'); // JSON
         Route::post('products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
+        // Product stock management
+        Route::post('products/{product}/add-stock', [ProductController::class, 'addStock'])->name('products.addStock');
+        Route::get('products/{product}/stock-history', [ProductController::class, 'stockHistory'])->name('products.stockHistory');
         // Product CRUD routes
         Route::resource('products', ProductController::class)->except(['update']);
         Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update');

@@ -140,7 +140,7 @@ function submit() {
                     </div>
                     <div class="flex gap-4">
                         <div class="flex-1">
-                            <Label for="stock">Stock *</Label>
+                            <Label for="stock">Remaining Stock *</Label>
 							<input id="stock" v-model="form.stock" type="number" min="0" class="w-full rounded border px-3 py-2 mt-1" required placeholder="e.g., 100" />
                             <InputError :message="form.errors.stock" />
                         </div>
