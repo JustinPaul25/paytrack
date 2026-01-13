@@ -70,7 +70,7 @@ const canGoNext = () => {
         return true; // All fields optional in step 2
     }
     if (currentStep.value === 3) {
-        return true; // All fields optional in step 3
+        return form.address && form.province && form.city_municipality && form.barangay && form.location;
     }
     return false;
 };
@@ -316,13 +316,14 @@ watch(() => form.city_municipality, () => {
                     <!-- Step 3: Location & Address -->
                     <div v-if="currentStep === 3" class="space-y-6">
                         <div>
-                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Street Address/Purok (Optional)</Label>
+                            <Label for="address" class="text-sm font-medium text-foreground mb-2 block">Street Address/Purok *</Label>
                             <textarea
                                 id="address"
                                 v-model="form.address"
                                 class="w-full rounded border px-3 py-2 mt-1"
                                 rows="2"
                                 placeholder="House/Unit number, Street name"
+                                required
                             />
                             <p class="text-xs text-muted-foreground mt-1">Additional address details if needed.</p>
                             <InputError :message="form.errors.address" />
@@ -330,20 +331,21 @@ watch(() => form.city_municipality, () => {
 
                         <!-- Province first (searchable) -->
                         <div>
-                            <Label for="province" class="text-sm font-medium text-foreground mb-2 block">Province</Label>
+                            <Label for="province" class="text-sm font-medium text-foreground mb-2 block">Province *</Label>
                             <SearchSelect
                                 :model-value="form.province"
                                 :options="provinceOptions"
                                 placeholder="Select province"
                                 searchPlaceholder="Search province..."
                                 @update:modelValue="(v) => form.province = String(v ?? '')"
+                                required
                             />
                             <InputError :message="form.errors.province" />
                         </div>
 
                         <!-- City/Municipality -->
                         <div>
-                            <Label for="city_municipality" class="text-sm font-medium text-foreground mb-2 block">City/Municipality</Label>
+                            <Label for="city_municipality" class="text-sm font-medium text-foreground mb-2 block">City/Municipality *</Label>
                             <SearchSelect
                                 :model-value="form.city_municipality"
                                 :options="citySelectOptions"
@@ -351,13 +353,14 @@ watch(() => form.city_municipality, () => {
                                 searchPlaceholder="Search city or municipality..."
                                 :disabled="!form.province"
                                 @update:modelValue="(v) => form.city_municipality = String(v ?? '')"
+                                required
                             />
                             <InputError :message="form.errors.city_municipality" />
                         </div>
 
                         <!-- Barangay -->
                         <div>
-                            <Label for="barangay" class="text-sm font-medium text-foreground mb-2 block">Barangay</Label>
+                            <Label for="barangay" class="text-sm font-medium text-foreground mb-2 block">Barangay *</Label>
                             <SearchSelect
                                 :model-value="form.barangay"
                                 :options="barangaySelectOptions"
@@ -365,13 +368,14 @@ watch(() => form.city_municipality, () => {
                                 searchPlaceholder="Search barangay..."
                                 :disabled="!form.city_municipality"
                                 @update:modelValue="(v) => form.barangay = String(v ?? '')"
+                                required
                             />
                             <InputError :message="form.errors.barangay" />
                         </div>
 
                         <div>
-                            <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location (Map)</Label>
-                            <LocationInput v-model="form.location" />
+                            <Label for="location" class="text-sm font-medium text-foreground mb-2 block">Location *</Label>
+                            <LocationInput v-model="form.location" required />
                             <InputError :message="form.errors.location" />
                         </div>
                     </div>
