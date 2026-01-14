@@ -16,8 +16,10 @@ import Icon from '@/components/Icon.vue';
 const props = defineProps<{ customer: any, profile_image_url?: string }>();
 
 const page = usePage();
-const isAdmin = computed(() => Array.isArray((page.props as any).auth?.userRoles) && 
-    (page.props as any).auth.userRoles.includes('Admin'));
+const isAdmin = computed(() => {
+    const userRoles = (page.props as any).auth?.userRoles;
+    return Array.isArray(userRoles) && userRoles.includes('Admin');
+});
 
 // Check if we're coming from the users management page
 const fromUsers = computed(() => {

@@ -162,6 +162,7 @@ const form = useForm({
   email: props.customer?.email || '',
   phone: props.customer?.phone || '',
   address: props.customer?.address || '',
+  purok: props.customer?.purok || '',
   barangay: props.customer?.barangay || '',
   city_municipality: props.customer?.city_municipality || '',
   province: props.customer?.province || '',
