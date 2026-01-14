@@ -52,6 +52,32 @@ onMounted(() => {
         });
     }
 });
+
+async function approveCustomer() {
+    const result = await Swal.fire({
+        title: 'Verify Customer?',
+        text: `Are you sure you want to verify ${props.customer.name}? They will receive an email notification and be able to log in.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8f5be8',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, verify',
+        cancelButtonText: 'Cancel',
+    });
+    
+    if (result.isConfirmed) {
+        router.post(`/customers/${props.customer.id}/approve`, {}, {
+            onSuccess: () => {
+                Swal.fire('Customer Verified', 'The customer has been verified and notified via email.', 'success');
+            },
+            onError: () => {
+                const flash = (page.props as unknown as { flash?: { error?: string } }).flash;
+                const message = flash?.error ?? 'Failed to verify customer.';
+                Swal.fire('Error', message, 'error');
+            },
+        });
+    }
+}
 </script>
 
 <template>
@@ -59,12 +85,23 @@ onMounted(() => {
         <Head :title="fromUsers ? 'Edit User' : 'Edit Customer'" />
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-2xl font-bold">{{ fromUsers ? 'Edit User' : 'Edit Customer' }}</h1>
-            <Link :href="route('customers.logs.show', customer.id)">
-                <Button variant="outline">
-                    <Icon name="file-text" class="h-4 w-4 mr-2" />
-                    View Logs
+            <div class="flex gap-2">
+                <Button 
+                    v-if="!customer.verified_at" 
+                    variant="default" 
+                    @click="approveCustomer"
+                    class="bg-green-600 hover:bg-green-700"
+                >
+                    <Icon name="Check" class="h-4 w-4 mr-2" />
+                    Verify Customer
                 </Button>
-            </Link>
+                <Link :href="route('customers.logs.show', customer.id)">
+                    <Button variant="outline">
+                        <Icon name="file-text" class="h-4 w-4 mr-2" />
+                        View Logs
+                    </Button>
+                </Link>
+            </div>
         </div>
         <Card>
             <CardHeader>

@@ -256,6 +256,12 @@ class CustomerController extends Controller
         // Log the customer verification
         $this->logCustomerActivity($customer, 'verified', "Customer {$customer->name} was verified by admin.");
 
+        // Redirect to users table if current user is an admin
+        if (auth()->user()->hasRole('Admin')) {
+            return redirect()->route('users.index')
+                ->with('success', "Customer {$customer->name} has been verified and notified via email.");
+        }
+
         return redirect()->route('customers.index', ['pending' => true])
             ->with('success', "Customer {$customer->name} has been verified and notified via email.");
     }

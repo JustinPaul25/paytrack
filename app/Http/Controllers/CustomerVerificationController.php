@@ -73,6 +73,12 @@ class CustomerVerificationController extends Controller
         $customer->verified_at = now();
         $customer->save();
 
+        // Redirect to users table if current user is an admin
+        if (auth()->user()->hasRole('Admin')) {
+            return redirect()->route('users.index')
+                ->with('success', 'Customer verified successfully!');
+        }
+
         return redirect()->back()->with('success', 'Customer verified successfully!');
     }
 

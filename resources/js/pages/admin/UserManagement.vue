@@ -200,14 +200,13 @@ function editUser(user: UnifiedUser) {
 
                         <!-- Archived Filter -->
                         <div class="flex items-end">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input 
-                                    v-model="archived" 
-                                    type="checkbox" 
-                                    class="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                                />
-                                <span class="text-sm font-medium">Show Archived</span>
-                            </label>
+                            <Button 
+                                :variant="archived ? 'default' : 'outline'"
+                                size="default"
+                                @click="archived = !archived"
+                            >
+                                Show Archived
+                            </Button>
                         </div>
                     </div>
                 </div>

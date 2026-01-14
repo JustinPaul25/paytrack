@@ -408,6 +408,12 @@ class UsersController extends Controller
                     $user->markEmailAsVerified();
                 }
                 
+                // Redirect to users table if current user is an admin
+                if (auth()->user()->hasRole('Admin')) {
+                    return redirect()->route('users.index')
+                        ->with('success', 'Customer user restored and set to active successfully!');
+                }
+                
                 return redirect()->back()->with('success', 'Customer user restored and set to active successfully!');
             } elseif ($user && !$user->trashed()) {
                 // User is not deleted, just verify the customer if needed
@@ -415,6 +421,11 @@ class UsersController extends Controller
                     $customer->update([
                         'verified_at' => now(),
                     ]);
+                    // Redirect to users table if current user is an admin
+                    if (auth()->user()->hasRole('Admin')) {
+                        return redirect()->route('users.index')
+                            ->with('success', 'Customer verified and set to active successfully!');
+                    }
                     return redirect()->back()->with('success', 'Customer verified and set to active successfully!');
                 }
                 return redirect()->back()->with('info', 'Customer is already active.');
@@ -424,6 +435,11 @@ class UsersController extends Controller
                     $customer->update([
                         'verified_at' => now(),
                     ]);
+                    // Redirect to users table if current user is an admin
+                    if (auth()->user()->hasRole('Admin')) {
+                        return redirect()->route('users.index')
+                            ->with('success', 'Customer verified successfully!');
+                    }
                     return redirect()->back()->with('success', 'Customer verified successfully!');
                 }
                 return redirect()->back()->with('info', 'Customer is already verified.');
