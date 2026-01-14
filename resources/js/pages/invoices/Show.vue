@@ -147,10 +147,9 @@ const totalDeliveryFee = computed(() => {
 });
 
 const calculatedVatAmount = computed(() => {
-    if (props.invoice.vat_rate > 0 && props.invoice.subtotal_amount > 0) {
-        return props.invoice.subtotal_amount * (props.invoice.vat_rate / 100);
-    }
-    return 0;
+    // Use the VAT amount calculated by the backend (extracted from VAT-inclusive prices)
+    // The backend uses: VAT = Subtotal × (VAT_Rate / (100 + VAT_Rate))
+    return props.invoice.vat_amount || 0;
 });
 
 const breadcrumbs: BreadcrumbItem[] = [

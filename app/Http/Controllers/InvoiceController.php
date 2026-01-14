@@ -306,6 +306,14 @@ class InvoiceController extends Controller
             ];
         });
         
+        // Recalculate and fix invoice total if incorrect (subtotal + delivery fees)
+        $correctTotal = $invoice->subtotal_amount + ($invoice->deliveries()->sum('delivery_fee') / 100);
+        if (abs($invoice->total_amount - $correctTotal) > 0.01) {
+            $invoice->total_amount = $correctTotal;
+            $invoice->save();
+            $invoice->refresh();
+        }
+        
         // Calculate net balance (total - refunds) for display
         $netBalance = $invoice->net_balance;
         $totalRefunded = $invoice->refunds()
@@ -392,9 +400,11 @@ class InvoiceController extends Controller
             $vatRate = 12.00;
             $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
             
-            // Total amount equals subtotal (VAT already included)
-            // Delivery fee will be added when delivery is created for delivery invoices
-            $totalAmount = $subtotalAmount;
+            // Calculate total: subtotal + sum of all delivery fees
+            // Sum all delivery fees (stored in cents, convert to dollars)
+            $allDeliveryFees = $invoice->deliveries()
+                ->sum('delivery_fee') / 100;
+            $totalAmount = $subtotalAmount + $allDeliveryFees;
 
             // If old status was completed, restore stock before deleting items
             if ($oldStatus === 'completed') {

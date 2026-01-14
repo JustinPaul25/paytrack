@@ -123,13 +123,11 @@ class DeliveryController extends Controller
                 $invoice = Invoice::find($validated['invoice_id']);
                 
                 if ($invoice) {
-                    // Calculate new total: subtotal + all delivery fees (including the one being created)
+                    // Calculate new total: subtotal + all delivery fees (including the one just created)
                     $subtotal = $invoice->subtotal_amount; // Already in dollars (accessor)
+                    // Sum all deliveries (including the one just created) - delivery_fee is stored in cents, convert to dollars
                     $allDeliveryFees = $invoice->deliveries()
-                        ->sum('delivery_fee') / 100; // Sum all deliveries in cents, convert to dollars
-                    // Add the new delivery fee (it's not in the database yet, so add it manually)
-                    $newDeliveryFee = $validated['delivery_fee']; // In dollars from form
-                    $allDeliveryFees = $allDeliveryFees + $newDeliveryFee;
+                        ->sum('delivery_fee') / 100;
                     $newTotal = $subtotal + $allDeliveryFees;
                     
                     // Update invoice total to include all delivery fees
