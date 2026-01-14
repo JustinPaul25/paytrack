@@ -127,7 +127,8 @@ import { provinceOptions, getCitiesForProvince, getBarangaysForCity } from '@/li
 
 const props = defineProps({
   customer: Object,
-  profileImageUrl: String
+  profileImageUrl: String,
+  fromUsers: Boolean
 });
 
 
@@ -212,7 +213,10 @@ function onFileChange(e: Event) {
 
 function submit() {
   if (form.customerId) {
-    form.post(route('customers.update', form.customerId), {
+    const url = props.fromUsers 
+      ? `${route('customers.update', form.customerId)}?from=users`
+      : route('customers.update', form.customerId);
+    form.post(url, {
       forceFormData: true,
       onSuccess: () => form.reset('profile_image')
     });

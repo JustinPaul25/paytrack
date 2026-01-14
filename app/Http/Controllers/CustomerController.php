@@ -166,6 +166,11 @@ class CustomerController extends Controller
             : "Customer {$customer->name} was updated.";
         $this->logCustomerActivity($customer, 'updated', $description, $changes);
         
+        // Redirect to users.index if coming from user management, otherwise customers.index
+        if ($request->query('from') === 'users') {
+            return redirect()->route('users.index')->with('success', 'Customer updated successfully.');
+        }
+        
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
     }
 

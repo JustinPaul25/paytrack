@@ -108,7 +108,7 @@ async function approveCustomer() {
                 <CardTitle>{{ fromUsers ? 'Edit User' : 'Edit Customer' }}</CardTitle>
             </CardHeader>
             <CardContent>
-				<CustomerForm :customer="customer" :profileImageUrl="profile_image_url">
+				<CustomerForm :customer="customer" :profileImageUrl="profile_image_url" :fromUsers="fromUsers">
 					<template #footer>
 						<Link :href="fromUsers ? route('users.index') : route('customers.index')">
 							<Button type="button" variant="ghost">Cancel</Button>
