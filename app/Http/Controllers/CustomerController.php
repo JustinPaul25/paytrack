@@ -116,6 +116,21 @@ class CustomerController extends Controller
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
 
+    public function show(Customer $customer)
+    {
+        // Admin and Staff can view customers
+        if (!auth()->user()->hasAnyRole(['Admin', 'Staff'])) {
+            return redirect()->route('customers.index')
+                ->with('error', 'You do not have permission to view customer data.');
+        }
+        
+        $customer->load('media');
+        return Inertia::render('customers/Show', [
+            'customer' => $customer,
+            'profile_image_url' => $customer->getFirstMediaUrl('profile_image'),
+        ]);
+    }
+
     public function edit(Customer $customer)
     {
         // Only admins can edit customers

@@ -17,6 +17,8 @@ class Order extends Model
         'subtotal_amount',
         'vat_amount',
         'vat_rate',
+        'withholding_tax_amount',
+        'withholding_tax_rate',
         'total_amount',
         'approved_by',
         'approved_at',
@@ -136,5 +138,15 @@ class Order extends Model
     public function setTotalAmountAttribute($value)
     {
         $this->attributes['total_amount'] = (int) round($value * 100);
+    }
+
+    public function getWithholdingTaxAmountAttribute($value)
+    {
+        return $value / 100;
+    }
+
+    public function setWithholdingTaxAmountAttribute($value)
+    {
+        $this->attributes['withholding_tax_amount'] = (int) round($value * 100);
     }
 }

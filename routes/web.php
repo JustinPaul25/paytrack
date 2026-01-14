@@ -105,6 +105,7 @@ Route::middleware(['auth'])->group(function () {
     // Customers (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::resource('customers', CustomerController::class)->except(['update', 'show']);
+        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
         Route::post('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
         
         // Customer Logs

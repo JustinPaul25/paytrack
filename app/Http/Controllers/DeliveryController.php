@@ -123,12 +123,17 @@ class DeliveryController extends Controller
                 $invoice = Invoice::find($validated['invoice_id']);
                 
                 if ($invoice) {
-                    // Calculate new total: subtotal + all delivery fees (including the one just created)
+                    // Calculate new total: Subtotal + VAT - Withholding Tax + all delivery fees
                     $subtotal = $invoice->subtotal_amount; // Already in dollars (accessor)
+                    $vatAmount = $invoice->vat_amount; // Already in dollars (accessor)
+                    $withholdingTaxAmount = $invoice->withholding_tax_amount; // Already in dollars (accessor)
+                    
                     // Sum all deliveries (including the one just created) - delivery_fee is stored in cents, convert to dollars
                     $allDeliveryFees = $invoice->deliveries()
                         ->sum('delivery_fee') / 100;
-                    $newTotal = $subtotal + $allDeliveryFees;
+                    
+                    // Total = Subtotal + VAT - Withholding Tax + Delivery Fees
+                    $newTotal = $subtotal + $vatAmount - $withholdingTaxAmount + $allDeliveryFees;
                     
                     // Update invoice total to include all delivery fees
                     $invoice->total_amount = $newTotal;
@@ -221,15 +226,20 @@ class DeliveryController extends Controller
             if ($invoiceId) {
                 $invoice = Invoice::find($invoiceId);
                 if ($invoice) {
-                    // Recalculate total with all delivery fees
-                    // Get all deliveries except the one being updated (since it's not saved yet)
+                    // Recalculate total: Subtotal + VAT - Withholding Tax + all delivery fees
                     $subtotal = $invoice->subtotal_amount; // Already in dollars (accessor)
+                    $vatAmount = $invoice->vat_amount; // Already in dollars (accessor)
+                    $withholdingTaxAmount = $invoice->withholding_tax_amount; // Already in dollars (accessor)
+                    
+                    // Get all deliveries except the one being updated (since it's not saved yet)
                     $existingDeliveryFees = $invoice->deliveries()
                         ->where('id', '!=', $delivery->id)
                         ->sum('delivery_fee') / 100; // Sum in cents, convert to dollars
                     $newDeliveryFee = $validated['delivery_fee']; // In dollars from form
                     $allDeliveryFees = $existingDeliveryFees + $newDeliveryFee;
-                    $newTotal = $subtotal + $allDeliveryFees;
+                    
+                    // Total = Subtotal + VAT - Withholding Tax + Delivery Fees
+                    $newTotal = $subtotal + $vatAmount - $withholdingTaxAmount + $allDeliveryFees;
                     
                     // Update invoice total
                     $invoice->total_amount = $newTotal;

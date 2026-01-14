@@ -70,10 +70,16 @@ class InvoiceSeeder extends Seeder
                     $items[] = ['product' => $product, 'quantity' => $quantity, 'price' => $price, 'total' => $total];
                 }
 
-                // VAT is already included in product prices, so total = subtotal
+                // Calculate VAT (12%) and withholding tax (1%)
                 $vatRate = 12.00;
-                $vatAmount = 0; // VAT already included in product prices
-                $totalAmount = $subtotalAmount; // Total equals subtotal (VAT included)
+                $vatAmount = $subtotalAmount * ($vatRate / 100);
+                
+                // Calculate 1% withholding tax on (subtotal + VAT)
+                $withholdingTaxRate = 1.00;
+                $withholdingTaxAmount = ($subtotalAmount + $vatAmount) * ($withholdingTaxRate / 100);
+                
+                // Total = Subtotal + VAT - Withholding Tax
+                $totalAmount = $subtotalAmount + $vatAmount - $withholdingTaxAmount;
 
                 $invoice = Invoice::create([
                     'customer_id' => $customer->id,
@@ -85,6 +91,8 @@ class InvoiceSeeder extends Seeder
                     'subtotal_amount' => $subtotalAmount,
                     'vat_amount' => $vatAmount,
                     'vat_rate' => $vatRate,
+                    'withholding_tax_amount' => $withholdingTaxAmount,
+                    'withholding_tax_rate' => $withholdingTaxRate,
                     'total_amount' => $totalAmount,
                     'created_at' => $invoiceDate,
                     'updated_at' => $invoiceDate,

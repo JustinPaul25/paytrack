@@ -130,11 +130,11 @@ function getStatusBadgeClass(status: string) {
     }
 }
 
-function editUser(user: UnifiedUser) {
+function viewUser(user: UnifiedUser) {
     if (user.type === 'staff') {
         router.visit(`/users/${user.id}/edit`);
     } else {
-        router.visit(`/customers/${user.id}/edit?from=users`);
+        router.visit(`/customers/${user.id}?from=users`);
     }
 }
 </script>
@@ -260,8 +260,8 @@ function editUser(user: UnifiedUser) {
                                                 <Icon name="file-text" class="h-4 w-4" />
                                             </Button>
                                         </Link>
-                                        <Button variant="ghost" size="sm" @click="editUser(user)">
-                                            <Icon name="edit" class="h-4 w-4" />
+                                        <Button variant="ghost" size="sm" @click="viewUser(user)" title="View">
+                                            <Icon name="eye" class="h-4 w-4" />
                                         </Button>
                                         <Button variant="ghost" size="sm" @click="deleteUser(user)">
                                             <Icon name="trash" class="h-4 w-4" />

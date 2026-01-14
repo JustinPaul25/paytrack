@@ -135,11 +135,11 @@ function getStatusBadgeClass(status: string) {
     }
 }
 
-function editUser(user: UnifiedUser) {
+function viewUser(user: UnifiedUser) {
     if (user.type === 'staff') {
         router.visit(`/users/${user.id}/edit`);
     } else {
-        router.visit(`/customers/${user.id}/edit?from=users`);
+        router.visit(`/customers/${user.id}?from=users`);
     }
 }
 
@@ -301,8 +301,8 @@ async function setUserActive(user: UnifiedUser) {
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">
                                     <div class="flex gap-2">
-                                        <Button variant="ghost" size="sm" @click="editUser(user)" title="Edit">
-                                            <Icon name="edit" class="h-4 w-4" />
+                                        <Button variant="ghost" size="sm" @click="viewUser(user)" title="View">
+                                            <Icon name="eye" class="h-4 w-4" />
                                         </Button>
                                         <Button 
                                             v-if="archived"

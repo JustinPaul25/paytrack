@@ -90,17 +90,23 @@ class SalesTransactionController extends Controller
         $transactions = [];
 
         foreach ($invoices as $invoice) {
-            // Calculate tax amounts
-            $saleNonVatTotal = $invoice->subtotal_amount;
-            $vatAmount = $invoice->vat_amount;
-            $withholdingTax = $saleNonVatTotal * 0.01; // 1% of non-vat total
-            $tax5Percent = $saleNonVatTotal * 0.05; // 5% of non-vat total
-            $cashAmount = $invoice->total_amount - $withholdingTax - $tax5Percent; // Total with tax - (W/holding TAX 1% + TAX 5%)
+            // Get the actual invoice amounts
+            $saleNonVatTotal = $invoice->subtotal_amount; // Subtotal (no VAT)
+            $vatAmount = $invoice->vat_amount; // 12% VAT
+            $withholdingTax = $invoice->withholding_tax_amount ?? 0; // 1% withholding tax from invoice
+            
+            // Calculate 5% tax that's already included in the product price
+            // Formula: Tax Amount = Price × (Tax Rate / (100 + Tax Rate))
+            // For 5% tax: Tax Amount = Price × (5 / 105) = Price × 0.047619
+            $tax5Percent = $saleNonVatTotal * (5 / 105);
+            
+            // Cash amount = Total amount (which already includes: Subtotal + VAT - Withholding Tax)
+            $cashAmount = $invoice->total_amount;
             
             // Add to running balance only if not cancelled
             $isCompleted = $this->formatStatus($invoice->status) === 'Completed';
             if ($isCompleted) {
-                $runningBalance += $invoice->total_amount; // Sale with VAT
+                $runningBalance += $invoice->total_amount;
             }
 
             $transactions[] = [
@@ -109,7 +115,7 @@ class SalesTransactionController extends Controller
                 'company_name' => $invoice->customer->company_name,
                 'product_name' => $this->getProductInfo($invoice)['name'],
                 'quantity' => $this->getProductInfo($invoice)['quantity'],
-                'unit_price' => $invoice->total_amount / $this->getProductInfo($invoice)['quantity'], // Average unit price
+                'unit_price' => $invoice->total_amount / max(1, $this->getProductInfo($invoice)['quantity']), // Average unit price
                 'total_amount' => $invoice->total_amount,
                 'status' => $this->formatStatus($invoice->status),
                 'transaction_date' => $invoice->created_at->format('Y-m-d H:i:s'),

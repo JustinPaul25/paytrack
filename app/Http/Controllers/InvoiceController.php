@@ -154,20 +154,23 @@ class InvoiceController extends Controller
                 $customerId = $walkInCustomer->id;
             }
 
-            // Calculate subtotal amount
+            // Calculate subtotal amount (prices do NOT include VAT)
             $subtotalAmount = 0;
             foreach ($validated['invoice_items'] as $item) {
                 $subtotalAmount += $item['quantity'] * $item['price'];
             }
 
-            // VAT is already included in product prices
-            // Calculate VAT amount for display: VAT = subtotal * (vat_rate / (100 + vat_rate))
+            // Calculate 12% VAT on subtotal
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
+            $vatAmount = $subtotalAmount * ($vatRate / 100);
             
-            // Total amount equals subtotal (VAT already included)
+            // Calculate 1% withholding tax on (subtotal + VAT)
+            $withholdingTaxRate = 1.00;
+            $withholdingTaxAmount = ($subtotalAmount + $vatAmount) * ($withholdingTaxRate / 100);
+            
+            // Total amount = Subtotal + VAT - Withholding Tax
             // Delivery fee will be added when delivery is created for delivery invoices
-            $totalAmount = $subtotalAmount;
+            $totalAmount = $subtotalAmount + $vatAmount - $withholdingTaxAmount;
 
             // Determine payment status based on invoice status
             $paymentStatus = 'pending';
@@ -182,6 +185,8 @@ class InvoiceController extends Controller
                 'subtotal_amount' => $subtotalAmount,
                 'vat_amount' => $vatAmount,
                 'vat_rate' => $vatRate,
+                'withholding_tax_amount' => $withholdingTaxAmount,
+                'withholding_tax_rate' => $withholdingTaxRate,
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],
@@ -389,22 +394,25 @@ class InvoiceController extends Controller
         try {
             $oldStatus = $invoice->status;
             
-            // Calculate subtotal amount
+            // Calculate subtotal amount (prices do NOT include VAT)
             $subtotalAmount = 0;
             foreach ($validated['invoice_items'] as $item) {
                 $subtotalAmount += $item['quantity'] * $item['price'];
             }
 
-            // VAT is already included in product prices
-            // Calculate VAT amount for display: VAT = subtotal * (vat_rate / (100 + vat_rate))
+            // Calculate 12% VAT on subtotal
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
+            $vatAmount = $subtotalAmount * ($vatRate / 100);
             
-            // Calculate total: subtotal + sum of all delivery fees
+            // Calculate 1% withholding tax on (subtotal + VAT)
+            $withholdingTaxRate = 1.00;
+            $withholdingTaxAmount = ($subtotalAmount + $vatAmount) * ($withholdingTaxRate / 100);
+            
+            // Calculate total: Subtotal + VAT - Withholding Tax + sum of all delivery fees
             // Sum all delivery fees (stored in cents, convert to dollars)
             $allDeliveryFees = $invoice->deliveries()
                 ->sum('delivery_fee') / 100;
-            $totalAmount = $subtotalAmount + $allDeliveryFees;
+            $totalAmount = $subtotalAmount + $vatAmount - $withholdingTaxAmount + $allDeliveryFees;
 
             // If old status was completed, restore stock before deleting items
             if ($oldStatus === 'completed') {
@@ -417,6 +425,8 @@ class InvoiceController extends Controller
                 'subtotal_amount' => $subtotalAmount,
                 'vat_amount' => $vatAmount,
                 'vat_rate' => $vatRate,
+                'withholding_tax_amount' => $withholdingTaxAmount,
+                'withholding_tax_rate' => $withholdingTaxRate,
                 'total_amount' => $totalAmount,
                 'status' => $validated['status'],
                 'payment_method' => $validated['payment_method'],

@@ -15,6 +15,8 @@ class Invoice extends Model
         'subtotal_amount',
         'vat_amount',
         'vat_rate',
+        'withholding_tax_amount',
+        'withholding_tax_rate',
         'status', 
         'payment_method', 
         'payment_status',
@@ -144,6 +146,15 @@ class Invoice extends Model
     public function setVatAmountAttribute($value)
     {
         $this->attributes['vat_amount'] = (int) round($value * 100);
+    }
+
+    public function getWithholdingTaxAmountAttribute($value)
+    {
+        return $value / 100;
+    }
+    public function setWithholdingTaxAmountAttribute($value)
+    {
+        $this->attributes['withholding_tax_amount'] = (int) round($value * 100);
     }
 
     /**

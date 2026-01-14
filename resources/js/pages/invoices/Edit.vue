@@ -80,9 +80,21 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
-// Computed total (VAT already included in product price)
-const totalAmount = computed(() => {
+// Computed totals (VAT and withholding tax calculated separately)
+const subtotalAmount = computed(() => {
     return form.invoice_items.reduce((sum: number, item: any) => sum + item.total, 0);
+});
+
+const vatAmount = computed(() => {
+    return subtotalAmount.value * 0.12; // 12% VAT
+});
+
+const withholdingTaxAmount = computed(() => {
+    return (subtotalAmount.value + vatAmount.value) * 0.01; // 1% withholding tax
+});
+
+const totalAmount = computed(() => {
+    return subtotalAmount.value + vatAmount.value - withholdingTaxAmount.value;
 });
 
 // Basic validation to ensure form is ready for submission
@@ -379,12 +391,30 @@ function getProductOptions() {
                         </div>
                     </div>
                     
-                    <!-- Total Amount -->
+                    <!-- Total Amount Breakdown -->
                     <div class="mt-4 pt-3 border-t">
                         <div class="flex justify-end">
-                            <div class="text-right space-y-1">
-                                <div class="text-base font-medium">Total Amount: ₱{{ totalAmount.toFixed(2) }}</div>
-                                <div class="text-xs text-muted-foreground mt-1">12% VAT is included in price</div>
+                            <div class="text-right space-y-2">
+                                <div class="flex justify-between gap-8">
+                                    <span class="text-sm text-gray-600">Subtotal:</span>
+                                    <span class="text-sm font-medium">₱{{ subtotalAmount.toFixed(2) }}</span>
+                                </div>
+                                <div class="flex justify-between gap-8">
+                                    <span class="text-sm text-gray-600">VAT (12%):</span>
+                                    <span class="text-sm font-medium">₱{{ vatAmount.toFixed(2) }}</span>
+                                </div>
+                                <div class="flex justify-between gap-8 border-t pt-2">
+                                    <span class="text-sm text-gray-600">Amount Net of VAT:</span>
+                                    <span class="text-sm font-medium">₱{{ (subtotalAmount + vatAmount).toFixed(2) }}</span>
+                                </div>
+                                <div class="flex justify-between gap-8">
+                                    <span class="text-sm text-red-600">Less: W/Holding Tax (1%):</span>
+                                    <span class="text-sm font-medium text-red-600">-₱{{ withholdingTaxAmount.toFixed(2) }}</span>
+                                </div>
+                                <div class="flex justify-between gap-8 border-t-2 pt-2">
+                                    <span class="text-base font-bold">Total Amount Due:</span>
+                                    <span class="text-base font-bold">₱{{ totalAmount.toFixed(2) }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

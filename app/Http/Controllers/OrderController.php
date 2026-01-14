@@ -164,14 +164,17 @@ class OrderController extends Controller
                 ])->withInput();
             }
 
-            // VAT is already included in product prices
-            // Calculate VAT amount for display: VAT = subtotal * (vat_rate / (100 + vat_rate))
+            // Calculate 12% VAT on subtotal (VAT not included in product prices)
             $vatRate = 12.00;
-            $vatAmount = $subtotalAmount * ($vatRate / (100 + $vatRate));
+            $vatAmount = $subtotalAmount * ($vatRate / 100);
             
-            // Total amount equals subtotal (VAT already included)
+            // Calculate 1% withholding tax on (subtotal + VAT)
+            $withholdingTaxRate = 1.00;
+            $withholdingTaxAmount = ($subtotalAmount + $vatAmount) * ($withholdingTaxRate / 100);
+            
+            // Total = Subtotal + VAT - Withholding Tax
             // Delivery fee will be added when delivery is created
-            $totalAmount = $subtotalAmount;
+            $totalAmount = $subtotalAmount + $vatAmount - $withholdingTaxAmount;
 
             // Validate minimum order amount for delivery
             $minimumDeliveryAmount = 500.00; // 500 pesos minimum for delivery orders
@@ -188,6 +191,8 @@ class OrderController extends Controller
                 'subtotal_amount' => $subtotalAmount,
                 'vat_amount' => $vatAmount,
                 'vat_rate' => $vatRate,
+                'withholding_tax_amount' => $withholdingTaxAmount,
+                'withholding_tax_rate' => $withholdingTaxRate,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
                 'delivery_type' => $validated['delivery_type'],
@@ -319,6 +324,8 @@ class OrderController extends Controller
                 'subtotal_amount' => $order->subtotal_amount,
                 'vat_amount' => $order->vat_amount,
                 'vat_rate' => $order->vat_rate,
+                'withholding_tax_amount' => $order->withholding_tax_amount ?? 0,
+                'withholding_tax_rate' => $order->withholding_tax_rate ?? 1.00,
                 'total_amount' => $order->total_amount,
                 'status' => 'pending',
                 'payment_method' => $order->payment_method ?? 'cash',

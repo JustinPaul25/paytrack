@@ -68,6 +68,8 @@ interface Invoice {
     subtotal_amount: number;
     vat_amount: number;
     vat_rate: number;
+    withholding_tax_amount?: number;
+    withholding_tax_rate?: number;
     status: string;
     payment_method: string;
     payment_status?: string;
@@ -147,9 +149,17 @@ const totalDeliveryFee = computed(() => {
 });
 
 const calculatedVatAmount = computed(() => {
-    // Use the VAT amount calculated by the backend (extracted from VAT-inclusive prices)
-    // The backend uses: VAT = Subtotal × (VAT_Rate / (100 + VAT_Rate))
+    // Use the VAT amount calculated by the backend
     return props.invoice.vat_amount || 0;
+});
+
+const withholdingTaxAmount = computed(() => {
+    // Use the withholding tax amount from the backend
+    return props.invoice.withholding_tax_amount || 0;
+});
+
+const amountNetOfVat = computed(() => {
+    return props.invoice.subtotal_amount + calculatedVatAmount.value;
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -506,11 +516,29 @@ watch(() => (page.props as any).flash, (flash) => {
                                     </tr>
                                 </tbody>
                                 <tfoot>
+                                    <tr class="border-t">
+                                        <td colspan="3" class="px-4 py-2 text-right text-sm font-medium text-gray-700">
+                                            Subtotal:
+                                        </td>
+                                        <td class="px-4 py-2 text-sm font-medium text-gray-700">{{ formatCurrency(props.invoice.subtotal_amount) }}</td>
+                                    </tr>
                                     <tr v-if="props.invoice.vat_rate > 0">
                                         <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-600">
                                             VAT ({{ props.invoice.vat_rate }}%):
                                         </td>
                                         <td class="px-4 py-2 text-sm text-gray-600">{{ formatCurrency(calculatedVatAmount) }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-2 text-right text-sm font-medium text-gray-700">
+                                            Amount Net of VAT:
+                                        </td>
+                                        <td class="px-4 py-2 text-sm font-medium text-gray-700">{{ formatCurrency(amountNetOfVat) }}</td>
+                                    </tr>
+                                    <tr v-if="withholdingTaxAmount > 0">
+                                        <td colspan="3" class="px-4 py-2 text-right text-sm text-red-600">
+                                            Less: W/Holding Tax ({{ props.invoice.withholding_tax_rate }}%):
+                                        </td>
+                                        <td class="px-4 py-2 text-sm text-red-600">-{{ formatCurrency(withholdingTaxAmount) }}</td>
                                     </tr>
                                     <tr v-if="props.invoice.invoice_type === 'delivery' && totalDeliveryFee > 0">
                                         <td colspan="3" class="px-4 py-2 text-right text-sm text-gray-600">
@@ -518,8 +546,8 @@ watch(() => (page.props as any).flash, (flash) => {
                                         </td>
                                         <td class="px-4 py-2 text-sm text-gray-600">{{ formatCurrency(totalDeliveryFee) }}</td>
                                     </tr>
-                                    <tr class="border-t">
-                                        <td colspan="3" class="px-4 py-2 text-right font-bold text-lg">Total Amount:</td>
+                                    <tr class="border-t-2">
+                                        <td colspan="3" class="px-4 py-2 text-right font-bold text-lg">Total Amount Due:</td>
                                         <td class="px-4 py-2 font-bold text-lg">{{ formatCurrency(props.invoice.total_amount) }}</td>
                                     </tr>
                                     <tr v-if="hasRefunds" class="border-t bg-yellow-50">
