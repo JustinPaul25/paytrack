@@ -291,40 +291,6 @@ function updateRequestFilter(status: string) {
             </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <Card>
-                <CardContent class="pt-6">
-                    <div class="text-sm font-medium text-gray-500">Total Damaged Refunds</div>
-                    <div class="text-2xl font-bold mt-1">{{ stats.total_damaged_refunds || 0 }}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardContent class="pt-6">
-                    <div class="text-sm font-medium text-gray-500">Total Damaged Requests</div>
-                    <div class="text-2xl font-bold mt-1">{{ stats.total_damaged_requests || 0 }}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardContent class="pt-6">
-                    <div class="text-sm font-medium text-gray-500">Pending Requests</div>
-                    <div class="text-2xl font-bold mt-1 text-orange-600">{{ stats.pending_requests || 0 }}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardContent class="pt-6">
-                    <div class="text-sm font-medium text-gray-500">Total Writeoffs</div>
-                    <div class="text-2xl font-bold mt-1 text-red-600">{{ stats.total_writeoffs || 0 }}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardContent class="pt-6">
-                    <div class="text-sm font-medium text-gray-500">Total Damaged Value</div>
-                    <div class="text-2xl font-bold mt-1">{{ formatCurrency(stats.total_damaged_value || 0) }}</div>
-                </CardContent>
-            </Card>
-        </div>
-
         <!-- Tabs -->
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex space-x-8">

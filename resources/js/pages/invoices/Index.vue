@@ -421,7 +421,7 @@ function formatDateFriendly(dateString: string) {
                                                 <Icon name="eye" class="h-4 w-4" />
                                             </Button>
                                         </Link>
-                                        <Link v-if="canEditInvoice" :href="route('invoices.edit', invoice.id)">
+                                        <Link v-if="canEditInvoice && invoice.status !== 'completed'" :href="route('invoices.edit', invoice.id)">
                                             <Button variant="ghost" size="sm" title="Edit">
                                                 <Icon name="edit" class="h-4 w-4" />
                                             </Button>

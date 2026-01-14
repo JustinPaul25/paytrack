@@ -330,6 +330,13 @@ class InvoiceController extends Controller
         if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
+        
+        // Prevent editing completed invoices
+        if ($invoice->status === 'completed') {
+            return redirect()->route('invoices.show', $invoice->id)
+                ->with('error', 'Completed invoices cannot be edited. Use "Mark as Paid" to update payment status if payment is pending.');
+        }
+        
         $customers = Customer::all(['id', 'name', 'company_name', 'is_walk_in']);
         $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
         $categories = Category::all(['id', 'name']);
@@ -349,6 +356,14 @@ class InvoiceController extends Controller
         if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
             abort(403);
         }
+        
+        // Prevent updates to completed invoices (except payment status if pending - handled by markPaid method)
+        if ($invoice->status === 'completed') {
+            return redirect()->back()->withErrors([
+                'status' => 'Completed invoices cannot be updated. Use "Mark as Paid" to update payment status if payment is pending.'
+            ]);
+        }
+        
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
