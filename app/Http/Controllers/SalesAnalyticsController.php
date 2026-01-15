@@ -97,13 +97,24 @@ class SalesAnalyticsController extends Controller
                 });
 
             // Get invoice payment reminders for this customer
+            // Only show reminders for invoices with pending payment status
             $reminders = Reminder::where('customer_id', $customerId)
                 ->where('type', 'customer_due')
                 ->where('status', 'pending')
+                ->whereHas('invoice', function ($query) {
+                    $query->where('payment_status', 'pending')
+                          ->where('status', '!=', 'cancelled');
+                })
                 ->with('invoice')
                 ->orderBy('due_date', 'asc')
                 ->orderBy('priority', 'desc')
                 ->get()
+                ->filter(function ($reminder) {
+                    // Additional safety check: ensure invoice exists and has pending payment status
+                    return $reminder->invoice 
+                        && $reminder->invoice->payment_status === 'pending'
+                        && $reminder->invoice->status !== 'cancelled';
+                })
                 ->map(function ($reminder) {
                     // Use invoice total_amount if available (more accurate), otherwise fall back to reminder amount
                     // Note: invoice->total_amount is already in currency format (accessor divides by 100)

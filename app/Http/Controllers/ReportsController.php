@@ -228,11 +228,10 @@ class ReportsController extends Controller
     private function getDeliveries($dateRange)
     {
         // Query deliveries within date range
-        // Use whereBetween with date strings for proper date column comparison
-        $query = Delivery::whereBetween('delivery_date', [
-            $dateRange['start']->format('Y-m-d'),
-            $dateRange['end']->format('Y-m-d')
-        ])->with(['customer', 'invoice']);
+        // Use whereDate with >= and <= for proper date column comparison
+        $query = Delivery::whereDate('delivery_date', '>=', $dateRange['start']->toDateString())
+            ->whereDate('delivery_date', '<=', $dateRange['end']->toDateString())
+            ->with(['customer', 'invoice']);
         
         $deliveries = $query->orderBy('delivery_date', 'desc')->get();
         

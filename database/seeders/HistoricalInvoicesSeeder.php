@@ -31,23 +31,24 @@ class HistoricalInvoicesSeeder extends Seeder
 
         // Define date range: Last 6 months to provide better trend data
         // This ensures we have enough historical data for all charts
-        $today = Carbon::today();
+        // Use yesterday as max date so newly created invoices appear first
+        $yesterday = Carbon::yesterday();
         $startDate = Carbon::now()->subMonths(6)->startOfMonth(); // 6 months ago
-        $endDate = $today->copy()->endOfDay();
+        $endDate = $yesterday->copy()->endOfDay();
         
         // Ensure we don't go into the future
         if ($endDate->isFuture()) {
-            $endDate = $today->copy()->endOfDay();
+            $endDate = $yesterday->copy()->endOfDay();
         }
         
         $daysRange = $startDate->diffInDays($endDate);
 
-        // Generate invoices for September, October, November (up to today)
+        // Generate invoices for September, October, November (up to yesterday)
         for ($i = 0; $i <= $daysRange; $i++) {
             $day = $startDate->copy()->addDays($i);
-            // Ensure the date doesn't exceed today
-            if ($day->isAfter($today)) {
-                $day = $today->copy();
+            // Ensure the date doesn't exceed yesterday
+            if ($day->isAfter($yesterday)) {
+                $day = $yesterday->copy();
             }
 
             // More realistic invoice distribution: 3-8 invoices per day (weighted towards weekdays)

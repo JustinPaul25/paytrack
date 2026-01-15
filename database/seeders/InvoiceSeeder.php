@@ -31,12 +31,12 @@ class InvoiceSeeder extends Seeder
         $creator = $users->first();
 
         // Define date range: September, October, November (current year)
-        // Ensure dates don't exceed today
+        // Ensure dates don't exceed yesterday (so newly created invoices appear first)
         $currentYear = Carbon::now()->year;
-        $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
         $startDate = Carbon::create($currentYear, 9, 1)->startOfDay(); // September 1
         $maxEndDate = Carbon::create($currentYear, 11, 30)->endOfDay(); // November 30
-        $endDate = $today->copy()->endOfDay()->isBefore($maxEndDate) ? $today->copy()->endOfDay() : $maxEndDate;
+        $endDate = $yesterday->copy()->endOfDay()->isBefore($maxEndDate) ? $yesterday->copy()->endOfDay() : $maxEndDate;
         $daysRange = $startDate->diffInDays($endDate);
 
         foreach ($customers as $customer) {
@@ -48,12 +48,12 @@ class InvoiceSeeder extends Seeder
             ];
 
             foreach ($statusSets as $meta) {
-                // Generate a random date within September, October, November (not exceeding today)
+                // Generate a random date within September, October, November (not exceeding yesterday)
                 $randomDays = rand(0, max(0, $daysRange));
                 $invoiceDate = $startDate->copy()->addDays($randomDays);
-                // Ensure the date doesn't exceed today
-                if ($invoiceDate->isAfter($today)) {
-                    $invoiceDate = $today->copy();
+                // Ensure the date doesn't exceed yesterday
+                if ($invoiceDate->isAfter($yesterday)) {
+                    $invoiceDate = $yesterday->copy();
                 }
                 $invoiceDate->setTime(rand(8, 17), rand(0, 59), rand(0, 59));
                 // Add 1-3 random products to calculate totals

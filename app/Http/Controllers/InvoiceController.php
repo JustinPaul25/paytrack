@@ -51,7 +51,11 @@ class InvoiceController extends Controller
             $query->where('payment_status', $paymentStatus);
         }
 
-        $invoices = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+        // Always sort by created_at descending (newest first), then by id descending for consistent ordering
+        $invoices = $query->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(10)
+            ->withQueryString();
 
         // Calculate statistics (respect same visibility scope)
         $statsBase = Invoice::query();
