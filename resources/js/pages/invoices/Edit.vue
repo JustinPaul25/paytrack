@@ -207,12 +207,21 @@ const paymentMethodOptions = [
     { value: 'credit', label: 'Credit' }
 ];
 
-// Payment status options
-const paymentStatusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'failed', label: 'Failed' }
-];
+// Payment status options - exclude 'failed' for walk-in invoices
+const paymentStatusOptions = computed(() => {
+    const baseOptions = [
+        { value: 'pending', label: 'Pending' },
+        { value: 'paid', label: 'Paid' },
+        { value: 'failed', label: 'Failed' }
+    ];
+    
+    // For walk-in invoices, exclude 'failed' option
+    if (form.invoice_type === 'walk_in') {
+        return baseOptions.filter(option => option.value !== 'failed');
+    }
+    
+    return baseOptions;
+});
 
 // Invoice type options
 const invoiceTypeOptions = [

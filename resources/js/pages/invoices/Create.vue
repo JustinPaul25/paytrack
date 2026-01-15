@@ -273,12 +273,21 @@ const paymentMethodOptions = [
     { value: 'credit', label: 'Credit' }
 ];
 
-// Payment status options
-const paymentStatusOptions = [
-    { value: 'pending', label: 'Pending Payment' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'failed', label: 'Failed' }
-];
+// Payment status options - exclude 'failed' for walk-in invoices
+const paymentStatusOptions = computed(() => {
+    const baseOptions = [
+        { value: 'pending', label: 'Pending Payment' },
+        { value: 'paid', label: 'Paid' },
+        { value: 'failed', label: 'Failed' }
+    ];
+    
+    // For walk-in invoices, exclude 'failed' option
+    if (isWalkInCustomer.value) {
+        return baseOptions.filter(option => option.value !== 'failed');
+    }
+    
+    return baseOptions;
+});
 
 // Computed property to determine if payment status field should be shown
 const showPaymentStatus = computed(() => {
