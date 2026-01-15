@@ -228,9 +228,19 @@ class ReportsController extends Controller
     private function getDeliveries($dateRange)
     {
         // Query deliveries within date range
-        // Use whereDate with >= and <= for proper date column comparison
-        $query = Delivery::whereDate('delivery_date', '>=', $dateRange['start']->toDateString())
-            ->whereDate('delivery_date', '<=', $dateRange['end']->toDateString())
+        // For completed deliveries, use updated_at (when they were marked as completed)
+        // For pending/cancelled deliveries, use delivery_date (scheduled date)
+        $query = Delivery::where(function ($q) use ($dateRange) {
+                // Include deliveries scheduled within the date range
+                $q->whereDate('delivery_date', '>=', $dateRange['start']->toDateString())
+                  ->whereDate('delivery_date', '<=', $dateRange['end']->toDateString());
+            })
+            ->orWhere(function ($q) use ($dateRange) {
+                // Include completed deliveries that were marked as completed within the date range
+                $q->where('status', 'completed')
+                  ->whereDate('updated_at', '>=', $dateRange['start']->toDateString())
+                  ->whereDate('updated_at', '<=', $dateRange['end']->toDateString());
+            })
             ->with(['customer', 'invoice']);
         
         $deliveries = $query->orderBy('delivery_date', 'desc')->get();
