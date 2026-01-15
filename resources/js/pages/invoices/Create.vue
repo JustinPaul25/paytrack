@@ -61,6 +61,7 @@ const form = useForm({
     },
     status: 'draft',
     payment_method: 'cash',
+    payment_status: null as string | null,
     invoice_type: 'walk_in',
     credit_term_days: null as number | null,
     notes: '',
@@ -272,6 +273,18 @@ const paymentMethodOptions = [
     { value: 'credit', label: 'Credit' }
 ];
 
+// Payment status options
+const paymentStatusOptions = [
+    { value: 'pending', label: 'Pending Payment' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'failed', label: 'Failed' }
+];
+
+// Computed property to determine if payment status field should be shown
+const showPaymentStatus = computed(() => {
+    return isWalkInCustomer.value && form.invoice_type === 'walk_in' && form.payment_method === 'cash';
+});
+
 // Invoice type options
 const invoiceTypeOptions = [
     { value: 'walk_in', label: 'Walk-in' },
@@ -321,9 +334,24 @@ watch(isWalkInCustomer, (newValue) => {
         form.customer_id = null;
         form.invoice_type = 'walk_in';
     } else {
-        // Switching to registered: clear walk-in customer fields
+        // Switching to registered: clear walk-in customer fields and payment status
         form.walk_in_customer.name = '';
         form.walk_in_customer.phone = '';
+        form.payment_status = null;
+    }
+});
+
+// Auto-set payment status to 'paid' when walk-in customer with cash payment sets status to 'completed'
+watch([() => form.status, () => form.payment_method, () => form.invoice_type, isWalkInCustomer], ([status, paymentMethod, invoiceType, isWalkIn]) => {
+    // Only show payment status for walk-in customers with cash payment
+    if (isWalkIn && invoiceType === 'walk_in' && paymentMethod === 'cash') {
+        // Auto-set to 'paid' if status is 'completed' and payment_status is not already set
+        if (status === 'completed' && !form.payment_status) {
+            form.payment_status = 'paid';
+        }
+    } else {
+        // Clear payment status if conditions are no longer met
+        form.payment_status = null;
     }
 });
 </script>
@@ -442,6 +470,23 @@ watch(isWalkInCustomer, (newValue) => {
                                 Pick how the customer will pay (Cash or Credit).
                             </div>
                             <InputError :message="form.errors.payment_method" />
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Status - Only shown for walk-in customers with cash payment -->
+                    <div v-if="showPaymentStatus" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label for="payment_status">Payment Status</Label>
+                            <Select
+                                v-model="form.payment_status"
+                                :options="paymentStatusOptions"
+                                placeholder="Select payment status"
+                                class="mt-1"
+                            />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                Select payment status. If status is "Completed" and payment method is "Cash", you can mark as "Paid" immediately.
+                            </div>
+                            <InputError :message="form.errors.payment_status" />
                         </div>
                     </div>
                     

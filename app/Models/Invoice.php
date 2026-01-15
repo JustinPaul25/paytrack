@@ -60,7 +60,9 @@ class Invoice extends Model
             }
             
             // If status is being changed to cancelled, set payment_status to 'Cancelled Order'
-            if ($invoice->isDirty('status') && $invoice->status === 'cancelled') {
+            // Also check if status is already cancelled but payment_status is not set correctly
+            if (($invoice->isDirty('status') && $invoice->status === 'cancelled') 
+                || ($invoice->status === 'cancelled' && $invoice->payment_status !== 'Cancelled Order')) {
                 $invoice->payment_status = 'Cancelled Order';
             }
         });

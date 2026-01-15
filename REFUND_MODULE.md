@@ -5,7 +5,7 @@
 - Admin: reviews requests, approves/declines, processes, completes refunds.
 
 ### Data Model
-- `refund_requests`: intake from customers; statuses: pending → approved/rejected/converted.
+- `refund_requests`: intake from customers; statuses: pending → approved/rejected/completed.
 - `refunds`: operational refunds created on approval; statuses: approved → processed → completed/cancelled.
 - `stock_movements`: immutable audit of inventory changes.
   - Fields: product_id, refund_id?, invoice_id?, user_id?, type (sale|refund|writeoff|adjustment), quantity (+inbound, −outbound), quantity_before, quantity_after, notes, timestamps.
@@ -13,7 +13,7 @@
 ### Flow
 1) Customer submits refund request (invoice completed).
 2) Admin Approves:
-   - System creates `refunds` entry (status `approved`) and links it to the request (`converted_refund_id`).
+   - System creates `refunds` entry (status `approved`) and links it to the request (`completed_refund_id`).
    - Customer gets an approval email.
 3) Admin Processes:
    - Capture refund_method (cash/bank_transfer/e-wallet/credit_note), optional reference number and notes.

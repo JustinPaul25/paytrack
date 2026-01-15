@@ -157,14 +157,6 @@ const isFinancialOpen = ref(true);
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
-                                <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('refunds.damaged-items')">
-                                            <AlertTriangle class="h-4 w-4" />
-                                            <span>Damaged Items</span>
-                                        </Link>
-                                    </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
                             </SidebarMenuSub>
                         </CollapsibleContent>
                     </Collapsible>
@@ -197,6 +189,14 @@ const isFinancialOpen = ref(true);
                                         <Link href="/products">
                                             <ShoppingCart class="h-4 w-4" />
                                             <span>Products</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child>
+                                        <Link :href="route('refunds.damaged-items')">
+                                            <AlertTriangle class="h-4 w-4" />
+                                            <span>Damaged Items</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

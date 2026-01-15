@@ -119,6 +119,7 @@ class InvoiceController extends Controller
             'walk_in_customer.phone' => 'nullable|string|max:50',
             'status' => 'required|string|in:draft,pending,completed,cancelled',
             'payment_method' => 'required|string|in:cash,credit',
+            'payment_status' => 'nullable|string|in:pending,paid,failed',
             'invoice_type' => 'required|string|in:walk_in,delivery',
             'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
@@ -172,10 +173,22 @@ class InvoiceController extends Controller
             // Delivery fee will be added when delivery is created for delivery invoices
             $totalAmount = $subtotalAmount + $vatAmount - $withholdingTaxAmount;
 
-            // Determine payment status based on invoice status
-            $paymentStatus = 'pending';
-            if ($validated['status'] === 'cancelled') {
-                $paymentStatus = 'Cancelled Order';
+            // Determine payment status
+            // If payment_status is provided from form and not null, use it
+            // Otherwise, determine automatically based on invoice type, payment method, and status
+            if (isset($validated['payment_status']) && $validated['payment_status'] !== null) {
+                $paymentStatus = $validated['payment_status'];
+            } else {
+                // Automatic logic: For walk-in customers with cash payment and completed status, set to 'paid'
+                if ($validated['invoice_type'] === 'walk_in' 
+                    && $validated['payment_method'] === 'cash' 
+                    && $validated['status'] === 'completed') {
+                    $paymentStatus = 'paid';
+                } elseif ($validated['status'] === 'cancelled') {
+                    $paymentStatus = 'Cancelled Order';
+                } else {
+                    $paymentStatus = 'pending';
+                }
             }
 
             // Create invoice
