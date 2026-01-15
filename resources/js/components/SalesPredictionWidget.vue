@@ -324,25 +324,7 @@ const groupedPredictions = computed(() => {
             }
         });
         
-        // Ensure all expected months are represented (September, October, November)
-        const currentYear = new Date().getFullYear();
-        const expectedMonths = [
-            { key: `${currentYear}-09`, label: 'Sep ' + currentYear },
-            { key: `${currentYear}-10`, label: 'Oct ' + currentYear },
-            { key: `${currentYear}-11`, label: 'Nov ' + currentYear },
-        ];
-        
-        expectedMonths.forEach(month => {
-            if (!combined.has(month.key)) {
-                combined.set(month.key, {
-                    sales: 0,
-                    date: month.label,
-                    sortKey: month.key,
-                    isHistorical: true
-                });
-            }
-        });
-        
+        // Return all available data without forcing specific months
         return Array.from(combined.values())
             .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
             .map(item => ({

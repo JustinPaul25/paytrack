@@ -64,7 +64,7 @@ class SalesPredictionController extends Controller
             ->map(function ($dayInvoices) {
                 return [
                     'date' => $dayInvoices->first()->created_at->format('Y-m-d'),
-                    'sales' => $dayInvoices->sum('total_amount'),
+                    'sales' => $dayInvoices->sum('total_amount') / 100, // Convert from cents to currency
                     'invoices' => $dayInvoices->count(),
                 ];
             })

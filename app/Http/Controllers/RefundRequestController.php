@@ -272,8 +272,9 @@ class RefundRequestController extends Controller
         // Create actual refund record in refunds table
         $invoiceItem = InvoiceItem::findOrFail($refundRequest->invoice_item_id);
         $qty = min($refundRequest->quantity, $invoiceItem->quantity);
-        // Convert amount to cents (invoiceItem->price accessor returns currency)
-        $amount = (int) round(($qty * $invoiceItem->price) * 100);
+        // Calculate amount in currency (invoiceItem->price accessor returns currency)
+        // The setter will convert to cents automatically
+        $amount = $qty * $invoiceItem->price;
         $type = $qty >= $invoiceItem->quantity ? 'full' : 'partial';
 
         // Determine refund type and method
@@ -287,7 +288,7 @@ class RefundRequestController extends Controller
             'user_id' => $request->user()->id, // processor
             'refund_number' => 'RF-' . strtoupper(Str::random(8)),
             'quantity_refunded' => $qty,
-            'refund_amount' => $amount, // cents
+            'refund_amount' => $amount, // currency (setter converts to cents)
             'refund_type' => $refundTypeValue,
             'refund_method' => $refundMethod,
             'status' => 'approved',

@@ -163,10 +163,10 @@ class SalesAnalyticsController extends Controller
                     $endDate = Carbon::now()->endOfDay();
                     $startDate = Carbon::now()->subYear()->startOfDay();
                     break;
-                default: // month - default to September, October, November for current year
-                    // Set to September 1 - November 30 of current year to show all seeded data
-                    $startDate = Carbon::create($currentYear, 9, 1)->startOfDay();
-                    $endDate = Carbon::create($currentYear, 11, 30)->endOfDay();
+                default: // month - default to last 3 months to show comprehensive data
+                    // Set to last 3 months to show all seeded historical data
+                    $startDate = Carbon::now()->subMonths(3)->startOfMonth();
+                    $endDate = Carbon::now()->endOfDay();
                     break;
             }
         } else {
