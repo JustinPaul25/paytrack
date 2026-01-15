@@ -6,6 +6,7 @@ use App\Http\Requests\RefundRequestStoreRequest;
 use App\Events\RefundRequestCreated;
 use App\Events\NotificationCreated;
 use App\Models\Customer;
+use App\Models\Delivery;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Product;
@@ -320,6 +321,66 @@ class RefundRequestController extends Controller
             }
         }
 
+        // Load customer relationship if not already loaded
+        if (!$invoice->relationLoaded('customer')) {
+            $invoice->load('customer');
+        }
+        $customer = $invoice->customer;
+
+        // Create delivery for product return (pickup from customer)
+        if ($customer && $invoice) {
+            // Build delivery address from customer's address fields
+            $addressParts = [];
+            if ($customer->purok) {
+                $addressParts[] = $customer->purok;
+            }
+            if ($customer->barangay) {
+                $addressParts[] = $customer->barangay;
+            }
+            if ($customer->city_municipality) {
+                $addressParts[] = $customer->city_municipality;
+            }
+            if ($customer->province) {
+                $addressParts[] = $customer->province;
+            }
+            $deliveryAddress = !empty($addressParts) ? implode(', ', $addressParts) : ($customer->address ?? 'To be confirmed');
+
+            // Normalize phone number to Philippine format
+            $contactPhone = $customer->phone ?? '';
+            if ($contactPhone) {
+                // Remove all non-digit characters
+                $digits = preg_replace('/[^0-9]/', '', $contactPhone);
+                // Normalize to +63XXXXXXXXXX format if we have valid digits
+                if (strlen($digits) >= 10) {
+                    if (substr($digits, 0, 2) === '63') {
+                        $contactPhone = '+' . substr($digits, 0, 12);
+                    } elseif (substr($digits, 0, 1) === '0') {
+                        $contactPhone = '+63' . substr($digits, 1, 10);
+                    } else {
+                        $contactPhone = '+63' . substr($digits, 0, 10);
+                    }
+                }
+            }
+
+            // Get product name for notes
+            $product = $refundRequest->product ?? Product::find($refundRequest->product_id);
+            $productName = $product?->name ?? 'Product';
+            
+            // Create delivery record for return pickup
+            Delivery::create([
+                'customer_id' => $customer->id,
+                'invoice_id' => $invoice->id,
+                'delivery_address' => $deliveryAddress,
+                'contact_person' => $customer->name ?? 'Customer',
+                'contact_phone' => $contactPhone ?: '+63-900-000-0000', // Default if no phone
+                'delivery_date' => now()->addDays(1)->toDateString(), // Schedule for tomorrow
+                'delivery_time' => '09:00 AM - 12:00 PM', // Default time window
+                'status' => 'pending',
+                'notes' => "Return pickup for refund request {$refundRequest->tracking_number}. Product: {$productName} (Qty: {$qty})",
+                'delivery_fee' => 0, // No fee for return pickups
+            ]);
+        }
+
         // Create notification for customer
         $customerUser = \App\Models\User::where('email', $refundRequest->email)->first();
         if ($customerUser) {
@@ -327,6 +388,7 @@ class RefundRequestController extends Controller
             if ($invoiceAutoSettled) {
                 $message .= " Your invoice has been automatically marked as paid as the refund fully settles the amount due.";
             }
+            $message .= " A delivery has been scheduled to pick up the returned items.";
             
             $notification = \App\Models\Notification::create([
                 'user_id' => $customerUser->id,

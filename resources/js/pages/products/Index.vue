@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, watch, watchEffect } from 'vue';
+import { ref, watch, watchEffect, computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -21,6 +21,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/InputError.vue';
+import SearchSelect from '@/components/ui/select/SearchSelect.vue';
+
+interface Category {
+    id: number;
+    name: string;
+}
 
 interface Product {
     id: number;
@@ -55,14 +61,25 @@ interface ProductStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string; low_stock?: string; sort_by?: string; sort_order?: string }>(
-    page.props.filters ? (page.props.filters as { search?: string; low_stock?: string; sort_by?: string; sort_order?: string }) : {}
+const filters = ref<{ search?: string; low_stock?: string; category_id?: string; stock_filter?: string; sort_by?: string; sort_order?: string }>(
+    page.props.filters ? (page.props.filters as { search?: string; low_stock?: string; category_id?: string; stock_filter?: string; sort_by?: string; sort_order?: string }) : {}
 );
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
 const lowStock = ref(typeof filters.value.low_stock === 'string' ? filters.value.low_stock : '');
+const categoryId = ref<number | null>(typeof filters.value.category_id === 'string' ? parseInt(filters.value.category_id) : (typeof filters.value.category_id === 'number' ? filters.value.category_id : null));
+const stockFilter = ref(typeof filters.value.stock_filter === 'string' ? filters.value.stock_filter : '');
 const sortBy = ref(typeof filters.value.sort_by === 'string' ? filters.value.sort_by : 'updated_at');
 const sortOrder = ref(typeof filters.value.sort_order === 'string' ? filters.value.sort_order : 'desc');
 const showStats = ref(false);
+
+// Get categories from props
+const categories = ref<Category[]>((page.props.categories as Category[]) || []);
+const categoryOptions = computed(() => {
+    return [
+        { value: null, label: 'All Categories' },
+        ...categories.value.map(cat => ({ value: cat.id, label: cat.name }))
+    ];
+});
 
 // Add stock dialog state
 const showAddStockDialog = ref(false);
@@ -82,6 +99,12 @@ watchEffect(() => {
     lowStock.value = (page.props.filters && typeof (page.props.filters as { low_stock?: string }).low_stock === 'string')
         ? (page.props.filters as { low_stock?: string }).low_stock!
         : '';
+    const catId = (page.props.filters as { category_id?: string | number })?.category_id;
+    categoryId.value = catId ? (typeof catId === 'number' ? catId : parseInt(catId)) : null;
+    stockFilter.value = (page.props.filters && typeof (page.props.filters as { stock_filter?: string }).stock_filter === 'string')
+        ? (page.props.filters as { stock_filter?: string }).stock_filter!
+        : '';
+    categories.value = (page.props.categories as Category[]) || [];
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -91,10 +114,34 @@ watch(search, (val) => {
         router.get('/products', { 
             search: val, 
             low_stock: lowStock.value,
+            category_id: categoryId.value,
+            stock_filter: stockFilter.value,
             sort_by: sortBy.value,
             sort_order: sortOrder.value
         }, { preserveState: true, replace: true });
     }, 400);
+});
+
+watch(categoryId, (val) => {
+    router.get('/products', { 
+        search: search.value, 
+        low_stock: lowStock.value,
+        category_id: val,
+        stock_filter: stockFilter.value,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+    }, { preserveState: true, replace: true });
+});
+
+watch(stockFilter, (val) => {
+    router.get('/products', { 
+        search: search.value, 
+        low_stock: lowStock.value,
+        category_id: categoryId.value,
+        stock_filter: val,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+    }, { preserveState: true, replace: true });
 });
 
 watchEffect(() => {
@@ -111,6 +158,20 @@ function toggleLowStock() {
     router.get('/products', { 
         search: search.value, 
         low_stock: lowStock.value,
+        category_id: categoryId.value,
+        stock_filter: stockFilter.value,
+        sort_by: sortBy.value,
+        sort_order: sortOrder.value
+    }, { preserveState: true, replace: true });
+}
+
+function toggleStockFilter(filter: 'highest' | 'lowest' | '') {
+    stockFilter.value = stockFilter.value === filter ? '' : filter;
+    router.get('/products', { 
+        search: search.value, 
+        low_stock: lowStock.value,
+        category_id: categoryId.value,
+        stock_filter: stockFilter.value,
         sort_by: sortBy.value,
         sort_order: sortOrder.value
     }, { preserveState: true, replace: true });
@@ -119,7 +180,9 @@ function toggleLowStock() {
 function goToPage(pageNum: number) {
     router.get('/products', { 
         search: search.value, 
-        low_stock: lowStock.value, 
+        low_stock: lowStock.value,
+        category_id: categoryId.value,
+        stock_filter: stockFilter.value,
         page: pageNum,
         sort_by: sortBy.value,
         sort_order: sortOrder.value
@@ -139,6 +202,8 @@ function handleSort(field: string) {
     router.get('/products', { 
         search: search.value, 
         low_stock: lowStock.value,
+        category_id: categoryId.value,
+        stock_filter: stockFilter.value,
         sort_by: sortBy.value,
         sort_order: sortOrder.value
     }, { preserveState: true, replace: true });
@@ -314,13 +379,22 @@ async function submitAddStock() {
 
         <!-- Search and Actions -->
         <div class="flex items-center justify-between mt-4 mb-2">
-            <div class="flex gap-2 items-center">
+            <div class="flex gap-2 items-center flex-wrap">
                 <input 
                     v-model="search" 
                     type="text" 
                     placeholder="Search products by name, SKU, or category..." 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
+                <div class="w-[200px]">
+                    <SearchSelect
+                        v-model="categoryId"
+                        :options="categoryOptions"
+                        placeholder="All Categories"
+                        search-placeholder="Search categories..."
+                        class="w-full"
+                    />
+                </div>
                 <Button 
                     @click="toggleLowStock" 
                     :variant="lowStock ? 'default' : 'outline'"
@@ -328,6 +402,22 @@ async function submitAddStock() {
                 >
                     <Icon name="alertTriangle" class="w-4 h-4 mr-2" />
                     Low Stock
+                </Button>
+                <Button 
+                    @click="toggleStockFilter('highest')" 
+                    :variant="stockFilter === 'highest' ? 'default' : 'outline'"
+                    :class="stockFilter === 'highest' ? 'bg-green-600 hover:bg-green-700 text-white' : ''"
+                >
+                    <Icon name="arrow-up" class="w-4 h-4 mr-2" />
+                    Highest Stock
+                </Button>
+                <Button 
+                    @click="toggleStockFilter('lowest')" 
+                    :variant="stockFilter === 'lowest' ? 'default' : 'outline'"
+                    :class="stockFilter === 'lowest' ? 'bg-red-600 hover:bg-red-700 text-white' : ''"
+                >
+                    <Icon name="arrow-down" class="w-4 h-4 mr-2" />
+                    Lowest Stock
                 </Button>
             </div>
             <div class="flex gap-2 items-center">

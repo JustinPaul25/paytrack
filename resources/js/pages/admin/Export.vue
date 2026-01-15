@@ -16,9 +16,18 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-function exportData(type: string) {
-    const url = route(`export.${type}`);
-    window.location.href = url;
+// Simplest possible approach - direct download
+function downloadExport(type: string) {
+    const url = `/admin/export/${type}`;
+    console.log('Downloading:', url);
+    
+    // Create a temporary anchor and click it
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = ''; // Suggest download
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 </script>
 
@@ -43,7 +52,7 @@ function exportData(type: string) {
                     <p class="text-sm text-gray-600 mb-4">
                         Export all category data including name, description, and timestamps.
                     </p>
-                    <Button @click="exportData('categories')" variant="default" class="w-full">
+                    <Button variant="default" class="w-full" @click="downloadExport('categories')">
                         <Download class="h-4 w-4 mr-2" />
                         Export Categories
                     </Button>
@@ -62,7 +71,7 @@ function exportData(type: string) {
                     <p class="text-sm text-gray-600 mb-4">
                         Export all product data including name, description, prices, stock, SKU, and category information.
                     </p>
-                    <Button @click="exportData('products')" variant="default" class="w-full">
+                    <Button variant="default" class="w-full" @click="downloadExport('products')">
                         <Download class="h-4 w-4 mr-2" />
                         Export Products
                     </Button>
@@ -81,7 +90,7 @@ function exportData(type: string) {
                     <p class="text-sm text-gray-600 mb-4">
                         Export all invoice data including reference numbers, customer information, amounts, payment status, and dates.
                     </p>
-                    <Button @click="exportData('invoices')" variant="default" class="w-full">
+                    <Button variant="default" class="w-full" @click="downloadExport('invoices')">
                         <Download class="h-4 w-4 mr-2" />
                         Export Invoices
                     </Button>
@@ -100,7 +109,7 @@ function exportData(type: string) {
                     <p class="text-sm text-gray-600 mb-4">
                         Export all order data including reference numbers, customer information, amounts, status, approval details, and dates.
                     </p>
-                    <Button @click="exportData('orders')" variant="default" class="w-full">
+                    <Button variant="default" class="w-full" @click="downloadExport('orders')">
                         <Download class="h-4 w-4 mr-2" />
                         Export Orders
                     </Button>
@@ -119,7 +128,7 @@ function exportData(type: string) {
                     <p class="text-sm text-gray-600 mb-4">
                         Export all sales transaction data including customer information, product details, tax calculations, cash amounts, and running balance.
                     </p>
-                    <Button @click="exportData('sales')" variant="default" class="w-full">
+                    <Button variant="default" class="w-full" @click="downloadExport('sales')">
                         <Download class="h-4 w-4 mr-2" />
                         Export Sales
                     </Button>

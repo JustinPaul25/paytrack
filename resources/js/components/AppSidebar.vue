@@ -75,6 +75,12 @@ const footerNavItems: NavItem[] = [
 const isProductsOpen = ref(true);
 const isSalesOpen = ref(true);
 const isFinancialOpen = ref(true);
+
+// Helper function to check if current URL matches a given path
+const isActiveRoute = (path: string): boolean => {
+    const currentPath = page.url.split('?')[0]; // Remove query parameters
+    return currentPath === path || currentPath.startsWith(path + '/');
+};
 </script>
 
 <template>
@@ -102,7 +108,7 @@ const isFinancialOpen = ref(true);
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/invoices')">
                                         <Link href="/invoices">
                                             <Receipt class="h-4 w-4" />
                                             <span>Invoices</span>
@@ -110,7 +116,7 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/orders')">
                                         <Link href="/orders" class="flex items-center justify-between w-full">
                                             <div class="flex items-center gap-2">
                                                 <ShoppingCart class="h-4 w-4" />
@@ -126,7 +132,7 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/deliveries')">
                                         <Link href="/deliveries">
                                             <Truck class="h-4 w-4" />
                                             <span>Deliveries</span>
@@ -134,7 +140,7 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/sales/transactions')">
                                         <Link href="/sales/transactions">
                                             <CreditCard class="h-4 w-4" />
                                             <span>Transactions</span>
@@ -142,8 +148,8 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('refundRequests.index')" class="flex items-center justify-between w-full">
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/refund-requests')">
+                                        <Link href="/refund-requests" class="flex items-center justify-between w-full">
                                             <div class="flex items-center gap-2">
                                                 <RotateCcw class="h-4 w-4" />
                                                 <span>Refunds</span>
@@ -163,21 +169,21 @@ const isFinancialOpen = ref(true);
                 </SidebarMenuItem>
             </SidebarMenu>
 
-            <!-- Products Group (Staff only, not Admin) -->
+            <!-- Inventory Group (Staff only, not Admin) -->
             <SidebarMenu v-if="isStaffOnly" class="px-2">
                 <SidebarMenuItem>
                     <Collapsible v-model:open="isProductsOpen">
                         <CollapsibleTrigger as-child>
-                            <SidebarMenuButton tooltip="Products">
+                            <SidebarMenuButton tooltip="Inventory">
                                 <Package class="h-4 w-4" />
-                                <span>Products</span>
+                                <span>Inventory</span>
                                 <ChevronDown class="ml-auto h-4 w-4 transition-transform duration-200" :class="{ 'rotate-180': isProductsOpen }" />
                             </SidebarMenuButton>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/categories')">
                                         <Link href="/categories">
                                             <Tag class="h-4 w-4" />
                                             <span>Categories</span>
@@ -185,7 +191,7 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/products')">
                                         <Link href="/products">
                                             <ShoppingCart class="h-4 w-4" />
                                             <span>Products</span>
@@ -193,8 +199,8 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('refunds.damaged-items')">
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/refunds/damaged-items')">
+                                        <Link href="/refunds/damaged-items">
                                             <AlertTriangle class="h-4 w-4" />
                                             <span>Damaged Items</span>
                                         </Link>
@@ -209,7 +215,7 @@ const isFinancialOpen = ref(true);
             <!-- Users Group (Admin only) -->
             <SidebarMenu v-if="isAdmin" class="px-2">
                 <SidebarMenuItem>
-                    <SidebarMenuButton as-child>
+                    <SidebarMenuButton as-child :is-active="isActiveRoute('/users')">
                         <Link href="/users">
                             <Users class="h-4 w-4" />
                             <span>Users</span>
@@ -232,7 +238,7 @@ const isFinancialOpen = ref(true);
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/invoices')">
                                         <Link href="/invoices">
                                             <Receipt class="h-4 w-4" />
                                             <span>Invoices</span>
@@ -240,7 +246,7 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/expenses')">
                                         <Link href="/expenses">
                                             <TrendingDown class="h-4 w-4" />
                                             <span>Expenses</span>
@@ -248,7 +254,7 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/sales/transactions')">
                                         <Link href="/sales/transactions">
                                             <CreditCard class="h-4 w-4" />
                                             <span>Transactions</span>
@@ -256,16 +262,16 @@ const isFinancialOpen = ref(true);
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('finance.cash-flow')">
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/finance/cash-flow')">
+                                        <Link href="/finance/cash-flow">
                                             <BarChart3 class="h-4 w-4" />
                                             <span>Cash Flow</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child>
-                                        <Link :href="route('reports.index')">
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/reports')">
+                                        <Link href="/reports">
                                             <FileText class="h-4 w-4" />
                                             <span>Reports</span>
                                         </Link>
@@ -280,8 +286,8 @@ const isFinancialOpen = ref(true);
             <!-- Data Export (Admin only) -->
             <SidebarMenu v-if="isAdmin" class="px-2">
                 <SidebarMenuItem>
-                    <SidebarMenuButton as-child>
-                        <Link :href="route('export.index')">
+                    <SidebarMenuButton as-child :is-active="isActiveRoute('/admin/export')">
+                        <Link href="/admin/export">
                             <Download class="h-4 w-4" />
                             <span>Data Export</span>
                         </Link>
@@ -292,7 +298,7 @@ const isFinancialOpen = ref(true);
             <!-- Store Settings (Admin only) -->
             <SidebarMenu v-if="isAdmin" class="px-2">
                 <SidebarMenuItem>
-                    <SidebarMenuButton as-child>
+                    <SidebarMenuButton as-child :is-active="isActiveRoute('/admin/settings')">
                         <Link href="/admin/settings">
                             <Settings class="h-4 w-4" />
                             <span>Store Settings</span>
@@ -306,7 +312,7 @@ const isFinancialOpen = ref(true);
             <!-- Quick Deliveries Shortcut -->
             <SidebarMenu v-if="!isCustomer && !isAdmin" class="px-2">
                 <SidebarMenuItem>
-                    <SidebarMenuButton as-child class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200">
+                    <SidebarMenuButton as-child :is-active="isActiveRoute(route('deliveries.shortcut'))" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200">
                         <Link href="/deliveries/shortcut">
                             <Truck class="h-4 w-4" />
                             <span>Deliveries Hub</span>

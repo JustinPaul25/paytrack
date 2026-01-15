@@ -15,6 +15,8 @@ class ProductController extends Controller
         $query = Product::with('category');
         $search = $request->input('search');
         $lowStock = $request->input('low_stock');
+        $categoryId = $request->input('category_id');
+        $stockFilter = $request->input('stock_filter'); // 'highest' or 'lowest'
         $sortBy = $request->input('sort_by', 'updated_at');
         $sortOrder = $request->input('sort_order', 'desc');
         
@@ -24,12 +26,35 @@ class ProductController extends Controller
         $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'desc';
         
         if ($search) {
-            $query->where('name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('SKU', 'like', "%{$search}%")
+                  ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                      $categoryQuery->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+        
+        // Filter by category if requested
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
         }
         
         // Filter by low stock if requested
         if ($lowStock) {
             $query->where('stock', '<=', 10);
+        }
+        
+        // Filter by stock level (highest/lowest)
+        // When stock_filter is active, ensure we sort by stock
+        if ($stockFilter === 'highest') {
+            // Sort by stock descending to show highest stock first
+            $sortBy = 'stock';
+            $sortOrder = 'desc';
+        } elseif ($stockFilter === 'lowest') {
+            // Sort by stock ascending to show lowest stock first
+            $sortBy = 'stock';
+            $sortOrder = 'asc';
         }
         
         $products = $query->orderBy($sortBy, $sortOrder)->paginate(10)->withQueryString();
@@ -41,12 +66,18 @@ class ProductController extends Controller
         
         // Calculate total value (selling_price is stored in cents, so we divide by 100)
         $totalValue = Product::sum(\DB::raw('stock * (selling_price / 100)'));
+        
+        // Get all categories for the dropdown
+        $categories = Category::orderBy('name')->get(['id', 'name']);
 
         return inertia('products/Index', [
             'products' => $products,
+            'categories' => $categories,
             'filters' => [
                 'search' => $search,
                 'low_stock' => $lowStock,
+                'category_id' => $categoryId,
+                'stock_filter' => $stockFilter,
                 'sort_by' => $sortBy,
                 'sort_order' => $sortOrder,
             ],

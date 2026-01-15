@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, watch, onMounted } from 'vue';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed, watch, onMounted, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select, SearchSelect } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -55,6 +55,42 @@ const form = useForm({
     notes: '',
     delivery_fee: '',
 });
+
+// Check if user is staff (Staff or Admin)
+const page = usePage();
+const isStaff = computed(() => {
+    const userRoles = (page.props as any).auth?.userRoles || [];
+    return Array.isArray(userRoles) && (userRoles.includes('Admin') || userRoles.includes('Staff'));
+});
+
+// Delivery fee calculation
+const routeDistance = ref<number | null>(null);
+
+// Delivery fee rates (can be made configurable later)
+const BASE_DELIVERY_FEE = 50.00; // Base fee in PHP
+const RATE_PER_KM = 10.00; // Rate per kilometer in PHP
+const MINIMUM_FEE = 50.00; // Minimum delivery fee
+
+// Calculate delivery fee based on distance
+function calculateDeliveryFee(distance: number | null): number {
+    if (!distance || distance <= 0) {
+        return MINIMUM_FEE;
+    }
+    
+    const calculatedFee = BASE_DELIVERY_FEE + (distance * RATE_PER_KM);
+    return Math.max(calculatedFee, MINIMUM_FEE); // Ensure minimum fee
+}
+
+// Handle distance calculated from map
+function handleDistanceCalculated(distance: number | null) {
+    routeDistance.value = distance;
+    
+    // Auto-calculate fee for staff users
+    if (isStaff.value) {
+        const calculatedFee = calculateDeliveryFee(distance);
+        form.delivery_fee = calculatedFee.toFixed(2);
+    }
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -473,10 +509,18 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                                 id="delivery_fee"
                                 min="0"
                                 step="0.01"
-                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                :readonly="isStaff"
+                                :disabled="isStaff"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="0.00"
                                 required
                             />
+                            <div v-if="isStaff && routeDistance !== null" class="text-xs text-muted-foreground mt-1">
+                                Distance: {{ routeDistance }} km • Fee: ₱{{ BASE_DELIVERY_FEE.toFixed(2) }} base + ₱{{ RATE_PER_KM.toFixed(2) }}/km
+                            </div>
+                            <div v-if="isStaff && routeDistance === null" class="text-xs text-muted-foreground mt-1">
+                                Fee will be calculated automatically based on delivery distance
+                            </div>
                             <InputError :message="form.errors.delivery_fee" />
                         </div>
                         
@@ -505,6 +549,7 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                         :customer-location="selectedCustomerLocation"
                         :delivery-address="form.delivery_address || formatDeliveryAddress(selectedCustomer)"
                         map-height="400px"
+                        @distance-calculated="handleDistanceCalculated"
                     />
                 </CardContent>
             </Card>

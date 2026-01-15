@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3';
+import { useForm, usePage } from '@inertiajs/vue3';
 import { computed, watch, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select, SearchSelect } from '@/components/ui/select';
@@ -76,6 +76,13 @@ const form = useForm({
     delivery_fee: '',
 });
 
+// Check if user is staff (Staff or Admin)
+const page = usePage();
+const isStaff = computed(() => {
+    const userRoles = (page.props as any).auth?.userRoles || [];
+    return Array.isArray(userRoles) && (userRoles.includes('Admin') || userRoles.includes('Staff'));
+});
+
 // Delivery fee calculation
 const routeDistance = ref<number | null>(null);
 const isAutoCalculatingFee = ref(false);
@@ -99,13 +106,21 @@ function calculateDeliveryFee(distance: number | null): number {
 function handleDistanceCalculated(distance: number | null) {
     routeDistance.value = distance;
     
-    // Auto-calculate fee only if user hasn't manually entered a value
-    // or if the field is empty
-    if (!form.delivery_fee || form.delivery_fee === '0' || form.delivery_fee === '0.00') {
+    // For staff users, always auto-calculate fee
+    if (isStaff.value) {
         isAutoCalculatingFee.value = true;
         const calculatedFee = calculateDeliveryFee(distance);
         form.delivery_fee = calculatedFee.toFixed(2);
         isAutoCalculatingFee.value = false;
+    } else {
+        // For non-staff users, auto-calculate fee only if user hasn't manually entered a value
+        // or if the field is empty
+        if (!form.delivery_fee || form.delivery_fee === '0' || form.delivery_fee === '0.00') {
+            isAutoCalculatingFee.value = true;
+            const calculatedFee = calculateDeliveryFee(distance);
+            form.delivery_fee = calculatedFee.toFixed(2);
+            isAutoCalculatingFee.value = false;
+        }
     }
 }
 
@@ -418,12 +433,14 @@ function closeModal() {
                                     id="delivery_fee"
                                     min="0"
                                     step="0.01"
-                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                    :readonly="isStaff"
+                                    :disabled="isStaff"
+                                    class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="0.00"
                                     required
                                 />
                                 <button
-                                    v-if="routeDistance !== null"
+                                    v-if="!isStaff && routeDistance !== null"
                                     type="button"
                                     @click="form.delivery_fee = calculateDeliveryFee(routeDistance).toFixed(2)"
                                     class="absolute right-2 top-[calc(0.25rem+1px)] px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
@@ -434,6 +451,9 @@ function closeModal() {
                             </div>
                             <div v-if="routeDistance !== null" class="text-xs text-muted-foreground mt-1">
                                 Distance: {{ routeDistance }} km • Fee: ₱{{ BASE_DELIVERY_FEE.toFixed(2) }} base + ₱{{ RATE_PER_KM.toFixed(2) }}/km
+                            </div>
+                            <div v-if="isStaff && routeDistance === null" class="text-xs text-muted-foreground mt-1">
+                                Fee will be calculated automatically based on delivery distance
                             </div>
                             <InputError :message="form.errors.delivery_fee" />
                         </div>

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, computed, onBeforeUnmount } from 'vue';
+import { ref, computed, onBeforeUnmount, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 
 interface InvoiceItemLite {
     id: number;
@@ -39,6 +40,47 @@ const proofImageUrls = ref<string[]>([]);
 const selections = ref<Record<number, {
     qty: number;
 }>>({});
+const selectedReason = ref<string | null>(null);
+
+// Suggested reasons for refund
+const suggestedReasons = [
+    { value: 'damaged', label: 'Damaged/Defective Product' },
+    { value: 'weak_material', label: 'Weak Material' },
+    { value: 'wrong_product', label: 'Wrong Product' },
+    { value: 'not_as_described', label: 'Not as Described' },
+    { value: 'missing_parts', label: 'Missing Parts' },
+    { value: 'poor_quality', label: 'Poor Quality' },
+    { value: 'size_issue', label: 'Size/Size Issue' },
+    { value: 'color_issue', label: 'Color Mismatch' },
+    { value: 'other', label: 'Other (Type your own reason)' },
+];
+
+// Map reason values to default descriptions
+const reasonDescriptions: Record<string, string> = {
+    damaged: 'The item is damaged',
+    weak_material: 'The item has weak material',
+    wrong_product: 'Wrong product received',
+    not_as_described: 'Product not as described',
+    missing_parts: 'Missing parts or components',
+    poor_quality: 'Poor quality product',
+    size_issue: 'Size issue',
+    color_issue: 'Color mismatch',
+    other: '',
+};
+
+// Watch for reason selection and update description
+watch(selectedReason, (newReason) => {
+    if (newReason && newReason !== 'other' && reasonDescriptions[newReason]) {
+        // Populate the textarea with the selected reason's description
+        // User can still edit it to add more details
+        form.description = reasonDescriptions[newReason];
+    } else if (newReason === 'other') {
+        // When "Other" is selected, don't change the description
+        // Allow user to type their own reason
+    } else if (newReason === null) {
+        // When dropdown is cleared, don't change the description
+    }
+});
 
 const form = useForm({
     request_type: 'refund' as 'refund',
@@ -268,6 +310,14 @@ function submit() {
                                 <label class="block text-sm text-gray-600 mb-1">
                                     Description / Reason *
                                 </label>
+                                <div class="mb-2">
+                                    <Select
+                                        v-model="selectedReason"
+                                        :options="suggestedReasons"
+                                        placeholder="Select a reason (optional)"
+                                        class="w-full"
+                                    />
+                                </div>
                                 <textarea
                                     v-model="form.description"
                                     rows="4"
@@ -275,7 +325,7 @@ function submit() {
                                     placeholder="Describe the reason for the refund"
                                     required
                                 ></textarea>
-                                <p class="text-xs text-gray-500 mt-1">Please provide a clear explanation for your request.</p>
+                                <p class="text-xs text-gray-500 mt-1">Please provide a clear explanation for your request. You can select a suggested reason above or type your own.</p>
                             </div>
 
                             <div>
@@ -305,31 +355,6 @@ function submit() {
                                         <div class="text-xs text-gray-500 mt-1 truncate">{{ image.name }}</div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label class="flex items-center gap-2 mb-3">
-                                    <input
-                                        type="checkbox"
-                                        v-model="form.is_damaged"
-                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                    />
-                                    <span class="text-sm font-medium text-gray-700">Damaged Items</span>
-                                </label>
-                                <p class="text-xs text-gray-500 mb-3">Check this box if the items you are returning are damaged. Damaged items will not be restored to inventory stock.</p>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm text-gray-600 mb-1">
-                                    Terms for Damaged Items
-                                </label>
-                                <textarea
-                                    v-model="form.damaged_items_terms"
-                                    rows="3"
-                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    placeholder="Any special terms or conditions regarding damaged items (e.g., partial refund for minor damage, etc.)"
-                                ></textarea>
-                                <p class="text-xs text-gray-500 mt-1">Specify any special terms or expectations regarding damaged items.</p>
                             </div>
 
                             <div class="pt-2">
@@ -370,17 +395,6 @@ function submit() {
                                     <li>You'll receive an email notification about the decision</li>
                                     <li>If approved, follow instructions to return items</li>
                                 </ol>
-                            </div>
-
-                            <div>
-                                <h4 class="font-semibold mb-2">Damaged Items:</h4>
-                                <div class="text-gray-600">
-                                    <p>If items are damaged, please specify your expectations:</p>
-                                    <ul class="list-disc pl-5 space-y-1 text-gray-600 mt-1">
-                                        <li>Full refund expected</li>
-                                        <li>Partial refund acceptable</li>
-                                    </ul>
-                                </div>
                             </div>
                         </div>
                     </CardContent>

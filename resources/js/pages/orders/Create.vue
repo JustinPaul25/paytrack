@@ -69,8 +69,8 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ];
 
-// Computed total (VAT already included in product price)
-const totalAmount = computed(() => {
+// Subtotal (sum of all items)
+const subtotal = computed(() => {
     return form.order_items.reduce((sum, item) => {
         if (item.product_id && item.quantity) {
             const product = props.products.find(p => p.id === item.product_id);
@@ -82,13 +82,51 @@ const totalAmount = computed(() => {
     }, 0);
 });
 
+// VAT calculation (12% of subtotal)
+const vatRate = 12.00;
+const vatAmount = computed(() => {
+    return subtotal.value * (vatRate / 100);
+});
+
+// Amount Net of VAT (Subtotal + VAT)
+const amountNetOfVat = computed(() => {
+    return subtotal.value + vatAmount.value;
+});
+
+// Withholding Tax calculation (1% of Amount Net of VAT)
+const withholdingTaxRate = 1.00;
+const withholdingTaxAmount = computed(() => {
+    return amountNetOfVat.value * (withholdingTaxRate / 100);
+});
+
+// Delivery fee (50.00 PHP minimum for delivery orders)
+const BASE_DELIVERY_FEE = 50.00;
+const deliveryFee = computed(() => {
+    return form.delivery_type === 'delivery' ? BASE_DELIVERY_FEE : 0;
+});
+
+// Total Amount Due = Subtotal + VAT - Withholding Tax + Delivery Fee
+const totalAmountDue = computed(() => {
+    return subtotal.value + vatAmount.value - withholdingTaxAmount.value + deliveryFee.value;
+});
+
+// Legacy computed for backward compatibility (used in minimum check)
+const totalAmount = computed(() => {
+    return subtotal.value;
+});
+
 // Minimum order amount for delivery
 const MINIMUM_DELIVERY_AMOUNT = 500.00;
+
+// Calculate order total without delivery fee (for minimum check - matches backend logic)
+const orderTotalWithoutDelivery = computed(() => {
+    return subtotal.value + vatAmount.value - withholdingTaxAmount.value;
+});
 
 // Check if delivery order meets minimum amount requirement
 const meetsDeliveryMinimum = computed(() => {
     if (form.delivery_type !== 'delivery') return true;
-    return totalAmount.value >= MINIMUM_DELIVERY_AMOUNT;
+    return orderTotalWithoutDelivery.value >= MINIMUM_DELIVERY_AMOUNT;
 });
 
 // Basic validation to ensure form is ready for submission
@@ -226,7 +264,7 @@ function formatCurrency(amount: number): string {
 
 // Payment method options
 const paymentMethodOptions = [
-    { value: 'cash', label: 'Cash' },
+    { value: 'cash', label: 'Cash on delivery' },
     { value: 'credit', label: 'Credit' }
 ];
 
@@ -302,8 +340,8 @@ function getItemTotal(index: number): number {
                                 <strong>Minimum order amount for delivery:</strong> ₱{{ MINIMUM_DELIVERY_AMOUNT.toFixed(2) }}
                             </p>
                             <p class="text-sm text-orange-700 dark:text-orange-300 mt-1">
-                                Current total: ₱{{ totalAmount.toFixed(2) }}. 
-                                <span class="font-semibold">Add ₱{{ (MINIMUM_DELIVERY_AMOUNT - totalAmount).toFixed(2) }} more to proceed with delivery.</span>
+                                Current total: ₱{{ orderTotalWithoutDelivery.toFixed(2) }}. 
+                                <span class="font-semibold">Add ₱{{ (MINIMUM_DELIVERY_AMOUNT - orderTotalWithoutDelivery.value).toFixed(2) }} more to proceed with delivery.</span>
                             </p>
                         </div>
                     </div>
@@ -435,12 +473,44 @@ function getItemTotal(index: number): number {
                         </div>
                     </div>
                     
-                    <!-- Total Amount -->
-                    <div class="mt-4 pt-3 border-t">
-                        <div class="flex justify-end">
-                            <div class="text-right">
-                                <div class="text-base font-medium">Total Amount: ₱{{ totalAmount.toFixed(2) }}</div>
-                                <div class="text-xs text-muted-foreground mt-1">12% VAT is included in price</div>
+                    <!-- Cost Breakdown -->
+                    <div class="mt-6 pt-4 border-t">
+                        <h3 class="text-sm font-semibold mb-3">Order Summary</h3>
+                        <div class="space-y-2">
+                            <!-- Subtotal -->
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Subtotal:</span>
+                                <span class="font-medium">₱{{ subtotal.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- VAT -->
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">VAT ({{ vatRate.toFixed(2) }}%):</span>
+                                <span class="font-medium">₱{{ vatAmount.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- Amount Net of VAT -->
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Amount Net of VAT:</span>
+                                <span class="font-medium">₱{{ amountNetOfVat.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- Withholding Tax -->
+                            <div class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Less: W/Holding Tax ({{ withholdingTaxRate.toFixed(2) }}%):</span>
+                                <span class="font-medium text-red-600 dark:text-red-400">-₱{{ withholdingTaxAmount.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- Delivery Fee (only if delivery) -->
+                            <div v-if="form.delivery_type === 'delivery'" class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Delivery Fee:</span>
+                                <span class="font-medium">₱{{ deliveryFee.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- Total Amount Due -->
+                            <div class="flex justify-between pt-2 mt-2 border-t font-semibold text-base">
+                                <span>Total Amount Due:</span>
+                                <span class="text-lg">₱{{ totalAmountDue.toFixed(2) }}</span>
                             </div>
                         </div>
                     </div>

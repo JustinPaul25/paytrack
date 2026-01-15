@@ -64,6 +64,8 @@ interface Order {
     subtotal_amount: number;
     vat_amount: number;
     vat_rate: number;
+    withholding_tax_amount?: number;
+    withholding_tax_rate?: number;
     status: string;
     delivery_type: string;
     notes?: string;
@@ -347,11 +349,37 @@ const canCancel = computed(() => {
     return false;
 });
 
-const calculatedVatAmount = computed(() => {
-    if (order.value.vat_rate > 0 && order.value.subtotal_amount > 0) {
-        return order.value.subtotal_amount * (order.value.vat_rate / 100);
+// Calculate cost breakdown
+const subtotal = computed(() => order.value.subtotal_amount);
+const vatAmount = computed(() => order.value.vat_amount || 0);
+const vatRate = computed(() => {
+    const rate = order.value.vat_rate;
+    return rate != null && rate !== '' ? Number(rate) : 0;
+});
+const amountNetOfVat = computed(() => subtotal.value + vatAmount.value);
+const withholdingTaxAmount = computed(() => order.value.withholding_tax_amount || 0);
+const withholdingTaxRate = computed(() => {
+    const rate = order.value.withholding_tax_rate;
+    return rate != null && rate !== '' ? Number(rate) : 1.00;
+});
+
+// Delivery fee - for orders, it's 0 since delivery fees are added when invoice is created
+// But we can show an estimated fee for pending delivery orders
+const BASE_DELIVERY_FEE = 50.00;
+const estimatedDeliveryFee = computed(() => {
+    // Only show estimated fee for pending orders with delivery type
+    // Once approved, delivery fee will be in the invoice
+    if (order.value.status === 'pending' && order.value.delivery_type === 'delivery') {
+        return BASE_DELIVERY_FEE;
     }
     return 0;
+});
+
+// Total amount due
+const totalAmountDue = computed(() => {
+    // For orders, total_amount already includes subtotal + VAT - withholding tax
+    // Delivery fee is not included in order total (only in invoice total after delivery is created)
+    return order.value.total_amount + estimatedDeliveryFee.value;
 });
 
 function addComment() {
@@ -566,9 +594,6 @@ onUnmounted(() => {
                 <Link :href="route('orders.index')">
                     <Button variant="ghost">Back to Orders</Button>
                 </Link>
-                <Button v-if="canCancel" variant="outline" @click="cancelOrder">
-                    Cancel Order
-                </Button>
                 <Button v-if="canReject" variant="outline" @click="showRejectDialog = true">
                     Reject Order
                 </Button>
@@ -656,11 +681,49 @@ onUnmounted(() => {
                             </div>
                         </div>
 
+                        <!-- Cost Breakdown -->
                         <div class="mt-6 pt-4 border-t">
-                            <div class="flex justify-end">
-                                <div class="text-right space-y-1">
-                                    <div v-if="order.vat_rate > 0" class="text-sm text-gray-600">VAT ({{ order.vat_rate }}%): {{ formatCurrency(calculatedVatAmount) }}</div>
-                                    <div class="text-lg font-semibold">Total: {{ formatCurrency(order.total_amount) }}</div>
+                            <h3 class="text-sm font-semibold mb-3">Order Summary</h3>
+                            <div class="space-y-2">
+                                <!-- Subtotal -->
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-muted-foreground">Subtotal:</span>
+                                    <span class="font-medium">₱{{ subtotal.toFixed(2) }}</span>
+                                </div>
+                                
+                                <!-- VAT -->
+                                <div v-if="vatRate > 0" class="flex justify-between text-sm">
+                                    <span class="text-muted-foreground">VAT ({{ vatRate.toFixed(2) }}%):</span>
+                                    <span class="font-medium">₱{{ vatAmount.toFixed(2) }}</span>
+                                </div>
+                                
+                                <!-- Amount Net of VAT -->
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-muted-foreground">Amount Net of VAT:</span>
+                                    <span class="font-medium">₱{{ amountNetOfVat.toFixed(2) }}</span>
+                                </div>
+                                
+                                <!-- Withholding Tax -->
+                                <div v-if="withholdingTaxAmount > 0" class="flex justify-between text-sm">
+                                    <span class="text-muted-foreground">Less: W/Holding Tax ({{ withholdingTaxRate.toFixed(2) }}%):</span>
+                                    <span class="font-medium text-red-600 dark:text-red-400">-₱{{ withholdingTaxAmount.toFixed(2) }}</span>
+                                </div>
+                                
+                                <!-- Estimated Delivery Fee (only for pending delivery orders) -->
+                                <div v-if="estimatedDeliveryFee > 0" class="flex justify-between text-sm">
+                                    <span class="text-muted-foreground">Delivery Fee <span class="text-xs">(estimated)</span>:</span>
+                                    <span class="font-medium">₱{{ estimatedDeliveryFee.toFixed(2) }}</span>
+                                </div>
+                                
+                                <!-- Total Amount Due -->
+                                <div class="flex justify-between pt-2 mt-2 border-t font-semibold text-base">
+                                    <span>Total Amount Due:</span>
+                                    <span class="text-lg">₱{{ totalAmountDue.toFixed(2) }}</span>
+                                </div>
+                                
+                                <!-- Note for approved orders -->
+                                <div v-if="order.status === 'approved' && order.invoice && order.delivery_type === 'delivery'" class="text-xs text-muted-foreground mt-2 pt-2 border-t">
+                                    <p>Note: Final delivery fee will be shown in the invoice once delivery is scheduled.</p>
                                 </div>
                             </div>
                         </div>

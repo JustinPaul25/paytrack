@@ -341,12 +341,6 @@ function cancelRefund(id: number) {
                                         <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(r.created_at).toLocaleString() }}</td>
                                         <td class="px-4 py-2">
                                             <div class="flex gap-2">
-                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)" title="Approve">
-                                                    <Icon name="check" class="h-4 w-4" />
-                                                </Button>
-                                                <Button v-if="canProcessRefunds && r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)" title="Decline">
-                                                    <Icon name="x" class="h-4 w-4" />
-                                                </Button>
                                                 <Button size="sm" variant="ghost" @click="showDetails = r" title="View details">
                                                     <Icon name="eye" class="h-4 w-4" />
                                                 </Button>
@@ -621,11 +615,17 @@ function cancelRefund(id: number) {
                     </div>
                 </div>
 
-                <div class="mt-6 pt-4 border-t flex justify-end gap-2">
-                    <Button variant="outline" @click="showDetails = null">Close</Button>
-                    <Link v-if="showDetails.invoice_id" :href="route('invoices.show', showDetails.invoice_id)">
-                        <Button variant="default">View Invoice</Button>
-                    </Link>
+                <div class="mt-6 pt-4 border-t flex justify-end items-center">
+                    <div class="flex gap-2">
+                        <Button v-if="canProcessRefunds && showDetails.status === 'pending'" variant="default" @click="approve(showDetails.id)">
+                            <Icon name="check" class="h-4 w-4 mr-2" />
+                            Approve
+                        </Button>
+                        <Button v-if="canProcessRefunds && showDetails.status === 'pending'" variant="destructive" @click="reject(showDetails.id)">
+                            <Icon name="x" class="h-4 w-4 mr-2" />
+                            Decline
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
