@@ -26,7 +26,7 @@ interface InvoiceItem {
     quantity: number;
     price: number;
     total: number;
-    product: Product;
+    product?: Product | null;
 }
 
 interface Media {
@@ -506,8 +506,8 @@ watch(() => (page.props as any).flash, (flash) => {
                                     <tr v-for="item in props.invoice.invoice_items" :key="item.id" class="hover:bg-muted">
                                         <td class="px-4 py-2">
                                             <div>
-                                                <div class="font-medium">{{ item.product.name }}</div>
-                                                <div class="text-sm text-gray-500">SKU: {{ item.product.id }}</div>
+                                                <div class="font-medium">{{ item.product?.name || 'Product Deleted' }}</div>
+                                                <div class="text-sm text-gray-500">SKU: {{ item.product?.id || item.product_id || 'N/A' }}</div>
                                             </div>
                                         </td>
                                         <td class="px-4 py-2">{{ item.quantity }}</td>

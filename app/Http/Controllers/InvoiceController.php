@@ -324,8 +324,9 @@ class InvoiceController extends Controller
             ];
         });
         
-        // Recalculate and fix invoice total if incorrect (subtotal + delivery fees)
-        $correctTotal = $invoice->subtotal_amount + ($invoice->deliveries()->sum('delivery_fee') / 100);
+        // Recalculate and fix invoice total if incorrect (subtotal + VAT - withholding tax + delivery fees)
+        $allDeliveryFees = $invoice->deliveries()->sum('delivery_fee') / 100;
+        $correctTotal = $invoice->subtotal_amount + $invoice->vat_amount - $invoice->withholding_tax_amount + $allDeliveryFees;
         if (abs($invoice->total_amount - $correctTotal) > 0.01) {
             $invoice->total_amount = $correctTotal;
             $invoice->save();
@@ -351,16 +352,19 @@ class InvoiceController extends Controller
 
     public function edit(Invoice $invoice)
     {
-        // Only Staff can edit (Admin and Customer cannot)
+        // Only Admin and Staff can edit (Customer cannot)
         $user = auth()->user();
-        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
+        if (!$user || $user->hasRole('Customer') || (!$user->hasRole('Admin') && !$user->hasRole('Staff'))) {
             abort(403);
         }
         
-        // Prevent editing completed invoices
-        if ($invoice->status === 'completed') {
+        // Check if invoice is completed with pending payment - allow payment status only edit
+        $isPaymentOnlyEdit = $invoice->status === 'completed' && $invoice->payment_status === 'pending';
+        
+        // Prevent editing completed invoices that are already paid
+        if ($invoice->status === 'completed' && $invoice->payment_status !== 'pending') {
             return redirect()->route('invoices.show', $invoice->id)
-                ->with('error', 'Completed invoices cannot be edited. Use "Mark as Paid" to update payment status if payment is pending.');
+                ->with('error', 'Completed invoices with paid status cannot be edited.');
         }
         
         $customers = Customer::all(['id', 'name', 'company_name', 'is_walk_in']);
@@ -372,21 +376,45 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
             'customers' => $customers,
             'products' => $products,
+            'isPaymentOnlyEdit' => $isPaymentOnlyEdit,
         ]);
     }
 
     public function update(Request $request, Invoice $invoice)
     {
-        // Only Staff can update (Admin and Customer cannot)
+        // Only Admin and Staff can update (Customer cannot)
         $user = auth()->user();
-        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
+        if (!$user || $user->hasRole('Customer') || (!$user->hasRole('Admin') && !$user->hasRole('Staff'))) {
             abort(403);
         }
         
-        // Prevent updates to completed invoices (except payment status if pending - handled by markPaid method)
-        if ($invoice->status === 'completed') {
+        // Check if this is a payment-only edit for completed invoice with pending payment
+        $isPaymentOnlyEdit = $invoice->status === 'completed' && $invoice->payment_status === 'pending';
+        
+        if ($isPaymentOnlyEdit) {
+            // Only allow payment_status update for completed invoices with pending payment
+            $validated = $request->validate([
+                'payment_status' => 'required|string|in:pending,paid,failed',
+            ]);
+            
+            DB::beginTransaction();
+            try {
+                $invoice->update([
+                    'payment_status' => $validated['payment_status'],
+                ]);
+                
+                DB::commit();
+                return redirect()->route('invoices.show', $invoice->id)->with('success', 'Payment status updated successfully.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        }
+        
+        // Prevent updates to completed invoices that are already paid
+        if ($invoice->status === 'completed' && $invoice->payment_status !== 'pending') {
             return redirect()->back()->withErrors([
-                'status' => 'Completed invoices cannot be updated. Use "Mark as Paid" to update payment status if payment is pending.'
+                'status' => 'Completed invoices with paid status cannot be updated.'
             ]);
         }
         
@@ -507,9 +535,9 @@ class InvoiceController extends Controller
 
     public function markPaid(Invoice $invoice)
     {
-        // Only Staff can mark as paid (Admin and Customer cannot)
+        // Only Admin and Staff can mark as paid (Customer cannot)
         $user = auth()->user();
-        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
+        if (!$user || $user->hasRole('Customer') || (!$user->hasRole('Admin') && !$user->hasRole('Staff'))) {
             abort(403);
         }
         

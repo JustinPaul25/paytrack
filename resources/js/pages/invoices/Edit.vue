@@ -43,6 +43,7 @@ interface Invoice {
     customer_id: number;
     status: string;
     payment_method: string;
+    payment_status?: string;
     payment_reference?: string;
     notes?: string;
     invoice_items: InvoiceItem[];
@@ -52,12 +53,14 @@ const props = defineProps<{
     invoice: Invoice;
     customers: Customer[];
     products: Product[];
+    isPaymentOnlyEdit?: boolean;
 }>();
 
 const form = useForm({
     customer_id: props.invoice.customer_id,
     status: props.invoice.status,
     payment_method: props.invoice.payment_method,
+    payment_status: props.invoice.payment_status || 'pending',
     invoice_type: props.invoice.invoice_type || 'walk_in',
     notes: props.invoice.notes || '',
     invoice_items: props.invoice.invoice_items.map(item => ({
@@ -99,6 +102,11 @@ const totalAmount = computed(() => {
 
 // Basic validation to ensure form is ready for submission
 const canSubmit = computed(() => {
+    // For payment-only edits, only need payment_status
+    if (props.isPaymentOnlyEdit) {
+        return !!form.payment_status;
+    }
+    // For regular edits, validate all fields
     if (!form.customer_id) return false;
     if (!form.invoice_items.length) return false;
     return form.invoice_items.some((it: any) => !!it.product_id && it.quantity > 0 && it.price >= 0);
@@ -199,6 +207,13 @@ const paymentMethodOptions = [
     { value: 'credit', label: 'Credit' }
 ];
 
+// Payment status options
+const paymentStatusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'failed', label: 'Failed' }
+];
+
 // Invoice type options
 const invoiceTypeOptions = [
     { value: 'walk_in', label: 'Walk-in' },
@@ -225,6 +240,35 @@ function getProductOptions() {
         </div>
         
         <form @submit.prevent="submit" class="space-y-6">
+            <!-- Payment Status Only Edit (for completed invoices with pending payment) -->
+            <Card v-if="isPaymentOnlyEdit">
+                <CardHeader>
+                    <CardTitle>Update Payment Status</CardTitle>
+                </CardHeader>
+                <CardContent class="space-y-6">
+                    <div class="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-4">
+                        <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                            This invoice is completed. You can only update the payment status.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label for="payment_status">Payment Status *</Label>
+                            <Select
+                                v-model="form.payment_status"
+                                :options="paymentStatusOptions"
+                                placeholder="Select payment status"
+                                class="mt-1"
+                                required
+                            />
+                            <InputError :message="form.errors.payment_status" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <!-- Full Invoice Edit (for non-completed or non-pending-payment invoices) -->
+            <template v-else>
             <!-- Invoice Details -->
             <Card>
                 <CardHeader>
@@ -420,11 +464,14 @@ function getProductOptions() {
                     </div>
                 </CardContent>
             </Card>
+            </template>
 
             <!-- Form Actions -->
             <Card>
                 <CardFooter class="flex gap-2 justify-end">
-                    <Button type="submit" :disabled="!canSubmit" variant="default">Update Invoice</Button>
+                    <Button type="submit" :disabled="!canSubmit" variant="default">
+                        {{ isPaymentOnlyEdit ? 'Update Payment Status' : 'Update Invoice' }}
+                    </Button>
                     <Link :href="route('invoices.index')">
                         <Button type="button" variant="ghost">Cancel</Button>
                     </Link>

@@ -406,8 +406,8 @@ function formatDateFriendly(dateString: string) {
                                     </span>
                                 </td>
                                 <td class="px-4 py-2">
-                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', getPaymentStatusBadgeClass(invoice.payment_status)]">
-                                        {{ invoice.payment_status === 'paid' ? 'Paid' : invoice.payment_status === 'Cancelled Order' ? 'Cancelled Order' : 'Pending Payment' }}
+                                    <span :class="['px-2 py-1 rounded-full text-xs font-medium', getPaymentStatusBadgeClass(invoice.status === 'cancelled' ? 'Cancelled Order' : invoice.payment_status)]">
+                                        {{ invoice.status === 'cancelled' ? 'Cancelled Order' : invoice.payment_status === 'paid' ? 'Paid' : invoice.payment_status === 'Cancelled Order' ? 'Cancelled Order' : 'Pending Payment' }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-2">
