@@ -40,7 +40,7 @@ class CustomerRegistered implements ShouldBroadcastNow
                 'notifiable_type' => Customer::class,
                 'title' => 'New Customer Registration',
                 'message' => "New customer {$customer->name} ({$customer->email}) needs approval",
-                'action_url' => "/customers/{$customer->id}/edit",
+                'action_url' => "/customers/{$customer->id}?from=users",
                 'read' => false,
                 'data' => [
                     'customer_id' => $customer->id,
