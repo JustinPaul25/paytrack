@@ -157,32 +157,6 @@
             </div>
         </div>
         
-        <h3 style="margin-bottom: 10px; font-size: 12px;">Sales by Customer (Top 10)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Customer Name</th>
-                    <th>Company</th>
-                    <th class="text-right">Total Invoices</th>
-                    <th class="text-right">Total Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($salesReport['sales_by_customer'] as $customer)
-                <tr>
-                    <td>{{ $customer['customer_name'] }}</td>
-                    <td>{{ $customer['company_name'] ?? 'N/A' }}</td>
-                    <td class="text-right">{{ $customer['total_invoices'] }}</td>
-                    <td class="text-right">₱{{ number_format($customer['total_amount'], 2, '.', ',') }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="4" class="text-center">No data available</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-        
         <h3 style="margin-bottom: 10px; font-size: 12px;">Sales by Month</h3>
         <table>
             <thead>

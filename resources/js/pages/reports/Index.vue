@@ -171,6 +171,20 @@ const filterYear = ref(filters.value.filter_year || new Date().getFullYear().toS
 const startDate = ref(filters.value.start_date || '');
 const endDate = ref(filters.value.end_date || '');
 
+// Financial Report specific filters
+const financialFilterType = ref(filters.value.financial_filter_type || 'all');
+const financialFilterMonth = ref(filters.value.financial_filter_month || '');
+const financialFilterYear = ref(filters.value.financial_filter_year || new Date().getFullYear().toString());
+const financialStartDate = ref(filters.value.financial_start_date || '');
+const financialEndDate = ref(filters.value.financial_end_date || '');
+
+// Transactions Report specific filters
+const transactionFilterType = ref(filters.value.transaction_filter_type || 'all');
+const transactionFilterMonth = ref(filters.value.transaction_filter_month || '');
+const transactionFilterYear = ref(filters.value.transaction_filter_year || new Date().getFullYear().toString());
+const transactionStartDate = ref(filters.value.transaction_start_date || '');
+const transactionEndDate = ref(filters.value.transaction_end_date || '');
+
 // Watch for prop changes and update local filter refs
 watch(() => page.props.filters, (newFilters) => {
     if (newFilters) {
@@ -180,6 +194,20 @@ watch(() => page.props.filters, (newFilters) => {
         filterYear.value = f.filter_year || new Date().getFullYear().toString();
         startDate.value = f.start_date || '';
         endDate.value = f.end_date || '';
+        
+        // Financial report filters
+        financialFilterType.value = f.financial_filter_type || 'all';
+        financialFilterMonth.value = f.financial_filter_month || '';
+        financialFilterYear.value = f.financial_filter_year || new Date().getFullYear().toString();
+        financialStartDate.value = f.financial_start_date || '';
+        financialEndDate.value = f.financial_end_date || '';
+        
+        // Transaction report filters
+        transactionFilterType.value = f.transaction_filter_type || 'all';
+        transactionFilterMonth.value = f.transaction_filter_month || '';
+        transactionFilterYear.value = f.transaction_filter_year || new Date().getFullYear().toString();
+        transactionStartDate.value = f.transaction_start_date || '';
+        transactionEndDate.value = f.transaction_end_date || '';
     }
 }, { immediate: true });
 
@@ -219,11 +247,27 @@ const yearOptions = computed(() => {
 });
 
 let filterTimeout: ReturnType<typeof setTimeout> | null = null;
+let financialFilterTimeout: ReturnType<typeof setTimeout> | null = null;
+let transactionFilterTimeout: ReturnType<typeof setTimeout> | null = null;
 
 watch([filterType, filterMonth, filterYear, startDate, endDate], () => {
     if (filterTimeout) clearTimeout(filterTimeout);
     filterTimeout = setTimeout(() => {
         updateFilters();
+    }, 300);
+});
+
+watch([financialFilterType, financialFilterMonth, financialFilterYear, financialStartDate, financialEndDate], () => {
+    if (financialFilterTimeout) clearTimeout(financialFilterTimeout);
+    financialFilterTimeout = setTimeout(() => {
+        updateFinancialFilters();
+    }, 300);
+});
+
+watch([transactionFilterType, transactionFilterMonth, transactionFilterYear, transactionStartDate, transactionEndDate], () => {
+    if (transactionFilterTimeout) clearTimeout(transactionFilterTimeout);
+    transactionFilterTimeout = setTimeout(() => {
+        updateTransactionFilters();
     }, 300);
 });
 
@@ -240,6 +284,124 @@ function updateFilters() {
         } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
             params.start_date = startDate.value;
             params.end_date = endDate.value;
+        }
+    }
+    
+    // Preserve financial report filters
+    if (financialFilterType.value !== 'all') {
+        params.financial_filter_type = financialFilterType.value;
+        if (financialFilterType.value === 'month' && financialFilterMonth.value) {
+            params.financial_filter_month = financialFilterMonth.value;
+        } else if (financialFilterType.value === 'year' && financialFilterYear.value) {
+            params.financial_filter_year = financialFilterYear.value;
+        } else if (financialFilterType.value === 'date_range' && financialStartDate.value && financialEndDate.value) {
+            params.financial_start_date = financialStartDate.value;
+            params.financial_end_date = financialEndDate.value;
+        }
+    }
+    
+    // Preserve transaction filters
+    if (transactionFilterType.value !== 'all') {
+        params.transaction_filter_type = transactionFilterType.value;
+        if (transactionFilterType.value === 'month' && transactionFilterMonth.value) {
+            params.transaction_filter_month = transactionFilterMonth.value;
+        } else if (transactionFilterType.value === 'year' && transactionFilterYear.value) {
+            params.transaction_filter_year = transactionFilterYear.value;
+        } else if (transactionFilterType.value === 'date_range' && transactionStartDate.value && transactionEndDate.value) {
+            params.transaction_start_date = transactionStartDate.value;
+            params.transaction_end_date = transactionEndDate.value;
+        }
+    }
+    
+    router.get('/reports', params, { preserveState: true, replace: true });
+}
+
+function updateFinancialFilters() {
+    const params: any = {};
+    
+    // Preserve global filters
+    if (filterType.value !== 'all') {
+        params.filter_type = filterType.value;
+        if (filterType.value === 'month' && filterMonth.value) {
+            params.filter_month = filterMonth.value;
+        } else if (filterType.value === 'year' && filterYear.value) {
+            params.filter_year = filterYear.value;
+        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
+            params.start_date = startDate.value;
+            params.end_date = endDate.value;
+        }
+    }
+    
+    // Add financial report filters
+    if (financialFilterType.value !== 'all') {
+        params.financial_filter_type = financialFilterType.value;
+        
+        if (financialFilterType.value === 'month' && financialFilterMonth.value) {
+            params.financial_filter_month = financialFilterMonth.value;
+        } else if (financialFilterType.value === 'year' && financialFilterYear.value) {
+            params.financial_filter_year = financialFilterYear.value;
+        } else if (financialFilterType.value === 'date_range' && financialStartDate.value && financialEndDate.value) {
+            params.financial_start_date = financialStartDate.value;
+            params.financial_end_date = financialEndDate.value;
+        }
+    }
+    
+    // Preserve transaction filters
+    if (transactionFilterType.value !== 'all') {
+        params.transaction_filter_type = transactionFilterType.value;
+        if (transactionFilterType.value === 'month' && transactionFilterMonth.value) {
+            params.transaction_filter_month = transactionFilterMonth.value;
+        } else if (transactionFilterType.value === 'year' && transactionFilterYear.value) {
+            params.transaction_filter_year = transactionFilterYear.value;
+        } else if (transactionFilterType.value === 'date_range' && transactionStartDate.value && transactionEndDate.value) {
+            params.transaction_start_date = transactionStartDate.value;
+            params.transaction_end_date = transactionEndDate.value;
+        }
+    }
+    
+    router.get('/reports', params, { preserveState: true, replace: true });
+}
+
+function updateTransactionFilters() {
+    const params: any = {};
+    
+    // Preserve global filters
+    if (filterType.value !== 'all') {
+        params.filter_type = filterType.value;
+        if (filterType.value === 'month' && filterMonth.value) {
+            params.filter_month = filterMonth.value;
+        } else if (filterType.value === 'year' && filterYear.value) {
+            params.filter_year = filterYear.value;
+        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
+            params.start_date = startDate.value;
+            params.end_date = endDate.value;
+        }
+    }
+    
+    // Preserve financial filters
+    if (financialFilterType.value !== 'all') {
+        params.financial_filter_type = financialFilterType.value;
+        if (financialFilterType.value === 'month' && financialFilterMonth.value) {
+            params.financial_filter_month = financialFilterMonth.value;
+        } else if (financialFilterType.value === 'year' && financialFilterYear.value) {
+            params.financial_filter_year = financialFilterYear.value;
+        } else if (financialFilterType.value === 'date_range' && financialStartDate.value && financialEndDate.value) {
+            params.financial_start_date = financialStartDate.value;
+            params.financial_end_date = financialEndDate.value;
+        }
+    }
+    
+    // Add transaction report filters
+    if (transactionFilterType.value !== 'all') {
+        params.transaction_filter_type = transactionFilterType.value;
+        
+        if (transactionFilterType.value === 'month' && transactionFilterMonth.value) {
+            params.transaction_filter_month = transactionFilterMonth.value;
+        } else if (transactionFilterType.value === 'year' && transactionFilterYear.value) {
+            params.transaction_filter_year = transactionFilterYear.value;
+        } else if (transactionFilterType.value === 'date_range' && transactionStartDate.value && transactionEndDate.value) {
+            params.transaction_start_date = transactionStartDate.value;
+            params.transaction_end_date = transactionEndDate.value;
         }
     }
     
@@ -402,26 +564,6 @@ function printAllReports() {
                             </div>
                         </div>
 
-                        <h3 class="font-semibold mb-2">Sales by Customer (Top 10)</h3>
-                        <table class="min-w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Customer Name</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Company</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-right">Total Invoices</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-right">Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="customer in (salesReport?.sales_by_customer || [])" :key="customer.customer_name" class="hover:bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">{{ customer.customer_name }}</td>
-                                    <td class="border border-gray-300 px-4 py-2">{{ customer.company_name || 'N/A' }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-right">{{ customer.total_invoices }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-right">{{ formatCurrency(customer.total_amount) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
                         <h3 class="font-semibold mb-2 mt-4">Sales by Month</h3>
                         <table class="min-w-full border-collapse border border-gray-300">
                             <thead>
@@ -445,6 +587,59 @@ function printAllReports() {
 
             <!-- Financial Report Tab -->
             <TabsContent value="financial" class="print-break">
+                <Card class="mb-6">
+                    <CardHeader>
+                        <CardTitle>Financial Report Filters</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Filter Type</label>
+                                <Select
+                                    v-model="financialFilterType"
+                                    :options="filterTypeOptions"
+                                    placeholder="Select filter"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="financialFilterType === 'month'">
+                                <label class="block text-sm font-medium mb-1">Month</label>
+                                <Select
+                                    v-model="financialFilterMonth"
+                                    :options="monthOptions"
+                                    placeholder="Select month"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="financialFilterType === 'year'">
+                                <label class="block text-sm font-medium mb-1">Year</label>
+                                <Select
+                                    v-model="financialFilterYear"
+                                    :options="yearOptions"
+                                    placeholder="Select year"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="financialFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">Start Date</label>
+                                <input
+                                    v-model="financialStartDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div v-if="financialFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">End Date</label>
+                                <input
+                                    v-model="financialEndDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
                 <Card>
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
@@ -559,6 +754,59 @@ function printAllReports() {
 
             <!-- Transactions Report Tab -->
             <TabsContent value="transactions" class="print-break">
+                <Card class="mb-6">
+                    <CardHeader>
+                        <CardTitle>Transactions Report Filters</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Filter Type</label>
+                                <Select
+                                    v-model="transactionFilterType"
+                                    :options="filterTypeOptions"
+                                    placeholder="Select filter"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="transactionFilterType === 'month'">
+                                <label class="block text-sm font-medium mb-1">Month</label>
+                                <Select
+                                    v-model="transactionFilterMonth"
+                                    :options="monthOptions"
+                                    placeholder="Select month"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="transactionFilterType === 'year'">
+                                <label class="block text-sm font-medium mb-1">Year</label>
+                                <Select
+                                    v-model="transactionFilterYear"
+                                    :options="yearOptions"
+                                    placeholder="Select year"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="transactionFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">Start Date</label>
+                                <input
+                                    v-model="transactionStartDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div v-if="transactionFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">End Date</label>
+                                <input
+                                    v-model="transactionEndDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
                 <Card>
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">

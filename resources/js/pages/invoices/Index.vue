@@ -152,20 +152,34 @@ async function deleteInvoice(id: number) {
     }
 }
 
-function markAsPaid(id: number) {
-    router.post(route('invoices.markPaid', id), {}, {
-        preserveScroll: true,
-        onSuccess: () => {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Invoice marked as paid',
-                showConfirmButton: false,
-                timer: 2000,
-            });
-        },
+async function markAsPaid(invoice: Invoice) {
+    const customerName = invoice.customer.name;
+    const invoiceNumber = invoice.reference_number;
+    const result = await Swal.fire({
+        title: 'Mark invoice as paid?',
+        html: `Are you sure you want to mark invoice <strong>${invoiceNumber}</strong> for customer <strong>${customerName}</strong> as paid?<br><br>This will update the payment status to paid. This action cannot be undone.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#8f5be8',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, mark as paid',
+        cancelButtonText: 'Cancel',
     });
+    if (result.isConfirmed) {
+        router.post(route('invoices.markPaid', invoice.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Invoice marked as paid',
+                    showConfirmButton: false,
+                    timer: 2000,
+                });
+            },
+        });
+    }
 }
 
 function getStatusBadgeClass(status: string) {
@@ -426,7 +440,7 @@ function formatDateFriendly(dateString: string) {
                                                 <Icon name="edit" class="h-4 w-4" />
                                             </Button>
                                         </Link>
-                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice.id)" title="Mark as Paid">
+                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice)" title="Mark as Paid">
                                             <Icon name="check" class="h-4 w-4" />
                                         </Button>
                                         <Button v-if="canDeleteInvoice" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)" title="Delete">

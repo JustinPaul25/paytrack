@@ -22,28 +22,54 @@ class ReportsController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         
+        // Financial Report specific filters
+        $financialFilterType = $request->input('financial_filter_type', 'all');
+        $financialFilterMonth = $request->input('financial_filter_month');
+        $financialFilterYear = $request->input('financial_filter_year');
+        $financialStartDate = $request->input('financial_start_date');
+        $financialEndDate = $request->input('financial_end_date');
+        
+        // Transactions Report specific filters
+        $transactionFilterType = $request->input('transaction_filter_type', 'all');
+        $transactionFilterMonth = $request->input('transaction_filter_month');
+        $transactionFilterYear = $request->input('transaction_filter_year');
+        $transactionStartDate = $request->input('transaction_start_date');
+        $transactionEndDate = $request->input('transaction_end_date');
+        
         // Calculate date range based on filter
         $dateRange = $this->getDateRange($filterType, $filterMonth, $filterYear, $startDate, $endDate);
+        
+        // Calculate financial report date range (use financial filters if provided, otherwise use global filters)
+        $financialDateRange = $this->getDateRange(
+            $financialFilterType !== 'all' ? $financialFilterType : $filterType,
+            $financialFilterMonth !== null && $financialFilterMonth !== '' ? $financialFilterMonth : $filterMonth,
+            $financialFilterYear !== null && $financialFilterYear !== '' ? $financialFilterYear : $filterYear,
+            $financialStartDate !== null && $financialStartDate !== '' ? $financialStartDate : $startDate,
+            $financialEndDate !== null && $financialEndDate !== '' ? $financialEndDate : $endDate
+        );
+        
+        // Calculate transaction report date range (use transaction filters if provided, otherwise use global filters)
+        $transactionDateRange = $this->getDateRange(
+            $transactionFilterType !== 'all' ? $transactionFilterType : $filterType,
+            $transactionFilterMonth !== null && $transactionFilterMonth !== '' ? $transactionFilterMonth : $filterMonth,
+            $transactionFilterYear !== null && $transactionFilterYear !== '' ? $transactionFilterYear : $filterYear,
+            $transactionStartDate !== null && $transactionStartDate !== '' ? $transactionStartDate : $startDate,
+            $transactionEndDate !== null && $transactionEndDate !== '' ? $transactionEndDate : $endDate
+        );
         
         // Sales Report
         $salesReport = $this->getSalesReport($dateRange);
         
-        // Transactions
-        $transactions = $this->getTransactions($dateRange);
+        // Transactions (uses its own date range)
+        $transactions = $this->getTransactions($transactionDateRange);
         
-        // Financial Report
-        $financialReport = $this->getFinancialReport($dateRange);
+        // Financial Report (uses its own date range)
+        $financialReport = $this->getFinancialReport($financialDateRange);
         
         // Delivery Summary
-        $deliveries = $this->getDeliveries($dateRange);
-        
-        $deliverySummary = [
-            'total' => $deliveries->count(),
-            'pending' => $deliveries->where('status', 'pending')->count(),
-            'completed' => $deliveries->where('status', 'completed')->count(),
-            'cancelled' => $deliveries->where('status', 'cancelled')->count(),
-            'total_fee' => $deliveries->where('status', 'completed')->sum('delivery_fee'),
-        ];
+        $deliveriesData = $this->getDeliveries($dateRange);
+        $deliveries = $deliveriesData['deliveries'];
+        $deliverySummary = $deliveriesData['summary'];
         
         return Inertia::render('reports/Index', [
             'salesReport' => $salesReport,
@@ -57,6 +83,16 @@ class ReportsController extends Controller
                 'filter_year' => $filterYear,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'financial_filter_type' => $financialFilterType,
+                'financial_filter_month' => $financialFilterMonth,
+                'financial_filter_year' => $financialFilterYear,
+                'financial_start_date' => $financialStartDate,
+                'financial_end_date' => $financialEndDate,
+                'transaction_filter_type' => $transactionFilterType,
+                'transaction_filter_month' => $transactionFilterMonth,
+                'transaction_filter_year' => $transactionFilterYear,
+                'transaction_start_date' => $transactionStartDate,
+                'transaction_end_date' => $transactionEndDate,
             ],
         ]);
     }
@@ -141,12 +177,21 @@ class ReportsController extends Controller
         $salesByMonth = $invoices->groupBy(function ($invoice) {
             return $invoice->created_at->format('Y-m');
         })->map(function ($monthInvoices, $month) {
+            $monthDate = Carbon::createFromFormat('Y-m', $month);
             return [
-                'month' => Carbon::createFromFormat('Y-m', $month)->format('F Y'),
+                'month' => $monthDate->format('F Y'),
                 'total_sales' => $monthInvoices->sum('total_amount') / 100,
                 'invoice_count' => $monthInvoices->count(),
+                'sort_key' => $month, // Keep original Y-m format for sorting
             ];
-        })->values()->sortBy('month');
+        })->sortBy('sort_key')->map(function ($item) {
+            // Remove sort_key after sorting, return only needed fields
+            return [
+                'month' => $item['month'],
+                'total_sales' => $item['total_sales'],
+                'invoice_count' => $item['invoice_count'],
+            ];
+        })->values();
         
         return [
             'total_sales' => $totalSales,
@@ -182,14 +227,28 @@ class ReportsController extends Controller
     
     private function getDeliveries($dateRange)
     {
+        // Query deliveries within date range
+        // Use whereBetween with date strings for proper date column comparison
         $query = Delivery::whereBetween('delivery_date', [
-            $dateRange['start']->toDateString(), 
-            $dateRange['end']->toDateString()
+            $dateRange['start']->format('Y-m-d'),
+            $dateRange['end']->format('Y-m-d')
         ])->with(['customer', 'invoice']);
         
         $deliveries = $query->orderBy('delivery_date', 'desc')->get();
         
-        return $deliveries->map(function ($delivery) {
+        // Calculate summary from model collection before mapping
+        $deliverySummary = [
+            'total' => $deliveries->count(),
+            'pending' => $deliveries->where('status', 'pending')->count(),
+            'completed' => $deliveries->where('status', 'completed')->count(),
+            'cancelled' => $deliveries->where('status', 'cancelled')->count(),
+            'total_fee' => $deliveries->where('status', 'completed')->sum(function ($delivery) {
+                return $delivery->delivery_fee;
+            }),
+        ];
+        
+        // Map to array format for frontend
+        $deliveriesArray = $deliveries->map(function ($delivery) {
             return [
                 'id' => $delivery->id,
                 'customer_name' => $delivery->customer->name ?? 'N/A',
@@ -203,6 +262,11 @@ class ReportsController extends Controller
                 'invoice_number' => $delivery->invoice->reference_number ?? 'N/A',
             ];
         });
+        
+        return [
+            'deliveries' => $deliveriesArray,
+            'summary' => $deliverySummary,
+        ];
     }
     
     private function getProductInfo($invoice)
@@ -283,25 +347,48 @@ class ReportsController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         
+        // Financial Report specific filters
+        $financialFilterType = $request->input('financial_filter_type', 'all');
+        $financialFilterMonth = $request->input('financial_filter_month');
+        $financialFilterYear = $request->input('financial_filter_year');
+        $financialStartDate = $request->input('financial_start_date');
+        $financialEndDate = $request->input('financial_end_date');
+        
+        // Transactions Report specific filters
+        $transactionFilterType = $request->input('transaction_filter_type', 'all');
+        $transactionFilterMonth = $request->input('transaction_filter_month');
+        $transactionFilterYear = $request->input('transaction_filter_year');
+        $transactionStartDate = $request->input('transaction_start_date');
+        $transactionEndDate = $request->input('transaction_end_date');
+        
         // Calculate date range based on filter
         $dateRange = $this->getDateRange($filterType, $filterMonth, $filterYear, $startDate, $endDate);
         
+        // Calculate financial report date range (use financial filters if provided, otherwise use global filters)
+        $financialDateRange = $this->getDateRange(
+            $financialFilterType !== 'all' ? $financialFilterType : $filterType,
+            $financialFilterMonth !== null && $financialFilterMonth !== '' ? $financialFilterMonth : $filterMonth,
+            $financialFilterYear !== null && $financialFilterYear !== '' ? $financialFilterYear : $filterYear,
+            $financialStartDate !== null && $financialStartDate !== '' ? $financialStartDate : $startDate,
+            $financialEndDate !== null && $financialEndDate !== '' ? $financialEndDate : $endDate
+        );
+        
+        // Calculate transaction report date range (use transaction filters if provided, otherwise use global filters)
+        $transactionDateRange = $this->getDateRange(
+            $transactionFilterType !== 'all' ? $transactionFilterType : $filterType,
+            $transactionFilterMonth !== null && $transactionFilterMonth !== '' ? $transactionFilterMonth : $filterMonth,
+            $transactionFilterYear !== null && $transactionFilterYear !== '' ? $transactionFilterYear : $filterYear,
+            $transactionStartDate !== null && $transactionStartDate !== '' ? $transactionStartDate : $startDate,
+            $transactionEndDate !== null && $transactionEndDate !== '' ? $transactionEndDate : $endDate
+        );
+        
         // Get all report data
         $salesReport = $this->getSalesReport($dateRange);
-        $transactions = $this->getTransactions($dateRange);
-        $financialReport = $this->getFinancialReport($dateRange);
-        $deliveries = $this->getDeliveries($dateRange);
-        
-        // Calculate total fee - deliveries is a collection of arrays with delivery_fee already in dollars
-        $totalFee = collect($deliveries)->sum('delivery_fee');
-        
-        $deliverySummary = [
-            'total' => $deliveries->count(),
-            'pending' => collect($deliveries)->where('status', 'pending')->count(),
-            'completed' => collect($deliveries)->where('status', 'completed')->count(),
-            'cancelled' => collect($deliveries)->where('status', 'cancelled')->count(),
-            'total_fee' => $totalFee,
-        ];
+        $transactions = $this->getTransactions($transactionDateRange);
+        $financialReport = $this->getFinancialReport($financialDateRange);
+        $deliveriesData = $this->getDeliveries($dateRange);
+        $deliveries = $deliveriesData['deliveries'];
+        $deliverySummary = $deliveriesData['summary'];
         
         // Format date range for display
         $dateRangeText = $this->getDateRangeText($filterType, $filterMonth, $filterYear, $startDate, $endDate, $dateRange);

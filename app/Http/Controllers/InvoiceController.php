@@ -51,7 +51,7 @@ class InvoiceController extends Controller
             $query->where('payment_status', $paymentStatus);
         }
 
-        $invoices = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
+        $invoices = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         // Calculate statistics (respect same visibility scope)
         $statsBase = Invoice::query();
