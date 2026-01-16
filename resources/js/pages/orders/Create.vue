@@ -153,14 +153,17 @@ const deliveryDistance = computed(() => {
 const deliveryFee = computed(() => {
     if (form.delivery_type !== 'delivery') return 0;
     
+    const baseFee = props.baseDeliveryFee || 50.00;
+    const ratePerKm = props.ratePerKm || 10.00;
+    
     // If distance can be calculated, use distance-based pricing
     if (deliveryDistance.value !== null && deliveryDistance.value > 0) {
-        const calculatedFee = props.baseDeliveryFee + (deliveryDistance.value * props.ratePerKm);
-        return Math.max(calculatedFee, props.baseDeliveryFee); // Ensure minimum fee
+        const calculatedFee = baseFee + (deliveryDistance.value * ratePerKm);
+        return Math.max(calculatedFee, baseFee); // Ensure minimum fee
     }
     
     // Fallback to base delivery fee if distance cannot be calculated
-    return props.baseDeliveryFee;
+    return baseFee;
 });
 
 // Check if delivery fee can be accurately calculated
