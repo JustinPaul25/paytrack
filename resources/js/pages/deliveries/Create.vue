@@ -199,8 +199,9 @@ const initialDeliveryFee = computed(() => {
 });
 
 // Delivery fee rates (using base fee and rate from settings)
-const BASE_DELIVERY_FEE = props.baseDeliveryFee;
-const MINIMUM_FEE = props.baseDeliveryFee;
+const BASE_DELIVERY_FEE = props.baseDeliveryFee || 50.00;
+const RATE_PER_KM = props.ratePerKm || 10.00;
+const MINIMUM_FEE = props.baseDeliveryFee || 50.00;
 
 // Calculate delivery fee based on distance (for route distance updates)
 function calculateDeliveryFee(distance: number | null): number {
