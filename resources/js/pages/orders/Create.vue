@@ -39,8 +39,10 @@ const props = withDefaults(defineProps<{
     customer_id: number;
     products: Product[];
     categories?: Category[];
+    baseDeliveryFee?: number;
 }>(), {
-    categories: () => []
+    categories: () => [],
+    baseDeliveryFee: 50.00
 });
 
 const form = useForm({
@@ -99,15 +101,20 @@ const withholdingTaxAmount = computed(() => {
     return amountNetOfVat.value * (withholdingTaxRate / 100);
 });
 
-// Delivery fee (50.00 PHP minimum for delivery orders)
-const BASE_DELIVERY_FEE = 50.00;
-const deliveryFee = computed(() => {
-    return form.delivery_type === 'delivery' ? BASE_DELIVERY_FEE : 0;
+// Estimated delivery fee (from admin settings)
+const estimatedDeliveryFee = computed(() => {
+    return form.delivery_type === 'delivery' ? props.baseDeliveryFee : 0;
 });
 
-// Total Amount Due = Subtotal + VAT - Withholding Tax + Delivery Fee
+// Total Amount Due = Subtotal + VAT - Withholding Tax (for order validation)
+// Note: This is used for minimum order validation only
 const totalAmountDue = computed(() => {
-    return subtotal.value + vatAmount.value - withholdingTaxAmount.value + deliveryFee.value;
+    return subtotal.value + vatAmount.value - withholdingTaxAmount.value;
+});
+
+// Estimated Total with Delivery Fee (for customer information)
+const estimatedTotalWithDelivery = computed(() => {
+    return totalAmountDue.value + estimatedDeliveryFee.value;
 });
 
 // Legacy computed for backward compatibility (used in minimum check)
@@ -118,15 +125,11 @@ const totalAmount = computed(() => {
 // Minimum order amount for delivery
 const MINIMUM_DELIVERY_AMOUNT = 500.00;
 
-// Calculate order total without delivery fee (for minimum check - matches backend logic)
-const orderTotalWithoutDelivery = computed(() => {
-    return subtotal.value + vatAmount.value - withholdingTaxAmount.value;
-});
-
 // Check if delivery order meets minimum amount requirement
+// Uses totalAmountDue which matches backend calculation (subtotal + VAT - withholding tax)
 const meetsDeliveryMinimum = computed(() => {
     if (form.delivery_type !== 'delivery') return true;
-    return orderTotalWithoutDelivery.value >= MINIMUM_DELIVERY_AMOUNT;
+    return totalAmountDue.value >= MINIMUM_DELIVERY_AMOUNT;
 });
 
 // Basic validation to ensure form is ready for submission
@@ -340,8 +343,8 @@ function getItemTotal(index: number): number {
                                 <strong>Minimum order amount for delivery:</strong> ₱{{ MINIMUM_DELIVERY_AMOUNT.toFixed(2) }}
                             </p>
                             <p class="text-sm text-orange-700 dark:text-orange-300 mt-1">
-                                Current total: ₱{{ orderTotalWithoutDelivery.toFixed(2) }}. 
-                                <span class="font-semibold">Add ₱{{ (MINIMUM_DELIVERY_AMOUNT - orderTotalWithoutDelivery.value).toFixed(2) }} more to proceed with delivery.</span>
+                                Current total: ₱{{ totalAmountDue.toFixed(2) }}. 
+                                <span class="font-semibold">Add ₱{{ (MINIMUM_DELIVERY_AMOUNT - totalAmountDue).toFixed(2) }} more to proceed with delivery.</span>
                             </p>
                         </div>
                     </div>
@@ -501,16 +504,27 @@ function getItemTotal(index: number): number {
                                 <span class="font-medium text-red-600 dark:text-red-400">-₱{{ withholdingTaxAmount.toFixed(2) }}</span>
                             </div>
                             
-                            <!-- Delivery Fee (only if delivery) -->
-                            <div v-if="form.delivery_type === 'delivery'" class="flex justify-between text-sm">
-                                <span class="text-muted-foreground">Delivery Fee:</span>
-                                <span class="font-medium">₱{{ deliveryFee.toFixed(2) }}</span>
+                            <!-- Subtotal (before delivery) -->
+                            <div class="flex justify-between pt-2 mt-2 border-t text-sm">
+                                <span class="text-muted-foreground">Subtotal:</span>
+                                <span class="font-medium">₱{{ totalAmountDue.toFixed(2) }}</span>
                             </div>
                             
-                            <!-- Total Amount Due -->
+                            <!-- Estimated Delivery Fee (only if delivery) -->
+                            <div v-if="form.delivery_type === 'delivery'" class="flex justify-between text-sm">
+                                <span class="text-muted-foreground">Estimated Delivery Fee:</span>
+                                <span class="font-medium">₱{{ estimatedDeliveryFee.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- Estimated Total Amount Due -->
                             <div class="flex justify-between pt-2 mt-2 border-t font-semibold text-base">
-                                <span>Total Amount Due:</span>
-                                <span class="text-lg">₱{{ totalAmountDue.toFixed(2) }}</span>
+                                <span>Estimated Total Amount Due:</span>
+                                <span class="text-lg">₱{{ estimatedTotalWithDelivery.toFixed(2) }}</span>
+                            </div>
+                            
+                            <!-- Delivery Fee Note -->
+                            <div v-if="form.delivery_type === 'delivery'" class="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300">
+                                <strong>Note:</strong> The actual delivery fee may vary based on delivery distance and will be confirmed when your order is processed.
                             </div>
                         </div>
                     </div>

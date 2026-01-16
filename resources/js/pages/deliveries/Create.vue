@@ -50,13 +50,16 @@ interface RefundRequest {
     notes: string;
 }
 
-const props = defineProps<{ 
+const props = withDefaults(defineProps<{ 
     customers: Customer[];
     invoices: Invoice[];
     preselectedInvoiceId?: number | null;
     refundRequest?: RefundRequest | null;
     refundType?: string | null;
-}>();
+    baseDeliveryFee?: number;
+}>(), {
+    baseDeliveryFee: 50.00
+});
 
 const form = useForm({
     customer_id: null as number | null,
@@ -68,7 +71,7 @@ const form = useForm({
     delivery_time: '',
     status: 'pending',
     notes: '',
-    delivery_fee: '',
+    delivery_fee: props.baseDeliveryFee.toString(),
 });
 
 // Check if user is staff (Staff or Admin)
@@ -81,10 +84,10 @@ const isStaff = computed(() => {
 // Delivery fee calculation
 const routeDistance = ref<number | null>(null);
 
-// Delivery fee rates (can be made configurable later)
-const BASE_DELIVERY_FEE = 50.00; // Base fee in PHP
+// Delivery fee rates (using base fee from settings)
+const BASE_DELIVERY_FEE = props.baseDeliveryFee; // Base fee in PHP from admin settings
 const RATE_PER_KM = 10.00; // Rate per kilometer in PHP
-const MINIMUM_FEE = 50.00; // Minimum delivery fee
+const MINIMUM_FEE = props.baseDeliveryFee; // Minimum delivery fee
 
 // Calculate delivery fee based on distance
 function calculateDeliveryFee(distance: number | null): number {

@@ -14,6 +14,7 @@ use App\Models\Category;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\StockMovement;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -104,11 +105,13 @@ class OrderController extends Controller
 
         $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
         $categories = Category::all(['id', 'name']);
+        $baseDeliveryFee = (float) Setting::get('base_delivery_fee', '50.00');
         
         return inertia('orders/Create', [
             'customer_id' => $customerId,
             'products' => $products,
             'categories' => $categories,
+            'baseDeliveryFee' => $baseDeliveryFee,
         ]);
     }
 

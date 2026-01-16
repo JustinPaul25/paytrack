@@ -17,6 +17,7 @@ interface Delivery {
     status: string;
     delivery_fee: number;
     notes?: string;
+    proof_of_delivery_url?: string | null;
     invoice?: { id:number; reference_number?:string; total_amount:number };
     customer?: { id:number; name:string; company_name?:string; email?:string; phone?:string; address?:string };
 }
@@ -93,6 +94,33 @@ function getStatusLabel(status: string): string {
                                 <div class="text-sm text-gray-500">Notes</div>
                                 <div class="whitespace-pre-wrap">{{ props.delivery.notes }}</div>
                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card v-if="props.delivery.proof_of_delivery_url">
+                    <CardHeader>
+                        <CardTitle>Proof of Delivery</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <div class="relative rounded-lg overflow-hidden border border-gray-200">
+                                <img 
+                                    :src="props.delivery.proof_of_delivery_url" 
+                                    alt="Proof of Delivery"
+                                    class="w-full h-auto object-contain max-h-96"
+                                />
+                            </div>
+                            <a 
+                                :href="props.delivery.proof_of_delivery_url" 
+                                target="_blank"
+                                class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                View Full Image
+                            </a>
                         </div>
                     </CardContent>
                 </Card>

@@ -11,6 +11,7 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import Label from '@/components/ui/label/Label.vue';
 import PhoneInput from '@/components/ui/input/PhoneInput.vue';
+import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
 import InputError from '@/components/InputError.vue';
@@ -147,8 +148,10 @@ function submit() {
         return;
     }
     
-    form.put(route('deliveries.update', props.delivery.id), {
+    // Use POST with _method: PUT for file uploads
+    form.post(route('deliveries.update', props.delivery.id), {
         preserveScroll: true,
+        forceFormData: true,
         onSuccess: () => {
             Swal.fire({
                 toast: true,

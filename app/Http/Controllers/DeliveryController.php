@@ -6,6 +6,7 @@ use App\Models\Delivery;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\StockMovement;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -148,6 +149,7 @@ class DeliveryController extends Controller
             $invoicesQuery->orWhereIn('id', $invoiceIdsToInclude);
         }
         $invoices = $invoicesQuery->get(['id', 'customer_id', 'total_amount', 'reference_number']);
+        $baseDeliveryFee = (float) Setting::get('base_delivery_fee', '50.00');
         
         return inertia('deliveries/Create', [
             'customers' => $customers,
@@ -155,6 +157,7 @@ class DeliveryController extends Controller
             'preselectedInvoiceId' => $preselectedInvoiceId ? (int) $preselectedInvoiceId : null,
             'refundRequest' => $refundRequestData,
             'refundType' => $refundType,
+            'baseDeliveryFee' => $baseDeliveryFee,
         ]);
     }
 

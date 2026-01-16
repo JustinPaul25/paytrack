@@ -6,7 +6,6 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { ref } from 'vue';
@@ -350,15 +349,7 @@ function cancelRefund(id: number) {
             <h1 class="text-2xl font-bold">{{ isCustomer ? 'My Refunds' : 'Refunds' }}</h1>
         </div>
 
-        <Tabs default-value="requests" class="w-full">
-            <TabsList class="grid w-full grid-cols-2">
-                <TabsTrigger value="requests">Refund Requests</TabsTrigger>
-                <TabsTrigger value="refunds">Refunds</TabsTrigger>
-            </TabsList>
-
-            <!-- Refund Requests Tab -->
-            <TabsContent value="requests">
-                <Card>
+        <Card>
                     <CardHeader>
                         <div class="flex items-center justify-between">
                             <CardTitle>Refund Requests</CardTitle>
@@ -462,104 +453,6 @@ function cancelRefund(id: number) {
                         </div>
                     </CardContent>
                 </Card>
-            </TabsContent>
-
-            <!-- Refunds Tab -->
-            <TabsContent value="refunds">
-                <Card>
-                    <CardHeader>
-                        <div class="flex items-center justify-between">
-                            <CardTitle>Refunds</CardTitle>
-                            <select
-                                class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                :value="filters.status || 'all'"
-                                @change="(e:any) => {
-                                    const status = e.target.value === 'all' ? '' : e.target.value;
-                                    router.get(route('refunds.index'), status ? { status } : {}, { preserveState: true, replace: true });
-                                }"
-                            >
-                                <option value="all">All</option>
-                                <option value="approved">Approved</option>
-                                <option value="processed">Processed</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div v-if="!(page.props.refunds as Paginated<Refund>).data.length" class="py-8 text-center text-sm text-gray-500">
-                            <div v-if="(filters.status && filters.status !== '' && filters.status !== 'all')">
-                                No refunds found for the selected filter.
-                                <div class="mt-3">
-                                    <Button variant="outline" @click="router.get(route('refunds.index'), {}, { preserveState: true, replace: true })">
-                                        Clear filters
-                                    </Button>
-                                </div>
-                            </div>
-                            <div v-else>
-                                No refunds found.
-                            </div>
-                        </div>
-                        <div v-else>
-                            <table class="min-w-full divide-y divide-border">
-                                <thead>
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">Refund #</th>
-                                        <th class="px-4 py-2 text-left">Invoice</th>
-                                        <th class="px-4 py-2 text-left">Product</th>
-                                        <th class="px-4 py-2 text-left">Qty</th>
-                                        <th class="px-4 py-2 text-left">Amount</th>
-                                        <th class="px-4 py-2 text-left">Status</th>
-                                        <th class="px-4 py-2 text-left">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="r in (page.props.refunds as Paginated<Refund>).data" :key="r.id" class="hover:bg-muted">
-                                        <td class="px-4 py-2 font-medium">{{ r.refund_number }}</td>
-                                        <td class="px-4 py-2">
-                                            <Link :href="route('invoices.show', r.invoice_id)" class="text-blue-500 underline">#{{ r.invoice_id }}</Link>
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            <div class="flex items-center gap-2">
-                                                <span>{{ (r as any).product?.name || '—' }}</span>
-                                                <span v-if="r.is_damaged" class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title="Damaged items will not be returned to stock">
-                                                    ⚠️ Damaged
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-2">{{ r.quantity_refunded }}</td>
-                                        <td class="px-4 py-2 font-medium">{{ formatCurrency(r.refund_amount) }}</td>
-                                        <td class="px-4 py-2">
-                                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                                :class="{
-                                                    'bg-blue-100 text-blue-800': r.status === 'approved',
-                                                    'bg-yellow-100 text-yellow-800': r.status === 'processed',
-                                                    'bg-green-100 text-green-800': r.status === 'completed',
-                                                    'bg-red-100 text-red-800': r.status === 'cancelled',
-                                                }"
-                                            >{{ r.status }}</span>
-                                        </td>
-                                        <td class="px-4 py-2">
-                                            <div class="flex gap-2">
-                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="outline" @click="processRefund(r.id)" title="Process">
-                                                    <Icon name="play" class="h-4 w-4" />
-                                                </Button>
-                                                <Button v-if="canProcessRefunds && (r.status === 'approved' || r.status === 'processed')" size="sm" variant="default" @click="completeRefund(r.id)" title="Complete">
-                                                    <Icon name="check-circle" class="h-4 w-4" />
-                                                </Button>
-                                                <Button v-if="canProcessRefunds && r.status !== 'completed' && r.status !== 'cancelled'" size="sm" variant="destructive" @click="cancelRefund(r.id)" title="Cancel">
-                                                    <Icon name="x-circle" class="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
 
         <!-- Details Modal -->
         <div v-if="showDetails" class="fixed inset-0 z-50 flex items-center justify-center p-4">
