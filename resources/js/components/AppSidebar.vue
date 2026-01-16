@@ -116,7 +116,7 @@ const isActiveRoute = (path: string): boolean => {
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                                 <SidebarMenuSubItem>
-                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/orders')">
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/orders') || isActiveRoute('/orders/create')">
                                         <Link href="/orders" class="flex items-center justify-between w-full">
                                             <div class="flex items-center gap-2">
                                                 <ShoppingCart class="h-4 w-4" />

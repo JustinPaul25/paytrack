@@ -6,7 +6,6 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
-import Swal from 'sweetalert2';
 import { ref } from 'vue';
 import { AlertTriangle } from 'lucide-vue-next';
 import { type BreadcrumbItem } from '@/types';
@@ -36,33 +35,18 @@ interface Refund {
         id: number;
         reference_number: string;
     };
-}
-
-interface RefundRequest {
-    id: number;
-    tracking_number: string;
-    customer_name: string;
-    email?: string;
-    phone?: string;
-    invoice_reference?: string;
-    invoice_id?: number;
-    product_id?: number;
-    product_name?: string;
-    quantity: number;
-    amount_requested?: number;
-    reason?: string;
-    notes?: string;
-    status: string;
-    damaged_items_terms?: string;
-    is_damaged?: boolean;
-    invoice?: {
+    proof_images?: Array<{
         id: number;
-        reference_number: string;
-    };
-    product?: {
-        id: number;
+        url: string;
         name: string;
-        selling_price: number;
+    }>;
+    refund_request?: {
+        id: number;
+        tracking_number: string;
+        customer_name: string;
+        reason?: string;
+        damaged_items_terms?: string;
+        notes?: string;
     };
 }
 
@@ -97,186 +81,24 @@ interface StockMovement {
 
 interface Stats {
     total_damaged_refunds: number;
-    total_damaged_requests: number;
-    pending_requests: number;
     total_damaged_value: number;
     total_writeoffs: number;
 }
 
 const page = usePage();
-const filters = (page.props.filters || {}) as { status?: string; request_status?: string };
 const stats = (page.props.stats || {}) as Stats;
 const refunds = (page.props.refunds || { data: [], current_page: 1, last_page: 1, total: 0, from: 0, to: 0, prev_page_url: null, next_page_url: null }) as Paginated<Refund>;
-const refundRequests = (page.props.refundRequests || { data: [], current_page: 1, last_page: 1, total: 0, from: 0, to: 0, prev_page_url: null, next_page_url: null }) as Paginated<RefundRequest>;
 
-const activeTab = ref<'refunds' | 'requests' | 'disposition'>('refunds');
-const showDetails = ref<RefundRequest | null>(null);
+const activeTab = ref<'refunds' | 'disposition'>('refunds');
+const showDetails = ref<Refund | null>(null);
 const stockMovements = (page.props.stockMovements || []) as StockMovement[];
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Damaged Items', href: route('refunds.damaged-items') },
 ];
 
-function processRefund(id: number) {
-    Swal.fire({
-        title: 'Mark as Processed',
-        html: `
-        <div style="text-align:left">
-            <label style="display:block;margin-bottom:4px;font-size:12px">Method</label>
-            <select id="method" class="swal2-input" style="width:100%">
-                <option value="cash">cash</option>
-                <option value="bank_transfer">bank_transfer</option>
-                <option value="e-wallet">e-wallet</option>
-                <option value="credit_note">credit_note</option>
-            </select>
-            <label style="display:block;margin:10px 0 4px;font-size:12px">Reference #</label>
-            <input id="ref" class="swal2-input" placeholder="Reference number (optional)" />
-            <label style="display:block;margin:10px 0 4px;font-size:12px">Notes</label>
-            <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)"></textarea>
-        </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Save',
-        preConfirm: () => {
-            const method = (document.getElementById('method') as HTMLSelectElement).value;
-            const ref = (document.getElementById('ref') as HTMLInputElement).value;
-            const notes = (document.getElementById('notes') as HTMLTextAreaElement).value;
-            return { refund_method: method, reference_number: ref || undefined, notes: notes || undefined };
-        },
-    }).then((res) => {
-        if (res.isConfirmed) {
-            router.post(route('refunds.process', id), res.value, { preserveScroll: true });
-        }
-    });
-}
-
-function completeRefund(id: number) {
-    const refund = refunds.data.find(r => r.id === id);
-    const isDamaged = refund?.is_damaged ?? false;
-    
-    Swal.fire({
-        title: 'Complete refund',
-        html: `
-        <div style="text-align:left">
-            ${isDamaged ? '<div style="background:#fef3c7;border:1px solid #fbbf24;padding:8px;border-radius:4px;margin-bottom:12px;font-size:13px;color:#92400e;"><strong>⚠️ Damaged Items:</strong> These items will not be returned to inventory stock.</div>' : ''}
-            <label style="display:flex;align-items:center;gap:8px;">
-                <input id="return" type="checkbox" ${isDamaged ? '' : 'checked'} ${isDamaged ? 'disabled' : ''} />
-                Return to stock
-            </label>
-            ${isDamaged ? '<p style="font-size:11px;color:#6b7280;margin-top:4px;margin-left:24px;">Disabled for damaged items</p>' : ''}
-            <label style="display:block;margin:10px 0 4px;font-size:12px">Inspection notes</label>
-            <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)"></textarea>
-        </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Complete',
-        confirmButtonColor: '#10b981',
-        preConfirm: () => {
-            const rtn = isDamaged ? false : (document.getElementById('return') as HTMLInputElement).checked;
-            const notes = (document.getElementById('notes') as HTMLTextAreaElement).value;
-            return { return_to_stock: rtn, notes: notes || undefined };
-        }
-    }).then((res) => {
-        if (res.isConfirmed) {
-            router.post(route('refunds.complete', id), res.value, { preserveScroll: true });
-        }
-    });
-}
-
-function cancelRefund(id: number) {
-    Swal.fire({
-        title: 'Cancel this refund?',
-        text: 'This will mark the refund as cancelled. A short reason is required.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Cancel refund',
-        confirmButtonColor: '#ef4444',
-        input: 'textarea',
-        inputLabel: 'Reason (required)',
-        inputPlaceholder: 'Provide a brief reason...',
-        inputAttributes: { 'aria-label': 'Reason (required)' },
-        inputValidator: (value) => {
-            if (!value || !value.trim()) {
-                return 'Please provide a brief reason.';
-            }
-            return undefined as any;
-        },
-    }).then((res) => {
-        if (res.isConfirmed) {
-            router.post(route('refunds.cancel', id), { review_notes: res.value }, { preserveScroll: true });
-        }
-    });
-}
-
-function approve(id: number) {
-    Swal.fire({
-        title: 'Approve this refund request?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Approve',
-        confirmButtonColor: '#10b981',
-        input: 'textarea',
-        inputLabel: 'Approval notes (optional)',
-        inputPlaceholder: 'Notes for this approval...',
-        inputAttributes: { 'aria-label': 'Approval notes (optional)' },
-    }).then((res) => {
-        if (res.isConfirmed) {
-            router.post(route('refundRequests.approve', id), { review_notes: res.value || undefined }, { preserveScroll: true });
-        }
-    });
-}
-
-function reject(id: number) {
-    Swal.fire({
-        title: 'Decline this refund request?',
-        text: 'This will mark the request as rejected. You can\'t undo this.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Decline',
-        confirmButtonColor: '#ef4444',
-        input: 'textarea',
-        inputLabel: 'Reason (required)',
-        inputPlaceholder: 'Provide a reason for declining...',
-        inputAttributes: { 'aria-label': 'Reason (required)' },
-        inputValidator: (value) => {
-            if (!value || !value.trim()) {
-                return 'Please provide a brief reason.';
-            }
-            return undefined as any;
-        },
-    }).then((res) => {
-        if (res.isConfirmed) {
-            router.post(route('refundRequests.reject', id), { review_notes: res.value }, { preserveScroll: true });
-        }
-    });
-}
-
 function goToRefundsPage(pageNum: number) {
-    const params: any = { refunds_page: pageNum };
-    if (filters.status && filters.status !== 'all') params.status = filters.status;
-    if (filters.request_status && filters.request_status !== 'all') params.request_status = filters.request_status;
-    router.get(route('refunds.damaged-items'), params, { preserveState: true, replace: true });
-}
-
-function goToRequestsPage(pageNum: number) {
-    const params: any = { requests_page: pageNum };
-    if (filters.status && filters.status !== 'all') params.status = filters.status;
-    if (filters.request_status && filters.request_status !== 'all') params.request_status = filters.request_status;
-    router.get(route('refunds.damaged-items'), params, { preserveState: true, replace: true });
-}
-
-function updateRefundFilter(status: string) {
-    const params: any = {};
-    if (status && status !== 'all') params.status = status;
-    if (filters.request_status && filters.request_status !== 'all') params.request_status = filters.request_status;
-    router.get(route('refunds.damaged-items'), params, { preserveState: true, replace: true });
-}
-
-function updateRequestFilter(status: string) {
-    const params: any = {};
-    if (filters.status && filters.status !== 'all') params.status = filters.status;
-    if (status && status !== 'all') params.request_status = status;
-    router.get(route('refunds.damaged-items'), params, { preserveState: true, replace: true });
+    router.get(route('refunds.damaged-items'), { refunds_page: pageNum }, { preserveState: true, replace: true });
 }
 </script>
 
@@ -303,18 +125,7 @@ function updateRequestFilter(status: string) {
                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     ]"
                 >
-                    Refunds ({{ refunds.total }})
-                </button>
-                <button
-                    @click="activeTab = 'requests'"
-                    :class="[
-                        'py-4 px-1 border-b-2 font-medium text-sm',
-                        activeTab === 'requests'
-                            ? 'border-orange-500 text-orange-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    ]"
-                >
-                    Refund Requests ({{ refundRequests.total }})
+                    Approved Damaged Items ({{ refunds.total }})
                 </button>
                 <button
                     @click="activeTab = 'disposition'"
@@ -330,27 +141,15 @@ function updateRequestFilter(status: string) {
             </nav>
         </div>
 
-        <!-- Refunds Tab -->
+        <!-- Approved Damaged Items Tab -->
         <Card v-if="activeTab === 'refunds'">
             <CardHeader>
-                <div class="flex items-center justify-between">
-                    <CardTitle>Damaged Refunds</CardTitle>
-                    <select
-                        class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        :value="filters.status || 'all'"
-                        @change="(e:any) => updateRefundFilter(e.target.value)"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="approved">Approved</option>
-                        <option value="processed">Processed</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                </div>
+                <CardTitle>Approved Damaged Items</CardTitle>
+                <p class="text-sm text-gray-500 mt-1">View-only listing of damaged items from approved refund requests</p>
             </CardHeader>
             <CardContent>
                 <div v-if="!refunds.data.length" class="py-8 text-center text-sm text-gray-500">
-                    No damaged refunds found.
+                    No approved damaged items found.
                 </div>
                 <div v-else>
                     <table class="min-w-full divide-y divide-border">
@@ -361,7 +160,6 @@ function updateRequestFilter(status: string) {
                                 <th class="px-4 py-2 text-left">Product</th>
                                 <th class="px-4 py-2 text-left">Qty</th>
                                 <th class="px-4 py-2 text-left">Amount</th>
-                                <th class="px-4 py-2 text-left">Status</th>
                                 <th class="px-4 py-2 text-left">Actions</th>
                             </tr>
                         </thead>
@@ -385,27 +183,9 @@ function updateRequestFilter(status: string) {
                                 <td class="px-4 py-2">{{ r.quantity_refunded }}</td>
                                 <td class="px-4 py-2 font-medium">{{ formatCurrency(r.refund_amount) }}</td>
                                 <td class="px-4 py-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                        :class="{
-                                            'bg-blue-100 text-blue-800': r.status === 'approved',
-                                            'bg-yellow-100 text-yellow-800': r.status === 'processed',
-                                            'bg-green-100 text-green-800': r.status === 'completed',
-                                            'bg-red-100 text-red-800': r.status === 'cancelled',
-                                        }"
-                                    >{{ r.status }}</span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <div class="flex gap-2">
-                                        <Button v-if="r.status === 'approved' || r.status === 'processed'" size="sm" variant="outline" @click="processRefund(r.id)">
-                                            Process
-                                        </Button>
-                                        <Button v-if="r.status === 'approved' || r.status === 'processed'" size="sm" variant="default" @click="completeRefund(r.id)">
-                                            Complete
-                                        </Button>
-                                        <Button v-if="r.status !== 'completed' && r.status !== 'cancelled'" size="sm" variant="destructive" @click="cancelRefund(r.id)">
-                                            Cancel
-                                        </Button>
-                                    </div>
+                                    <Button size="sm" variant="outline" @click="showDetails = r">
+                                        View
+                                    </Button>
                                 </td>
                             </tr>
                         </tbody>
@@ -439,114 +219,6 @@ function updateRequestFilter(status: string) {
             </CardContent>
         </Card>
 
-        <!-- Refund Requests Tab -->
-        <Card v-if="activeTab === 'requests'">
-            <CardHeader>
-                <div class="flex items-center justify-between">
-                    <CardTitle>Damaged Refund Requests</CardTitle>
-                    <select
-                        class="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        :value="filters.request_status || 'all'"
-                        @change="(e:any) => updateRequestFilter(e.target.value)"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="completed">Completed</option>
-                    </select>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div v-if="!refundRequests.data.length" class="py-8 text-center text-sm text-gray-500">
-                    No damaged refund requests found.
-                </div>
-                <div v-else>
-                    <table class="min-w-full divide-y divide-border">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 text-left">Tracking #</th>
-                                <th class="px-4 py-2 text-left">Customer</th>
-                                <th class="px-4 py-2 text-left">Invoice</th>
-                                <th class="px-4 py-2 text-left">Product</th>
-                                <th class="px-4 py-2 text-left">Qty</th>
-                                <th class="px-4 py-2 text-left">Status</th>
-                                <th class="px-4 py-2 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="r in refundRequests.data" :key="r.id" class="hover:bg-muted">
-                                <td class="px-4 py-2 font-medium">{{ r.tracking_number }}</td>
-                                <td class="px-4 py-2">{{ r.customer_name }}</td>
-                                <td class="px-4 py-2">
-                                    <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)" class="text-blue-500 underline">
-                                        {{ r.invoice_reference || `#${r.invoice_id}` }}
-                                    </Link>
-                                    <span v-else>—</span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <div class="flex items-center gap-2">
-                                        <span>{{ r.product?.name || r.product_name || '—' }}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                            ⚠️ Damaged
-                                        </span>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-2">{{ r.quantity }}</td>
-                                <td class="px-4 py-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                        :class="{
-                                            'bg-yellow-100 text-yellow-800': r.status === 'pending',
-                                            'bg-green-100 text-green-800': r.status === 'approved',
-                                            'bg-red-100 text-red-800': r.status === 'rejected',
-                                            'bg-blue-100 text-blue-800': r.status === 'completed',
-                                        }"
-                                    >{{ r.status }}</span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <div class="flex gap-2">
-                                        <Button v-if="r.status === 'pending'" size="sm" variant="default" @click="approve(r.id)">
-                                            Approve
-                                        </Button>
-                                        <Button v-if="r.status === 'pending'" size="sm" variant="destructive" @click="reject(r.id)">
-                                            Reject
-                                        </Button>
-                                        <Button size="sm" variant="outline" @click="showDetails = r">
-                                            View
-                                        </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <!-- Pagination -->
-                    <div v-if="refundRequests.last_page > 1" class="mt-4 flex items-center justify-between">
-                        <div class="text-sm text-gray-500">
-                            Showing {{ refundRequests.from }} to {{ refundRequests.to }} of {{ refundRequests.total }} results
-                        </div>
-                        <div class="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                :disabled="refundRequests.current_page === 1"
-                                @click="goToRequestsPage(refundRequests.current_page - 1)"
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                :disabled="refundRequests.current_page === refundRequests.last_page"
-                                @click="goToRequestsPage(refundRequests.current_page + 1)"
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
 
         <!-- Disposition Tab - Where Products Went -->
         <Card v-if="activeTab === 'disposition'">
@@ -628,64 +300,73 @@ function updateRequestFilter(status: string) {
 
         <!-- Details Modal -->
         <div v-if="showDetails" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.self="showDetails = null">
-            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <div class="p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold">Refund Request Details</h3>
+                        <h3 class="text-lg font-semibold">Damaged Item Details</h3>
                         <Button variant="ghost" size="sm" @click="showDetails = null">×</Button>
                     </div>
                     <div v-if="showDetails" class="space-y-4">
                         <div>
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Tracking Number</div>
-                            <div class="text-sm font-medium">{{ showDetails.tracking_number }}</div>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Refund Number</div>
+                            <div class="text-sm font-medium">{{ showDetails.refund_number }}</div>
                         </div>
-                        <div>
+                        <div v-if="showDetails.refund_request?.tracking_number">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Tracking Number</div>
+                            <div class="text-sm">{{ showDetails.refund_request.tracking_number }}</div>
+                        </div>
+                        <div v-if="showDetails.refund_request?.customer_name">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Customer</div>
-                            <div class="text-sm">{{ showDetails.customer_name }}</div>
-                            <div v-if="showDetails.email" class="text-xs text-gray-500">{{ showDetails.email }}</div>
-                            <div v-if="showDetails.phone" class="text-xs text-gray-500">{{ showDetails.phone }}</div>
+                            <div class="text-sm">{{ showDetails.refund_request.customer_name }}</div>
                         </div>
                         <div v-if="showDetails.invoice_id">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Invoice</div>
                             <Link :href="route('invoices.show', showDetails.invoice_id)" class="text-sm text-blue-500 underline">
-                                {{ showDetails.invoice_reference || `#${showDetails.invoice_id}` }}
+                                {{ showDetails.invoice?.reference_number || `#${showDetails.invoice_id}` }}
                             </Link>
                         </div>
                         <div>
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Product</div>
-                            <div class="text-sm">{{ showDetails.product?.name || showDetails.product_name || '—' }}</div>
+                            <div class="text-sm">{{ showDetails.product?.name || '—' }}</div>
                         </div>
                         <div>
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Quantity</div>
-                            <div class="text-sm">{{ showDetails.quantity }}</div>
+                            <div class="text-sm">{{ showDetails.quantity_refunded }}</div>
                         </div>
                         <div>
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Status</div>
-                            <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                :class="{
-                                    'bg-yellow-100 text-yellow-800': showDetails.status === 'pending',
-                                    'bg-green-100 text-green-800': showDetails.status === 'approved',
-                                    'bg-red-100 text-red-800': showDetails.status === 'rejected',
-                                    'bg-blue-100 text-blue-800': showDetails.status === 'completed',
-                                }"
-                            >{{ showDetails.status }}</span>
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Refund Amount</div>
+                            <div class="text-sm font-medium">{{ formatCurrency(showDetails.refund_amount) }}</div>
                         </div>
-                        <div v-if="showDetails.reason">
+                        <div v-if="showDetails.refund_request?.reason">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Reason</div>
-                            <div class="text-sm whitespace-pre-wrap">{{ showDetails.reason }}</div>
+                            <div class="text-sm whitespace-pre-wrap">{{ showDetails.refund_request.reason }}</div>
                         </div>
-                        <div v-if="showDetails.damaged_items_terms">
+                        <div v-if="showDetails.refund_request?.damaged_items_terms">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Damaged Items Terms</div>
-                            <div class="text-sm whitespace-pre-wrap bg-yellow-50 p-3 rounded-md border border-yellow-200">{{ showDetails.damaged_items_terms }}</div>
+                            <div class="text-sm whitespace-pre-wrap bg-yellow-50 p-3 rounded-md border border-yellow-200">{{ showDetails.refund_request.damaged_items_terms }}</div>
                         </div>
-                        <div v-if="showDetails.notes">
+                        <div v-if="showDetails.refund_request?.notes">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Notes</div>
-                            <div class="text-sm whitespace-pre-wrap">{{ showDetails.notes }}</div>
+                            <div class="text-sm whitespace-pre-wrap">{{ showDetails.refund_request.notes }}</div>
                         </div>
-                        <div v-if="showDetails.review_notes">
-                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Review Notes</div>
-                            <div class="text-sm whitespace-pre-wrap">{{ showDetails.review_notes }}</div>
+                        <div v-if="showDetails.proof_images && showDetails.proof_images.length > 0">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Proof Images</div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div v-for="image in showDetails.proof_images" :key="image.id" class="relative group">
+                                    <img 
+                                        :src="image.url" 
+                                        :alt="image.name || 'Proof image'"
+                                        class="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                        @click="window.open(image.url, '_blank')"
+                                    />
+                                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
+                                        <span class="text-white text-sm opacity-0 group-hover:opacity-100">Click to enlarge</span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-gray-500 truncate" :title="image.name">{{ image.name }}</div>
+                                </div>
+                            </div>
                         </div>
+                        <div v-else class="text-sm text-gray-400 italic">No proof images available</div>
                     </div>
                     <div class="mt-6 pt-4 border-t flex justify-end gap-2">
                         <Button variant="outline" @click="showDetails = null">Close</Button>

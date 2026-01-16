@@ -200,7 +200,7 @@ class DeliveryController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'invoice_id' => 'required|exists:invoices,id',
+            'invoice_id' => 'nullable|exists:invoices,id',
             'delivery_address' => 'required|string|max:500',
             'contact_person' => 'required|string|max:255',
             // Philippine mobile: 09XXXXXXXXX, +639XXXXXXXXX, or 639XXXXXXXXX
@@ -210,6 +210,7 @@ class DeliveryController extends Controller
             'status' => 'required|string|in:pending,completed,cancelled',
             'notes' => 'nullable|string',
             'delivery_fee' => 'required|numeric|min:0',
+            'proof_of_delivery' => 'nullable|image|max:5120', // Max 5MB
         ]);
 
         $oldStatus = $delivery->status;
@@ -218,6 +219,22 @@ class DeliveryController extends Controller
         DB::beginTransaction();
         try {
             $oldDeliveryFee = $delivery->delivery_fee; // Get old fee before update
+            
+            // Handle proof of delivery file upload
+            if ($request->hasFile('proof_of_delivery')) {
+                // Remove old proof of delivery if exists
+                $delivery->clearMediaCollection('proof_of_delivery');
+                
+                // Add new proof of delivery
+                $delivery->addMediaFromRequest('proof_of_delivery')
+                    ->usingFileName($request->file('proof_of_delivery')->hashName())
+                    ->usingName($request->file('proof_of_delivery')->getClientOriginalName())
+                    ->toMediaCollection('proof_of_delivery');
+            }
+            
+            // Remove proof_of_delivery from validated array since it's already handled above
+            unset($validated['proof_of_delivery']);
+            
             $delivery->update($validated);
             $delivery->refresh(); // Refresh to get the latest data
             

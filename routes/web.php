@@ -105,12 +105,13 @@ Route::middleware(['auth'])->group(function () {
     // Customers (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::resource('customers', CustomerController::class)->except(['update', 'show']);
-        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
-        Route::post('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
         
-        // Customer Logs
+        // Customer Logs (must be before customers/{customer} route to avoid route conflicts)
         Route::get('customers/logs', [\App\Http\Controllers\CustomerLogController::class, 'index'])->name('customers.logs.index');
         Route::get('customers/{customer}/logs', [\App\Http\Controllers\CustomerLogController::class, 'show'])->name('customers.logs.show');
+        
+        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+        Route::post('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
     });
 
     // Order routes (Customers can create and view their orders, Staff can view all and approve/reject)

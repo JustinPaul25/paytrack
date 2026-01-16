@@ -155,18 +155,73 @@ async function deleteInvoice(id: number) {
 async function markAsPaid(invoice: Invoice) {
     const customerName = invoice.customer.name;
     const invoiceNumber = invoice.reference_number;
+    
+    // Create a form with file input
+    const htmlContent = `
+        <div style="text-align: left;">
+            <p>Are you sure you want to mark invoice <strong>${invoiceNumber}</strong> for customer <strong>${customerName}</strong> as paid?</p>
+            <p style="margin-top: 10px; margin-bottom: 15px;">This will update the payment status to paid. This action cannot be undone.</p>
+            <div style="margin-top: 20px;">
+                <label for="payment_proof" style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Payment Proof <span style="color: #ef4444;">*</span></label>
+                <input type="file" id="payment_proof" name="payment_proof" accept="image/*,.pdf" required 
+                    style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
+                    class="swal2-file">
+                <p style="margin-top: 6px; font-size: 12px; color: #6b7280;">Accepted formats: JPEG, PNG, GIF, WEBP, PDF (Max 10MB)</p>
+            </div>
+        </div>
+    `;
+    
     const result = await Swal.fire({
         title: 'Mark invoice as paid?',
-        html: `Are you sure you want to mark invoice <strong>${invoiceNumber}</strong> for customer <strong>${customerName}</strong> as paid?<br><br>This will update the payment status to paid. This action cannot be undone.`,
+        html: htmlContent,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#8f5be8',
         cancelButtonColor: '#6b7280',
         confirmButtonText: 'Yes, mark as paid',
         cancelButtonText: 'Cancel',
+        focusConfirm: false,
+        preConfirm: () => {
+            const fileInput = document.getElementById('payment_proof') as HTMLInputElement;
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                Swal.showValidationMessage('Payment proof is required to mark the invoice as paid.');
+                return false;
+            }
+            return fileInput.files[0];
+        },
+        didOpen: () => {
+            // Add event listener to file input for validation feedback
+            const fileInput = document.getElementById('payment_proof') as HTMLInputElement;
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    const file = this.files?.[0];
+                    if (file) {
+                        // Validate file size (10MB)
+                        const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+                        if (file.size > maxSize) {
+                            Swal.showValidationMessage('File size must not exceed 10MB.');
+                            this.value = '';
+                            return;
+                        }
+                        // Validate file type
+                        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+                        if (!validTypes.includes(file.type)) {
+                            Swal.showValidationMessage('Please upload a valid image (JPEG, PNG, GIF, WEBP) or PDF file.');
+                            this.value = '';
+                            return;
+                        }
+                    }
+                });
+            }
+        }
     });
-    if (result.isConfirmed) {
-        router.post(route('invoices.markPaid', invoice.id), {}, {
+    
+    if (result.isConfirmed && result.value) {
+        // Create FormData to send file
+        const formData = new FormData();
+        formData.append('payment_proof', result.value);
+        
+        router.post(route('invoices.markPaid', invoice.id), formData, {
             preserveScroll: true,
             onSuccess: () => {
                 Swal.fire({
@@ -176,6 +231,14 @@ async function markAsPaid(invoice: Invoice) {
                     title: 'Invoice marked as paid',
                     showConfirmButton: false,
                     timer: 2000,
+                });
+            },
+            onError: (errors) => {
+                const errorMessage = errors.payment_proof?.[0] || 'Failed to mark invoice as paid. Please try again.';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: errorMessage,
                 });
             },
         });

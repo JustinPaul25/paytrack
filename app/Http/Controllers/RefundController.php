@@ -211,30 +211,40 @@ class RefundController extends Controller
             abort(403);
         }
 
-        $status = $request->get('status', ''); // Filter by status for refunds
-        $requestStatus = $request->get('request_status', ''); // Filter by status for refund requests
-
-        // Get damaged refunds with stock movements
-        $refundsQuery = Refund::with(['invoice', 'product', 'user'])
+        // Only fetch approved damaged refunds (view-only)
+        // Get damaged refunds from approved refund requests
+        $refundsQuery = Refund::with(['invoice', 'product', 'user', 'refundRequest.media'])
             ->where('is_damaged', true)
+            ->where('status', 'approved')
             ->orderByDesc('created_at');
-        
-        if ($status && $status !== 'all') {
-            $refundsQuery->where('status', $status);
-        }
         
         $refunds = $refundsQuery->paginate(10, ['*'], 'refunds_page')->withQueryString();
 
-        // Get damaged refund requests
-        $requestsQuery = RefundRequest::with(['invoice', 'product'])
-            ->where('is_damaged', true)
-            ->orderByDesc('created_at');
-        
-        if ($requestStatus && $requestStatus !== 'all') {
-            $requestsQuery->where('status', $requestStatus);
-        }
-        
-        $refundRequests = $requestsQuery->paginate(10, ['*'], 'requests_page')->withQueryString();
+        // Transform refunds to include proof images from their refund requests
+        $refunds->through(function ($refund) {
+            if ($refund->refundRequest) {
+                $mediaCollection = $refund->refundRequest->getMedia('proof_images');
+                $proofImages = $mediaCollection->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'url' => $media->getUrl(),
+                        'name' => $media->name,
+                    ];
+                })->toArray();
+                $refund->setAttribute('proof_images', $proofImages);
+                
+                // Also include other refund request details that might be useful
+                $refund->setAttribute('refund_request', [
+                    'id' => $refund->refundRequest->id,
+                    'tracking_number' => $refund->refundRequest->tracking_number,
+                    'customer_name' => $refund->refundRequest->customer_name,
+                    'reason' => $refund->refundRequest->reason,
+                    'damaged_items_terms' => $refund->refundRequest->damaged_items_terms,
+                    'notes' => $refund->refundRequest->notes,
+                ]);
+            }
+            return $refund;
+        });
 
         // Get all stock movements for damaged items (writeoffs)
         $damagedStockMovements = StockMovement::whereHas('refund', function ($query) {
@@ -246,10 +256,8 @@ class RefundController extends Controller
 
         // Calculate statistics
         $stats = [
-            'total_damaged_refunds' => Refund::where('is_damaged', true)->count(),
-            'total_damaged_requests' => RefundRequest::where('is_damaged', true)->count(),
-            'pending_requests' => RefundRequest::where('is_damaged', true)->where('status', 'pending')->count(),
-            'total_damaged_value' => Refund::where('is_damaged', true)->sum('refund_amount') / 100, // Convert from cents
+            'total_damaged_refunds' => Refund::where('is_damaged', true)->where('status', 'approved')->count(),
+            'total_damaged_value' => Refund::where('is_damaged', true)->where('status', 'approved')->sum('refund_amount') / 100, // Convert from cents
             'total_writeoffs' => StockMovement::whereHas('refund', function ($query) {
                 $query->where('is_damaged', true);
             })->where('type', 'writeoff')->count(),
@@ -257,13 +265,8 @@ class RefundController extends Controller
 
         return inertia('refunds/DamagedItems', [
             'refunds' => $refunds,
-            'refundRequests' => $refundRequests,
             'stockMovements' => $damagedStockMovements,
             'stats' => $stats,
-            'filters' => [
-                'status' => $status,
-                'request_status' => $requestStatus,
-            ],
         ]);
     }
 }

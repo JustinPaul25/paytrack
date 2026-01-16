@@ -296,6 +296,10 @@ const handleFileSelect = (event: Event) => {
                 title: 'Invalid File Type',
                 text: 'Please select an image file (JPEG, PNG, GIF, etc.)',
             });
+            // Reset file input
+            if (fileInputRef.value) {
+                fileInputRef.value.value = '';
+            }
             return;
         }
         
@@ -306,10 +310,17 @@ const handleFileSelect = (event: Event) => {
                 title: 'File Too Large',
                 text: 'Please select an image smaller than 5MB',
             });
+            // Reset file input
+            if (fileInputRef.value) {
+                fileInputRef.value.value = '';
+            }
             return;
         }
         
         form.proof_of_delivery = file;
+        
+        // Clear any existing errors when file is selected
+        form.clearErrors();
         
         // Create preview
         const reader = new FileReader();

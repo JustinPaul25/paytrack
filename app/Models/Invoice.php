@@ -3,10 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 
-class Invoice extends Model
+class Invoice extends Model implements HasMedia
 {
+    use InteractsWithMedia;
     protected $fillable = [
         'customer_id', 
         'user_id', 
@@ -182,6 +186,25 @@ class Invoice extends Model
     public function isFullySettled(): bool
     {
         return $this->payment_status === 'paid' || $this->net_balance <= 0;
+    }
+
+    /**
+     * Get the payment proof URL.
+     */
+    public function getPaymentProofUrlAttribute()
+    {
+        $media = $this->getFirstMedia('payment_proof');
+        return $media ? $media->getUrl() : null;
+    }
+
+    /**
+     * Register the media collections for the invoice.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this
+            ->addMediaCollection('payment_proof')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/webp', 'application/pdf']);
     }
     
 }

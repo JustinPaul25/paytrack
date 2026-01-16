@@ -74,6 +74,11 @@ class Refund extends Model
     {
         return $this->hasMany(StockMovement::class);
     }
+
+    public function refundRequest()
+    {
+        return $this->hasOne(RefundRequest::class, 'completed_refund_id');
+    }
 }
 
 

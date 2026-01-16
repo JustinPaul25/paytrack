@@ -537,7 +537,7 @@ class InvoiceController extends Controller
         }
     }
 
-    public function markPaid(Invoice $invoice)
+    public function markPaid(Request $request, Invoice $invoice)
     {
         // Only Admin and Staff can mark as paid (Customer cannot)
         $user = auth()->user();
@@ -545,8 +545,30 @@ class InvoiceController extends Controller
             abort(403);
         }
         
+        // Validate that payment proof is required
+        $validated = $request->validate([
+            'payment_proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240', // 10MB max
+        ], [
+            'payment_proof.required' => 'Payment proof is required to mark the invoice as paid.',
+            'payment_proof.file' => 'Payment proof must be a valid file.',
+            'payment_proof.mimes' => 'Payment proof must be an image (JPEG, PNG, GIF, WEBP) or PDF file.',
+            'payment_proof.max' => 'Payment proof file size must not exceed 10MB.',
+        ]);
+        
         DB::beginTransaction();
         try {
+            // Handle payment proof file upload
+            if ($request->hasFile('payment_proof')) {
+                // Remove old payment proof if exists
+                $invoice->clearMediaCollection('payment_proof');
+                
+                // Add new payment proof
+                $invoice->addMediaFromRequest('payment_proof')
+                    ->usingFileName($request->file('payment_proof')->hashName())
+                    ->usingName($request->file('payment_proof')->getClientOriginalName())
+                    ->toMediaCollection('payment_proof');
+            }
+            
             // Update invoice status and payment status
             $updateData = ['payment_status' => 'paid'];
             if ($invoice->status !== 'completed') {
@@ -562,7 +584,7 @@ class InvoiceController extends Controller
             throw $e;
         }
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Invoice marked as paid successfully.');
     }
 
     public function sendPaymentReminder(Invoice $invoice)
