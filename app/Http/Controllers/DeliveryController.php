@@ -178,9 +178,14 @@ class DeliveryController extends Controller
             'delivery_fee' => $isRefundDelivery ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
         ]);
 
-        // Force delivery fee to 0 for refund-related deliveries (return pickups are free)
-        if ($isRefundDelivery) {
+        // Default to 0 if not provided for refund deliveries (but allow setting a fee)
+        if ($isRefundDelivery && !isset($validated['delivery_fee'])) {
             $validated['delivery_fee'] = 0;
+        }
+        
+        // Convert delivery fee to cents if provided
+        if (isset($validated['delivery_fee'])) {
+            $validated['delivery_fee'] = (int) round($validated['delivery_fee'] * 100);
         }
 
         DB::beginTransaction();
@@ -317,12 +322,9 @@ class DeliveryController extends Controller
                     $vatAmount = $invoice->vat_amount; // Already in dollars (accessor)
                     $withholdingTaxAmount = $invoice->withholding_tax_amount; // Already in dollars (accessor)
                     
-                    // Get all deliveries except the one being updated (since it's not saved yet)
-                    $existingDeliveryFees = $invoice->deliveries()
-                        ->where('id', '!=', $delivery->id)
-                        ->sum('delivery_fee') / 100; // Sum in cents, convert to dollars
-                    $newDeliveryFee = $validated['delivery_fee']; // In dollars from form
-                    $allDeliveryFees = $existingDeliveryFees + $newDeliveryFee;
+                    // Sum all delivery fees (including the updated one) - delivery_fee is stored in cents, convert to dollars
+                    $allDeliveryFees = $invoice->deliveries()
+                        ->sum('delivery_fee') / 100;
                     
                     // Total = Subtotal + VAT - Withholding Tax + Delivery Fees
                     $newTotal = $subtotal + $vatAmount - $withholdingTaxAmount + $allDeliveryFees;

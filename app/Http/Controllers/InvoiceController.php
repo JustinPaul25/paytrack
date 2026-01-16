@@ -247,7 +247,7 @@ class InvoiceController extends Controller
             }
         }
         $invoice->load(['customer.media', 'user', 'invoiceItems.product', 'refunds.product', 'deliveries']);
-        $refunds = $invoice->refunds()->with('product')->orderByDesc('created_at')->get()->map(function ($r) {
+        $refunds = $invoice->refunds()->with(['product', 'exchangeProduct'])->orderByDesc('created_at')->get()->map(function ($r) {
             return [
                 'id' => $r->id,
                 'refund_number' => $r->refund_number,
@@ -255,6 +255,10 @@ class InvoiceController extends Controller
                 'quantity_refunded' => $r->quantity_refunded,
                 'refund_amount' => $r->refund_amount, // accessor returns currency
                 'status' => $r->status,
+                'refund_type' => $r->refund_type,
+                'exchange_product_id' => $r->exchange_product_id,
+                'exchange_product_name' => $r->exchangeProduct?->name,
+                'exchange_quantity' => $r->exchange_quantity,
                 'created_at' => $r->created_at?->format('M d, Y'),
             ];
         });
@@ -339,8 +343,10 @@ class InvoiceController extends Controller
         
         // Calculate net balance (total - refunds) for display
         $netBalance = $invoice->net_balance;
+        // Calculate total refunded excluding exchange refunds (replacements don't reduce amount)
         $totalRefunded = $invoice->refunds()
             ->whereIn('status', ['approved', 'processed', 'completed'])
+            ->where('refund_type', '!=', 'exchange') // Exclude exchange refunds
             ->sum('refund_amount') / 100; // Convert from cents
         
         return inertia('invoices/Show', [

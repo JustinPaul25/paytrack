@@ -138,8 +138,8 @@ function submit() {
         return;
     }
     
-    // Ensure delivery fee is 0 for refund requests
-    if (props.refundRequest) {
+    // Default delivery fee to 0 for refund requests, but allow setting a fee
+    if (props.refundRequest && !form.delivery_fee) {
         form.delivery_fee = '0.00';
     }
     
@@ -567,9 +567,9 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                     </div>
                     
                     <div :class="props.refundRequest ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'">
-                        <!-- Hide delivery fee field for refund requests (return pickups are free) -->
-                        <div v-if="!props.refundRequest">
-                            <Label for="delivery_fee">Delivery Fee *</Label>
+                        <!-- Delivery fee field - now available for refund requests too -->
+                        <div>
+                            <Label for="delivery_fee">Delivery Fee <span v-if="!props.refundRequest">*</span></Label>
                             <input
                                 v-model="form.delivery_fee"
                                 type="number"
@@ -580,9 +580,12 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                                 :disabled="isStaff"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="0.00"
-                                required
+                                :required="!props.refundRequest"
                             />
-                            <div v-if="isStaff && routeDistance !== null" class="text-xs text-muted-foreground mt-1">
+                            <div v-if="props.refundRequest" class="text-xs text-muted-foreground mt-1">
+                                Optional: Set delivery fee for refund return pickup
+                            </div>
+                            <div v-else-if="isStaff && routeDistance !== null" class="text-xs text-muted-foreground mt-1">
                                 Distance: {{ routeDistance }} km • Fee: ₱{{ BASE_DELIVERY_FEE.toFixed(2) }} base + ₱{{ RATE_PER_KM.toFixed(2) }}/km
                             </div>
                             <div v-else-if="isStaff && routeDistance === null" class="text-xs text-muted-foreground mt-1">

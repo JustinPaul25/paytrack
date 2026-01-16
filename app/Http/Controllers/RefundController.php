@@ -250,6 +250,10 @@ class RefundController extends Controller
                     $deliveryNotes = "Delivery for refund {$refund->refund_number}. Product: {$productName} (Qty: {$refund->quantity_refunded})";
                 }
 
+                // Get delivery fee from request (if provided), otherwise default to 0
+                // For refund deliveries, we now allow delivery fees
+                $deliveryFee = $request->get('delivery_fee', 0);
+                
                 // Create delivery record
                 $delivery = \App\Models\Delivery::create([
                     'customer_id' => $customer->id,
@@ -261,8 +265,25 @@ class RefundController extends Controller
                     'delivery_time' => $deliveryTime,
                     'status' => 'pending',
                     'notes' => $deliveryNotes,
-                    'delivery_fee' => 0, // No fee for refund/exchange deliveries
+                    'delivery_fee' => $deliveryFee * 100, // Convert to cents
                 ]);
+                
+                // Update invoice total to include the refund delivery fee
+                if ($deliveryFee > 0) {
+                    $invoice->refresh();
+                    $subtotal = $invoice->subtotal_amount;
+                    $vatAmount = $invoice->vat_amount;
+                    $withholdingTaxAmount = $invoice->withholding_tax_amount;
+                    
+                    // Sum all delivery fees (including the one just created)
+                    $allDeliveryFees = $invoice->deliveries()
+                        ->sum('delivery_fee') / 100;
+                    
+                    // Recalculate total: Subtotal + VAT - Withholding Tax + Delivery Fees
+                    $newTotal = $subtotal + $vatAmount - $withholdingTaxAmount + $allDeliveryFees;
+                    $invoice->total_amount = $newTotal;
+                    $invoice->save();
+                }
 
                 // Create notification for customer about scheduled delivery
                 $customerUser = \App\Models\User::where('email', $customer->email)->first();

@@ -97,7 +97,7 @@ interface Delivery {
 
 const props = defineProps<{
     invoice: Invoice;
-    refunds?: { id:number; refund_number:string; product_name?:string; quantity_refunded:number; refund_amount:number; status:string; created_at:string }[];
+    refunds?: { id:number; refund_number:string; product_name?:string; quantity_refunded:number; refund_amount:number; status:string; refund_type?:string; exchange_product_id?:number; exchange_product_name?:string; exchange_quantity?:number; created_at:string }[];
     refundRequests?: { id:number; tracking_number:string; product_name?:string; quantity:number; status:string; created_at:string; media_link?:string; review_notes?:string }[];
     deliveries?: Delivery[];
     customers?: Customer[];
@@ -726,9 +726,15 @@ watch(() => (page.props as any).flash, (flash) => {
                                     </span>
                                 </div>
                                 <div class="text-sm text-gray-600">
-                                    <div v-if="r.product_name">Product: {{ r.product_name }}</div>
+                                    <div v-if="r.refund_type === 'exchange'" class="mb-2 p-2 bg-blue-50 rounded text-xs">
+                                        <div class="font-medium text-blue-800">Exchange (Replacement)</div>
+                                        <div v-if="r.product_name">Returned: {{ r.product_name }}</div>
+                                        <div v-if="r.exchange_product_name">Replaced with: {{ r.exchange_product_name }} (Qty: {{ r.exchange_quantity }})</div>
+                                    </div>
+                                    <div v-else-if="r.product_name">Product: {{ r.product_name }}</div>
                                     <div>Qty: {{ r.quantity_refunded }}</div>
-                                    <div>Amount: {{ formatCurrency(r.refund_amount) }}</div>
+                                    <div v-if="r.refund_type !== 'exchange'">Amount: {{ formatCurrency(r.refund_amount) }}</div>
+                                    <div v-else class="text-xs text-gray-500 italic">No amount deduction (replacement item)</div>
                                     <div class="text-xs text-gray-500">Date: {{ r.created_at }}</div>
                                 </div>
                             </div>

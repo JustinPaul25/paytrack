@@ -240,6 +240,11 @@ function completeRefund(id: number) {
                     <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:500;">Custom Time</label>
                     <input id="custom_time" type="text" class="swal2-input" placeholder="e.g., 10:00 AM - 2:00 PM" style="width:100%;margin:0;" />
                 </div>
+                <div>
+                    <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:500;">Delivery Fee (PHP)</label>
+                    <input id="delivery_fee" type="number" class="swal2-input" placeholder="0.00" min="0" step="0.01" value="0" style="width:100%;margin:0;" />
+                    <p style="font-size:11px;color:#6b7280;margin-top:4px;">Enter the delivery fee for this refund delivery</p>
+                </div>
             </div>
         </div>
         `,
@@ -292,6 +297,13 @@ function completeRefund(id: number) {
                 if (deliveryTime === 'Custom' && !customTime) {
                     Swal.showValidationMessage('Please enter a custom delivery time');
                     return false;
+                }
+                
+                // Get delivery fee
+                const deliveryFeeInput = document.getElementById('delivery_fee') as HTMLInputElement;
+                if (deliveryFeeInput) {
+                    const deliveryFee = parseFloat(deliveryFeeInput.value) || 0;
+                    data.delivery_fee = deliveryFee;
                 }
             }
             

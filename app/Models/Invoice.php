@@ -167,11 +167,13 @@ class Invoice extends Model implements HasMedia
      * Calculate net amount owed after refunds
      * For credit invoices, this is the actual amount the customer owes
      * Only counts approved, processed, or completed refunds
+     * Excludes exchange refunds (replacements) - they don't reduce the amount owed
      */
     public function getNetBalanceAttribute(): float
     {
         $totalRefunded = $this->refunds()
             ->whereIn('status', ['approved', 'processed', 'completed'])
+            ->where('refund_type', '!=', 'exchange') // Exclude exchange refunds
             ->sum('refund_amount');
         
         // Convert from cents to currency
