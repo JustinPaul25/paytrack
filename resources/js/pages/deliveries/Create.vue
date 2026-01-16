@@ -187,12 +187,15 @@ const straightLineDistance = computed(() => {
 
 // Calculate initial delivery fee based on straight-line distance (same as order forms)
 const initialDeliveryFee = computed(() => {
+    const baseFee = props.baseDeliveryFee || 50.00;
+    const ratePerKm = props.ratePerKm || 10.00;
+    
     if (!straightLineDistance.value || straightLineDistance.value <= 0) {
-        return props.baseDeliveryFee;
+        return baseFee;
     }
     
-    const calculatedFee = props.baseDeliveryFee + (straightLineDistance.value * props.ratePerKm);
-    return Math.max(calculatedFee, props.baseDeliveryFee); // Ensure minimum fee
+    const calculatedFee = baseFee + (straightLineDistance.value * ratePerKm);
+    return Math.max(calculatedFee, baseFee); // Ensure minimum fee
 });
 
 // Delivery fee rates (using base fee and rate from settings)
@@ -215,9 +218,9 @@ function calculateDeliveryFee(distance: number | null): number {
 watch(() => initialDeliveryFee.value, (newFee) => {
     // Only update if customer is selected and fee field is empty or matches base fee
     // This allows manual overrides
-    if (form.customer_id) {
+    if (form.customer_id && newFee != null) {
         const currentFee = parseFloat(form.delivery_fee) || 0;
-        const baseFee = props.baseDeliveryFee;
+        const baseFee = props.baseDeliveryFee || 0;
         if (!form.delivery_fee || currentFee === baseFee || currentFee === 0) {
             form.delivery_fee = newFee.toFixed(2);
         }
@@ -477,16 +480,22 @@ watch(() => form.customer_id, (newCustomerId) => {
             
             // Initialize delivery fee using straight-line distance (same as order forms)
             // This ensures consistency with the order creation form
-            if (initialDeliveryFee.value) {
+            if (initialDeliveryFee.value != null) {
                 form.delivery_fee = initialDeliveryFee.value.toFixed(2);
-            } else {
+            } else if (props.baseDeliveryFee != null) {
                 // Fallback to base fee if distance cannot be calculated
                 form.delivery_fee = props.baseDeliveryFee.toFixed(2);
+            } else {
+                form.delivery_fee = '50.00'; // Default fallback
             }
         }
     } else {
         // Reset to base fee if no customer selected
-        form.delivery_fee = props.baseDeliveryFee.toFixed(2);
+        if (props.baseDeliveryFee != null) {
+            form.delivery_fee = props.baseDeliveryFee.toFixed(2);
+        } else {
+            form.delivery_fee = '50.00'; // Default fallback
+        }
     }
 }, { immediate: true });
 
