@@ -54,6 +54,10 @@ class RefundController extends Controller
         $defaultReturnToStock = $refund->is_damaged ? false : true;
         $returnToStock = (bool) $request->get('return_to_stock', $defaultReturnToStock);
         $notes = $request->get('notes');
+        
+        // Get delivery information if provided (for exchanges or refunds that need delivery)
+        $deliveryDate = $request->get('delivery_date');
+        $deliveryTime = $request->get('delivery_time');
 
         // Handle inventory
         // For exchanges: return original item to stock AND deduct exchange item from stock
@@ -188,6 +192,109 @@ class RefundController extends Controller
             }
         }
 
+        // Create delivery for exchange products or refunded items if delivery info is provided
+        if ($deliveryDate && $deliveryTime) {
+            // Load customer relationship if not already loaded
+            if (!$invoice->relationLoaded('customer')) {
+                $invoice->load('customer');
+            }
+            $customer = $invoice->customer;
+
+            if ($customer && $invoice) {
+                // Build delivery address from customer's address fields
+                $addressParts = [];
+                if ($customer->purok) {
+                    $addressParts[] = $customer->purok;
+                }
+                if ($customer->barangay) {
+                    $addressParts[] = $customer->barangay;
+                }
+                if ($customer->city_municipality) {
+                    $addressParts[] = $customer->city_municipality;
+                }
+                if ($customer->province) {
+                    $addressParts[] = $customer->province;
+                }
+                $deliveryAddress = !empty($addressParts) ? implode(', ', $addressParts) : ($customer->address ?? 'To be confirmed');
+
+                // Normalize phone number to Philippine format
+                $contactPhone = $customer->phone ?? '';
+                if ($contactPhone) {
+                    // Remove all non-digit characters
+                    $digits = preg_replace('/[^0-9]/', '', $contactPhone);
+                    // Normalize to +63XXXXXXXXXX format if we have valid digits
+                    if (strlen($digits) >= 10) {
+                        if (substr($digits, 0, 2) === '63') {
+                            $contactPhone = '+' . substr($digits, 0, 12);
+                        } elseif (substr($digits, 0, 1) === '0') {
+                            $contactPhone = '+63' . substr($digits, 1, 10);
+                        } else {
+                            $contactPhone = '+63' . substr($digits, 0, 10);
+                        }
+                    }
+                }
+
+                // Determine product name and delivery type
+                $productName = 'Product';
+                $deliveryType = 'Refund';
+                $deliveryNotes = "Delivery for refund {$refund->refund_number}";
+                
+                if ($refund->refund_type === 'exchange' && $refund->exchange_product_id) {
+                    $exchangeProduct = \App\Models\Product::find($refund->exchange_product_id);
+                    $productName = $exchangeProduct?->name ?? 'Exchange Product';
+                    $deliveryType = 'Exchange';
+                    $deliveryNotes = "Exchange delivery for refund {$refund->refund_number}. Product: {$productName} (Qty: {$refund->exchange_quantity})";
+                } else {
+                    $product = $refund->product;
+                    $productName = $product?->name ?? 'Product';
+                    $deliveryNotes = "Delivery for refund {$refund->refund_number}. Product: {$productName} (Qty: {$refund->quantity_refunded})";
+                }
+
+                // Create delivery record
+                $delivery = \App\Models\Delivery::create([
+                    'customer_id' => $customer->id,
+                    'invoice_id' => $invoice->id,
+                    'delivery_address' => $deliveryAddress,
+                    'contact_person' => $customer->name ?? 'Customer',
+                    'contact_phone' => $contactPhone ?: '+63-900-000-0000',
+                    'delivery_date' => $deliveryDate,
+                    'delivery_time' => $deliveryTime,
+                    'status' => 'pending',
+                    'notes' => $deliveryNotes,
+                    'delivery_fee' => 0, // No fee for refund/exchange deliveries
+                ]);
+
+                // Create notification for customer about scheduled delivery
+                $customerUser = \App\Models\User::where('email', $customer->email)->first();
+                if ($customerUser) {
+                    $formattedDate = \Carbon\Carbon::parse($deliveryDate)->format('F j, Y');
+                    $message = "Your {$deliveryType} for refund {$refund->refund_number} has been completed. ";
+                    $message .= "A delivery has been scheduled for {$formattedDate} at {$deliveryTime}.";
+                    
+                    $notification = \App\Models\Notification::create([
+                        'user_id' => $customerUser->id,
+                        'type' => 'refund.delivery_scheduled',
+                        'notifiable_id' => $refund->id,
+                        'notifiable_type' => \App\Models\Refund::class,
+                        'title' => "{$deliveryType} Delivery Scheduled",
+                        'message' => $message,
+                        'action_url' => "/invoices/{$invoice->id}",
+                        'read' => false,
+                        'data' => [
+                            'refund_id' => $refund->id,
+                            'refund_number' => $refund->refund_number,
+                            'invoice_id' => $invoice->id,
+                            'delivery_id' => $delivery->id,
+                            'delivery_date' => $deliveryDate,
+                            'delivery_time' => $deliveryTime,
+                        ],
+                    ]);
+                    // Broadcast notification
+                    broadcast(new \App\Events\NotificationCreated($notification));
+                }
+            }
+        }
+
         return redirect()->back();
     }
 
@@ -213,15 +320,21 @@ class RefundController extends Controller
 
         // Only fetch approved damaged refunds (view-only)
         // Get damaged refunds from approved refund requests
-        $refundsQuery = Refund::with(['invoice', 'product', 'user', 'refundRequest.media'])
+        $refundsQuery = Refund::with(['invoice', 'product.media', 'user', 'refundRequest.media'])
             ->where('is_damaged', true)
             ->where('status', 'approved')
             ->orderByDesc('created_at');
         
         $refunds = $refundsQuery->paginate(10, ['*'], 'refunds_page')->withQueryString();
 
-        // Transform refunds to include proof images from their refund requests
+        // Transform refunds to include proof images from their refund requests and product images
         $refunds->through(function ($refund) {
+            // Get product image URL (prefer product image, fallback to first proof image)
+            $productImageUrl = null;
+            if ($refund->product) {
+                $productImageUrl = $refund->product->getFirstMediaUrl('images');
+            }
+            
             if ($refund->refundRequest) {
                 $mediaCollection = $refund->refundRequest->getMedia('proof_images');
                 $proofImages = $mediaCollection->map(function ($media) {
@@ -233,6 +346,11 @@ class RefundController extends Controller
                 })->toArray();
                 $refund->setAttribute('proof_images', $proofImages);
                 
+                // Use first proof image if no product image available
+                if (!$productImageUrl && !empty($proofImages)) {
+                    $productImageUrl = $proofImages[0]['url'];
+                }
+                
                 // Also include other refund request details that might be useful
                 $refund->setAttribute('refund_request', [
                     'id' => $refund->refundRequest->id,
@@ -243,29 +361,21 @@ class RefundController extends Controller
                     'notes' => $refund->refundRequest->notes,
                 ]);
             }
+            
+            // Set the display image (product image or first proof image)
+            $refund->setAttribute('display_image_url', $productImageUrl);
+            
             return $refund;
         });
-
-        // Get all stock movements for damaged items (writeoffs)
-        $damagedStockMovements = StockMovement::whereHas('refund', function ($query) {
-                $query->where('is_damaged', true);
-            })
-            ->with(['refund', 'product', 'invoice', 'user'])
-            ->orderByDesc('created_at')
-            ->get();
 
         // Calculate statistics
         $stats = [
             'total_damaged_refunds' => Refund::where('is_damaged', true)->where('status', 'approved')->count(),
             'total_damaged_value' => Refund::where('is_damaged', true)->where('status', 'approved')->sum('refund_amount') / 100, // Convert from cents
-            'total_writeoffs' => StockMovement::whereHas('refund', function ($query) {
-                $query->where('is_damaged', true);
-            })->where('type', 'writeoff')->count(),
         ];
 
         return inertia('refunds/DamagedItems', [
             'refunds' => $refunds,
-            'stockMovements' => $damagedStockMovements,
             'stats' => $stats,
         ]);
     }

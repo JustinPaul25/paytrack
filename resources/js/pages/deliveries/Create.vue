@@ -37,10 +37,25 @@ interface Invoice {
     customer: Customer | null;
 }
 
+interface RefundRequest {
+    id: number;
+    tracking_number: string;
+    invoice_id: number;
+    customer_id: number;
+    product_name: string;
+    quantity: number;
+    delivery_address: string;
+    contact_person: string;
+    contact_phone: string;
+    notes: string;
+}
+
 const props = defineProps<{ 
     customers: Customer[];
     invoices: Invoice[];
     preselectedInvoiceId?: number | null;
+    refundRequest?: RefundRequest | null;
+    refundType?: string | null;
 }>();
 
 const form = useForm({
@@ -85,8 +100,8 @@ function calculateDeliveryFee(distance: number | null): number {
 function handleDistanceCalculated(distance: number | null) {
     routeDistance.value = distance;
     
-    // Auto-calculate fee for staff users
-    if (isStaff.value) {
+    // Auto-calculate fee for staff users, but NOT for refund requests (return pickups are free)
+    if (isStaff.value && !props.refundRequest) {
         const calculatedFee = calculateDeliveryFee(distance);
         form.delivery_fee = calculatedFee.toFixed(2);
     }
@@ -123,7 +138,21 @@ function submit() {
         return;
     }
     
-    form.post(route('deliveries.store'), {
+    // Ensure delivery fee is 0 for refund requests
+    if (props.refundRequest) {
+        form.delivery_fee = '0.00';
+    }
+    
+    // Transform form data to include refund_request_id if present
+    form.transform((data) => {
+        if (props.refundRequest) {
+            return {
+                ...data,
+                refund_request_id: props.refundRequest.id,
+            };
+        }
+        return data;
+    }).post(route('deliveries.store'), {
         preserveScroll: true,
         onSuccess: () => {
             Swal.fire({
@@ -309,9 +338,28 @@ const selectedCustomer = computed(() => {
     return props.customers.find(c => c.id === form.customer_id) || null;
 });
 
-// Pre-fill form when invoice is preselected
+// Pre-fill form when invoice is preselected or refund request is provided
 onMounted(() => {
-    if (props.preselectedInvoiceId) {
+    // Handle refund request context first (takes priority)
+    if (props.refundRequest) {
+        const refundReq = props.refundRequest;
+        form.invoice_id = refundReq.invoice_id;
+        form.customer_id = refundReq.customer_id;
+        form.delivery_address = refundReq.delivery_address;
+        form.contact_person = refundReq.contact_person;
+        form.contact_phone = normalizePhoneNumber(refundReq.contact_phone);
+        form.notes = refundReq.notes;
+        form.delivery_fee = '0.00'; // No fee for return pickups
+        
+        // Set default delivery date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        form.delivery_date = tomorrow.toISOString().split('T')[0];
+        
+        // Set default delivery time
+        form.delivery_time = '09:00 AM - 12:00 PM';
+    } else if (props.preselectedInvoiceId) {
+        // Handle regular invoice preselection
         const invoice = props.invoices.find(inv => inv.id === props.preselectedInvoiceId);
         if (invoice) {
             form.invoice_id = invoice.id;
@@ -387,11 +435,29 @@ watch(() => form.invoice_id, (newInvoiceId) => {
             <h1 class="text-2xl font-bold">Create Delivery</h1>
         </div>
         
+        <!-- Refund Request Banner -->
+        <div v-if="props.refundRequest" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-sm font-semibold text-blue-900 mb-1">Return Pickup for Refund Request</h3>
+                    <p class="text-sm text-blue-700">
+                        Scheduling delivery for return pickup of refund request <strong>{{ props.refundRequest.tracking_number }}</strong>.
+                        Product: <strong>{{ props.refundRequest.product_name }}</strong> (Qty: {{ props.refundRequest.quantity }})
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <form @submit.prevent="submit()" class="space-y-6">
             <!-- Delivery Details -->
             <Card>
                 <CardHeader>
-                    <CardTitle>Delivery Details</CardTitle>
+                    <CardTitle>{{ props.refundRequest ? 'Return Pickup Details' : 'Delivery Details' }}</CardTitle>
                 </CardHeader>
                 <CardContent class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -500,8 +566,9 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                    <div :class="props.refundRequest ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'">
+                        <!-- Hide delivery fee field for refund requests (return pickups are free) -->
+                        <div v-if="!props.refundRequest">
                             <Label for="delivery_fee">Delivery Fee *</Label>
                             <input
                                 v-model="form.delivery_fee"
@@ -518,7 +585,7 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                             <div v-if="isStaff && routeDistance !== null" class="text-xs text-muted-foreground mt-1">
                                 Distance: {{ routeDistance }} km • Fee: ₱{{ BASE_DELIVERY_FEE.toFixed(2) }} base + ₱{{ RATE_PER_KM.toFixed(2) }}/km
                             </div>
-                            <div v-if="isStaff && routeDistance === null" class="text-xs text-muted-foreground mt-1">
+                            <div v-else-if="isStaff && routeDistance === null" class="text-xs text-muted-foreground mt-1">
                                 Fee will be calculated automatically based on delivery distance
                             </div>
                             <InputError :message="form.errors.delivery_fee" />

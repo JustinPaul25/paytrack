@@ -686,7 +686,7 @@ watch(() => (page.props as any).flash, (flash) => {
                                             'bg-red-100 text-red-800': r.status === 'rejected',
                                         }"
                                     >
-                                        {{ r.status }}
+                                        {{ r.status === 'completed' ? 'approved' : r.status }}
                                     </span>
                                 </div>
                                 <div class="text-sm text-gray-600">

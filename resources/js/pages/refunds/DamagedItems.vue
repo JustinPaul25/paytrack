@@ -35,6 +35,7 @@ interface Refund {
         id: number;
         reference_number: string;
     };
+    display_image_url?: string;
     proof_images?: Array<{
         id: number;
         url: string;
@@ -61,37 +62,21 @@ interface Paginated<T> {
     next_page_url: string | null;
 }
 
-interface StockMovement {
-    id: number;
-    product_id: number;
-    refund_id?: number;
-    invoice_id?: number;
-    user_id?: number;
-    type: string;
-    quantity: number;
-    quantity_before?: number;
-    quantity_after?: number;
-    notes?: string;
-    created_at: string;
-    product?: { id: number; name: string };
-    refund?: { id: number; refund_number: string };
-    invoice?: { id: number; reference_number: string };
-    user?: { id: number; name: string };
-}
-
 interface Stats {
     total_damaged_refunds: number;
     total_damaged_value: number;
-    total_writeoffs: number;
 }
 
 const page = usePage();
 const stats = (page.props.stats || {}) as Stats;
 const refunds = (page.props.refunds || { data: [], current_page: 1, last_page: 1, total: 0, from: 0, to: 0, prev_page_url: null, next_page_url: null }) as Paginated<Refund>;
 
-const activeTab = ref<'refunds' | 'disposition'>('refunds');
 const showDetails = ref<Refund | null>(null);
-const stockMovements = (page.props.stockMovements || []) as StockMovement[];
+const imageErrors = ref<Set<number>>(new Set());
+
+function handleImageError(refundId: number) {
+    imageErrors.value.add(refundId);
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Damaged Items', href: route('refunds.damaged-items') },
@@ -113,36 +98,8 @@ function goToRefundsPage(pageNum: number) {
             </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex space-x-8">
-                <button
-                    @click="activeTab = 'refunds'"
-                    :class="[
-                        'py-4 px-1 border-b-2 font-medium text-sm',
-                        activeTab === 'refunds'
-                            ? 'border-orange-500 text-orange-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    ]"
-                >
-                    Approved Damaged Items ({{ refunds.total }})
-                </button>
-                <button
-                    @click="activeTab = 'disposition'"
-                    :class="[
-                        'py-4 px-1 border-b-2 font-medium text-sm',
-                        activeTab === 'disposition'
-                            ? 'border-orange-500 text-orange-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    ]"
-                >
-                    Where Products Went ({{ stockMovements.length }})
-                </button>
-            </nav>
-        </div>
-
-        <!-- Approved Damaged Items Tab -->
-        <Card v-if="activeTab === 'refunds'">
+        <!-- Approved Damaged Items -->
+        <Card>
             <CardHeader>
                 <CardTitle>Approved Damaged Items</CardTitle>
                 <p class="text-sm text-gray-500 mt-1">View-only listing of damaged items from approved refund requests</p>
@@ -155,6 +112,7 @@ function goToRefundsPage(pageNum: number) {
                     <table class="min-w-full divide-y divide-border">
                         <thead>
                             <tr>
+                                <th class="px-4 py-2 text-left">Image</th>
                                 <th class="px-4 py-2 text-left">Refund #</th>
                                 <th class="px-4 py-2 text-left">Invoice</th>
                                 <th class="px-4 py-2 text-left">Product</th>
@@ -165,6 +123,20 @@ function goToRefundsPage(pageNum: number) {
                         </thead>
                         <tbody>
                             <tr v-for="r in refunds.data" :key="r.id" class="hover:bg-muted">
+                                <td class="px-4 py-2">
+                                    <div class="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
+                                        <img 
+                                            v-if="r.display_image_url && !imageErrors.has(r.id)" 
+                                            :src="r.display_image_url" 
+                                            :alt="r.product?.name || 'Product image'"
+                                            class="w-full h-full object-cover"
+                                            @error="handleImageError(r.id)"
+                                        />
+                                        <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                            No Image
+                                        </div>
+                                    </div>
+                                </td>
                                 <td class="px-4 py-2 font-medium">{{ r.refund_number }}</td>
                                 <td class="px-4 py-2">
                                     <Link v-if="r.invoice_id" :href="route('invoices.show', r.invoice_id)" class="text-blue-500 underline">
@@ -215,85 +187,6 @@ function goToRefundsPage(pageNum: number) {
                             </Button>
                         </div>
                     </div>
-                </div>
-            </CardContent>
-        </Card>
-
-
-        <!-- Disposition Tab - Where Products Went -->
-        <Card v-if="activeTab === 'disposition'">
-            <CardHeader>
-                <CardTitle>Where Damaged Products Went</CardTitle>
-                <p class="text-sm text-gray-500 mt-1">Track the disposition of damaged items through stock movements</p>
-            </CardHeader>
-            <CardContent>
-                <div v-if="!stockMovements.length" class="py-8 text-center text-sm text-gray-500">
-                    No stock movements found for damaged items.
-                </div>
-                <div v-else>
-                    <table class="min-w-full divide-y divide-border">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 text-left">Date</th>
-                                <th class="px-4 py-2 text-left">Product</th>
-                                <th class="px-4 py-2 text-left">Refund #</th>
-                                <th class="px-4 py-2 text-left">Invoice</th>
-                                <th class="px-4 py-2 text-left">Type</th>
-                                <th class="px-4 py-2 text-left">Quantity</th>
-                                <th class="px-4 py-2 text-left">Stock Before</th>
-                                <th class="px-4 py-2 text-left">Stock After</th>
-                                <th class="px-4 py-2 text-left">Processed By</th>
-                                <th class="px-4 py-2 text-left">Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="movement in stockMovements" :key="movement.id" class="hover:bg-muted">
-                                <td class="px-4 py-2 text-sm">
-                                    {{ new Date(movement.created_at).toLocaleDateString() }}
-                                    <div class="text-xs text-gray-500">
-                                        {{ new Date(movement.created_at).toLocaleTimeString() }}
-                                    </div>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <div class="font-medium">{{ movement.product?.name || '—' }}</div>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <Link v-if="movement.refund_id && movement.refund" :href="route('refunds.index')" class="text-blue-500 underline">
-                                        {{ movement.refund.refund_number }}
-                                    </Link>
-                                    <span v-else class="text-gray-400">—</span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <Link v-if="movement.invoice_id && movement.invoice" :href="route('invoices.show', movement.invoice_id)" class="text-blue-500 underline">
-                                        {{ movement.invoice.reference_number || `#${movement.invoice_id}` }}
-                                    </Link>
-                                    <span v-else class="text-gray-400">—</span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                        :class="{
-                                            'bg-red-100 text-red-800': movement.type === 'writeoff',
-                                            'bg-orange-100 text-orange-800': movement.type === 'refund',
-                                            'bg-blue-100 text-blue-800': movement.type === 'sale',
-                                        }"
-                                    >
-                                        {{ movement.type === 'writeoff' ? '⚠️ Writeoff' : movement.type }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2">
-                                    <span :class="movement.quantity < 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'">
-                                        {{ movement.quantity > 0 ? '+' : '' }}{{ movement.quantity }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2 text-sm">{{ movement.quantity_before ?? '—' }}</td>
-                                <td class="px-4 py-2 text-sm">{{ movement.quantity_after ?? '—' }}</td>
-                                <td class="px-4 py-2 text-sm">{{ movement.user?.name || '—' }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-600 max-w-xs truncate" :title="movement.notes">
-                                    {{ movement.notes || '—' }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </CardContent>
         </Card>

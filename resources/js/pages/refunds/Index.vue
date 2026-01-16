@@ -75,6 +75,7 @@ interface Refund {
     quantity_refunded: number;
     refund_amount: number;
     refund_method: string;
+    refund_type?: string;
     status: string;
     reference_number?: string;
     created_at: string;
@@ -114,6 +115,10 @@ function approve(id: number) {
         inputAttributes: { 'aria-label': 'Approval notes (optional)' },
     }).then((res) => {
         if (res.isConfirmed) {
+            // Close all modals
+            Swal.close();
+            showDetails.value = null;
+            // Submit the approval
             router.post(route('refundRequests.approve', id), { review_notes: res.value || undefined }, { preserveScroll: true });
         }
     });
@@ -139,6 +144,10 @@ function reject(id: number) {
         },
     }).then((res) => {
         if (res.isConfirmed) {
+            // Close all modals
+            Swal.close();
+            showDetails.value = null;
+            // Submit the rejection
             router.post(route('refundRequests.reject', id), { review_notes: res.value }, { preserveScroll: true });
         }
     });
@@ -180,28 +189,113 @@ function processRefund(id: number) {
 function completeRefund(id: number) {
     const refund = (page.props.refunds as Paginated<Refund>).data.find(r => r.id === id);
     const isDamaged = refund?.is_damaged ?? false;
+    const isExchange = refund?.refund_type === 'exchange';
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Delivery time options
+    const deliveryTimeOptions = [
+        '09:00 AM - 12:00 PM',
+        '12:00 PM - 03:00 PM',
+        '03:00 PM - 06:00 PM',
+        '06:00 PM - 09:00 PM',
+        'Custom'
+    ];
+    
+    const timeOptionsHtml = deliveryTimeOptions.map(opt => 
+        `<option value="${opt}">${opt}</option>`
+    ).join('');
     
     Swal.fire({
         title: 'Complete refund',
         html: `
         <div style="text-align:left">
             ${isDamaged ? '<div style="background:#fef3c7;border:1px solid #fbbf24;padding:8px;border-radius:4px;margin-bottom:12px;font-size:13px;color:#92400e;"><strong>⚠️ Damaged Items:</strong> These items will not be returned to inventory stock.</div>' : ''}
-            <label style="display:flex;align-items:center;gap:8px;">
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                 <input id="return" type="checkbox" ${isDamaged ? '' : 'checked'} ${isDamaged ? 'disabled' : ''} />
                 Return to stock
             </label>
-            ${isDamaged ? '<p style="font-size:11px;color:#6b7280;margin-top:4px;margin-left:24px;">Disabled for damaged items</p>' : ''}
-            <label style="display:block;margin:10px 0 4px;font-size:12px">Inspection notes</label>
-            <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)"></textarea>
+            ${isDamaged ? '<p style="font-size:11px;color:#6b7280;margin-top:4px;margin-left:24px;margin-bottom:12px;">Disabled for damaged items</p>' : ''}
+            <label style="display:block;margin:10px 0 4px;font-size:12px;font-weight:500;">Inspection notes</label>
+            <textarea id="notes" class="swal2-textarea" placeholder="Notes (optional)" style="margin-bottom:12px;"></textarea>
+            
+            <div style="border-top:1px solid #e5e7eb;padding-top:12px;margin-top:12px;">
+                <div style="font-weight:600;margin-bottom:8px;color:#1f2937;">Schedule Delivery ${isExchange ? 'for Exchange Product' : 'for Refunded Item'}</div>
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;padding:8px;border-radius:4px;margin-bottom:12px;font-size:12px;color:#1e40af;">
+                    Set the delivery date and time to notify the customer when ${isExchange ? 'the exchange product' : 'the refunded item'} will be delivered.
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:500;">Delivery Date</label>
+                        <input id="delivery_date" type="date" class="swal2-input" style="width:100%;margin:0;" min="${today}" />
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:500;">Delivery Time</label>
+                        <select id="delivery_time" class="swal2-input" style="width:100%;margin:0;">
+                            <option value="">Select time (optional)</option>
+                            ${timeOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+                <div id="custom_time_container" style="display:none;margin-bottom:12px;">
+                    <label style="display:block;margin-bottom:4px;font-size:12px;font-weight:500;">Custom Time</label>
+                    <input id="custom_time" type="text" class="swal2-input" placeholder="e.g., 10:00 AM - 2:00 PM" style="width:100%;margin:0;" />
+                </div>
+            </div>
         </div>
         `,
         showCancelButton: true,
         confirmButtonText: 'Complete',
         confirmButtonColor: '#10b981',
+        didOpen: () => {
+            // Show custom time input when "Custom" is selected
+            const deliveryTimeSelect = document.getElementById('delivery_time') as HTMLSelectElement;
+            const customTimeContainer = document.getElementById('custom_time_container');
+            const customTimeInput = document.getElementById('custom_time') as HTMLInputElement;
+            
+            if (deliveryTimeSelect && customTimeContainer && customTimeInput) {
+                deliveryTimeSelect.addEventListener('change', () => {
+                    if (deliveryTimeSelect.value === 'Custom') {
+                        customTimeContainer.style.display = 'block';
+                    } else {
+                        customTimeContainer.style.display = 'none';
+                        customTimeInput.value = '';
+                    }
+                });
+            }
+        },
         preConfirm: () => {
             const rtn = isDamaged ? false : (document.getElementById('return') as HTMLInputElement).checked;
             const notes = (document.getElementById('notes') as HTMLTextAreaElement).value;
-            return { return_to_stock: rtn, notes: notes || undefined };
+            
+            const data: any = { return_to_stock: rtn, notes: notes || undefined };
+            
+            // Add delivery info if provided
+            const deliveryDate = (document.getElementById('delivery_date') as HTMLInputElement).value;
+            const deliveryTime = (document.getElementById('delivery_time') as HTMLSelectElement).value;
+            const customTime = (document.getElementById('custom_time') as HTMLInputElement)?.value;
+            
+            // If date is provided, time is required (and vice versa)
+            if (deliveryDate || deliveryTime) {
+                if (!deliveryDate) {
+                    Swal.showValidationMessage('Please select a delivery date if you want to schedule delivery');
+                    return false;
+                }
+                
+                if (!deliveryTime) {
+                    Swal.showValidationMessage('Please select a delivery time if you want to schedule delivery');
+                    return false;
+                }
+                
+                data.delivery_date = deliveryDate;
+                data.delivery_time = deliveryTime === 'Custom' ? (customTime || '') : deliveryTime;
+                
+                if (deliveryTime === 'Custom' && !customTime) {
+                    Swal.showValidationMessage('Please enter a custom delivery time');
+                    return false;
+                }
+            }
+            
+            return data;
         }
     }).then((res) => {
         if (res.isConfirmed) {
@@ -268,7 +362,6 @@ function cancelRefund(id: number) {
                                 <option value="pending">Pending</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
-                                <option value="completed">Completed</option>
                             </select>
                         </div>
                     </CardHeader>
@@ -331,11 +424,11 @@ function cancelRefund(id: number) {
                                             <span class="px-2 py-1 rounded-full text-xs font-medium"
                                                 :class="{
                                                     'bg-yellow-100 text-yellow-800': r.status === 'pending',
-                                                    'bg-green-100 text-green-800': r.status === 'approved' || r.status === 'completed',
+                                                    'bg-green-100 text-green-800': r.status === 'approved',
                                                     'bg-red-100 text-red-800': r.status === 'rejected',
                                                 }"
                                             >
-                                                {{ r.status }}
+                                                {{ r.status === 'completed' ? 'approved' : r.status }}
                                             </span>
                                         </td>
                                         <td class="px-4 py-2 text-sm text-gray-500">{{ new Date(r.created_at).toLocaleString() }}</td>
@@ -482,7 +575,7 @@ function cancelRefund(id: number) {
                                     'bg-red-100 text-red-800': showDetails.status === 'rejected',
                                 }"
                             >
-                                {{ showDetails.status }}
+                                {{ showDetails.status === 'completed' ? 'approved' : showDetails.status }}
                             </span>
                         </div>
 

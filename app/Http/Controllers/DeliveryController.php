@@ -85,21 +85,85 @@ class DeliveryController extends Controller
                     'location' => $location,
                 ];
             });
-        $invoices = Invoice::with('customer')
-            ->where('status', 'pending')
-            ->get(['id', 'customer_id', 'total_amount', 'reference_number']);
-        
         $preselectedInvoiceId = $request->query('invoice_id');
+        $refundRequestId = $request->query('refund_request_id');
+        $refundType = $request->query('refund_type'); // 'return_pickup' or other types
+        
+        // Load refund request data if provided
+        $refundRequestData = null;
+        $refundRequestInvoiceId = null;
+        if ($refundRequestId) {
+            $refundRequest = \App\Models\RefundRequest::with(['product', 'invoice.customer'])->find($refundRequestId);
+            if ($refundRequest) {
+                $refundRequestInvoiceId = $refundRequest->invoice_id;
+                $customer = $refundRequest->invoice->customer ?? null;
+                $product = $refundRequest->product;
+                
+                // Build delivery address from customer's address fields
+                $addressParts = [];
+                if ($customer) {
+                    if ($customer->purok) {
+                        $addressParts[] = $customer->purok;
+                    }
+                    if ($customer->barangay) {
+                        $addressParts[] = $customer->barangay;
+                    }
+                    if ($customer->city_municipality) {
+                        $addressParts[] = $customer->city_municipality;
+                    }
+                    if ($customer->province) {
+                        $addressParts[] = $customer->province;
+                    }
+                }
+                $deliveryAddress = !empty($addressParts) ? implode(', ', $addressParts) : ($customer->address ?? 'To be confirmed');
+                
+                // Build notes for return pickup
+                $productName = $product?->name ?? 'Product';
+                $notes = "Return pickup for refund request {$refundRequest->tracking_number}. Product: {$productName} (Qty: {$refundRequest->quantity})";
+                
+                $refundRequestData = [
+                    'id' => $refundRequest->id,
+                    'tracking_number' => $refundRequest->tracking_number,
+                    'invoice_id' => $refundRequest->invoice_id,
+                    'customer_id' => $customer?->id,
+                    'product_name' => $productName,
+                    'quantity' => $refundRequest->quantity,
+                    'delivery_address' => $deliveryAddress,
+                    'contact_person' => $customer->name ?? 'Customer',
+                    'contact_phone' => $customer->phone ?? '',
+                    'notes' => $notes,
+                ];
+                
+                // If invoice_id wasn't provided, use the refund request's invoice
+                if (!$preselectedInvoiceId && $refundRequest->invoice_id) {
+                    $preselectedInvoiceId = $refundRequest->invoice_id;
+                }
+            }
+        }
+        
+        // Get invoices - include pending ones, and also include the preselected invoice or refund request invoice if they exist
+        $invoiceIdsToInclude = array_filter([$preselectedInvoiceId, $refundRequestInvoiceId]);
+        $invoicesQuery = Invoice::with('customer')->where('status', 'pending');
+        if (!empty($invoiceIdsToInclude)) {
+            $invoicesQuery->orWhereIn('id', $invoiceIdsToInclude);
+        }
+        $invoices = $invoicesQuery->get(['id', 'customer_id', 'total_amount', 'reference_number']);
         
         return inertia('deliveries/Create', [
             'customers' => $customers,
             'invoices' => $invoices,
             'preselectedInvoiceId' => $preselectedInvoiceId ? (int) $preselectedInvoiceId : null,
+            'refundRequest' => $refundRequestData,
+            'refundType' => $refundType,
         ]);
     }
 
     public function store(Request $request)
     {
+        // Check if this is a refund-related delivery (return pickup)
+        $isRefundDelivery = $request->has('refund_request_id') || 
+                           (isset($request->notes) && stripos($request->notes, 'Return pickup for refund request') !== false);
+        
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'invoice_id' => 'required|exists:invoices,id',
@@ -111,8 +175,13 @@ class DeliveryController extends Controller
             'delivery_time' => 'required|string|max:50',
             'status' => 'required|string|in:pending,completed,cancelled',
             'notes' => 'nullable|string',
-            'delivery_fee' => 'required|numeric|min:0',
+            'delivery_fee' => $isRefundDelivery ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
         ]);
+
+        // Force delivery fee to 0 for refund-related deliveries (return pickups are free)
+        if ($isRefundDelivery) {
+            $validated['delivery_fee'] = 0;
+        }
 
         DB::beginTransaction();
         try {
