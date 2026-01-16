@@ -252,6 +252,7 @@ class RefundController extends Controller
 
                 // Get delivery fee from request (if provided), otherwise default to 0
                 // For refund deliveries, we now allow delivery fees
+                // Note: Pass as dollars - the Delivery model setter will convert to cents with proper rounding
                 $deliveryFee = $request->get('delivery_fee', 0);
                 
                 // Create delivery record
@@ -265,7 +266,7 @@ class RefundController extends Controller
                     'delivery_time' => $deliveryTime,
                     'status' => 'pending',
                     'notes' => $deliveryNotes,
-                    'delivery_fee' => $deliveryFee * 100, // Convert to cents
+                    'delivery_fee' => $deliveryFee, // Pass as dollars - model setter will round and convert to cents
                 ]);
                 
                 // Update invoice total to include the refund delivery fee

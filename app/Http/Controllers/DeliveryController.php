@@ -183,10 +183,8 @@ class DeliveryController extends Controller
             $validated['delivery_fee'] = 0;
         }
         
-        // Convert delivery fee to cents if provided
-        if (isset($validated['delivery_fee'])) {
-            $validated['delivery_fee'] = (int) round($validated['delivery_fee'] * 100);
-        }
+        // Note: Pass delivery_fee as dollars - the Delivery model setter will convert to cents with proper rounding
+        // Do NOT convert here, as the model setter will handle the conversion
 
         DB::beginTransaction();
         try {

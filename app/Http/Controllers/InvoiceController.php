@@ -349,6 +349,15 @@ class InvoiceController extends Controller
             ->where('refund_type', '!=', 'exchange') // Exclude exchange refunds
             ->sum('refund_amount') / 100; // Convert from cents
         
+        // Calculate refund delivery fees separately (deliveries with notes containing refund/return pickup)
+        $refundDeliveryFees = $invoice->deliveries()
+            ->where(function ($query) {
+                $query->where('notes', 'like', '%Return pickup for refund request%')
+                      ->orWhere('notes', 'like', '%Delivery for refund%')
+                      ->orWhere('notes', 'like', '%Exchange delivery for refund%');
+            })
+            ->sum('delivery_fee') / 100; // Convert from cents to dollars
+        
         return inertia('invoices/Show', [
             'invoice' => $invoice,
             'refunds' => $refunds,
@@ -357,6 +366,7 @@ class InvoiceController extends Controller
             'customers' => $customers,
             'netBalance' => $netBalance,
             'totalRefunded' => $totalRefunded,
+            'refundDeliveryFees' => $refundDeliveryFees,
         ]);
     }
 

@@ -100,10 +100,16 @@ function calculateDeliveryFee(distance: number | null): number {
 function handleDistanceCalculated(distance: number | null) {
     routeDistance.value = distance;
     
-    // Auto-calculate fee for staff users, but NOT for refund requests (return pickups are free)
-    if (isStaff.value && !props.refundRequest) {
+    // Auto-calculate fee for staff users (including refund requests)
+    if (isStaff.value) {
         const calculatedFee = calculateDeliveryFee(distance);
         form.delivery_fee = calculatedFee.toFixed(2);
+    } else {
+        // For non-staff users, auto-calculate fee only if field is empty or zero
+        if (!form.delivery_fee || form.delivery_fee === '0' || form.delivery_fee === '0.00') {
+            const calculatedFee = calculateDeliveryFee(distance);
+            form.delivery_fee = calculatedFee.toFixed(2);
+        }
     }
 }
 
@@ -138,10 +144,8 @@ function submit() {
         return;
     }
     
-    // Default delivery fee to 0 for refund requests, but allow setting a fee
-    if (props.refundRequest && !form.delivery_fee) {
-        form.delivery_fee = '0.00';
-    }
+    // Delivery fee should be auto-calculated or manually set before submission
+    // For refund requests, the fee will be auto-calculated from route distance if not manually set
     
     // Transform form data to include refund_request_id if present
     form.transform((data) => {
@@ -349,7 +353,7 @@ onMounted(() => {
         form.contact_person = refundReq.contact_person;
         form.contact_phone = normalizePhoneNumber(refundReq.contact_phone);
         form.notes = refundReq.notes;
-        form.delivery_fee = '0.00'; // No fee for return pickups
+        // Delivery fee will be auto-calculated when route distance is calculated
         
         // Set default delivery date to tomorrow
         const tomorrow = new Date();
