@@ -16,6 +16,7 @@ interface Props {
     deliveryOriginAddress: string | null;
     deliveryOriginLocation: { lat: number; lng: number } | null;
     baseDeliveryFee: string | number;
+    ratePerKm: string | number;
 }
 
 const props = defineProps<Props>();
@@ -24,6 +25,7 @@ const form = useForm({
     delivery_origin_address: props.deliveryOriginAddress || '',
     delivery_origin_location: props.deliveryOriginLocation || null,
     base_delivery_fee: props.baseDeliveryFee || '50.00',
+    rate_per_km: props.ratePerKm || '10.00',
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -95,24 +97,51 @@ function submit() {
                         </div>
                     </div>
                     
-                    <div>
-                        <Label for="base_delivery_fee">Base Delivery Fee (₱)</Label>
-                        <input 
-                            id="base_delivery_fee" 
-                            v-model.number="form.base_delivery_fee" 
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="99999.99"
-                            class="w-full rounded border px-3 py-2 mt-1" 
-                            placeholder="50.00"
-                        />
-                        <div v-if="form.errors.base_delivery_fee" class="text-red-500 text-xs mt-1">
-                            {{ form.errors.base_delivery_fee }}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label for="base_delivery_fee">Base Delivery Fee (₱)</Label>
+                            <input 
+                                id="base_delivery_fee" 
+                                v-model.number="form.base_delivery_fee" 
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="99999.99"
+                                class="w-full rounded border px-3 py-2 mt-1" 
+                                placeholder="50.00"
+                            />
+                            <div v-if="form.errors.base_delivery_fee" class="text-red-500 text-xs mt-1">
+                                {{ form.errors.base_delivery_fee }}
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Minimum delivery fee charged for all deliveries.
+                            </p>
                         </div>
-                        <p class="text-xs text-gray-500 mt-1">
-                            This is the estimated delivery fee shown to customers when creating orders. The actual fee can be adjusted when creating the delivery.
-                        </p>
+                        
+                        <div>
+                            <Label for="rate_per_km">Rate per Kilometer (₱)</Label>
+                            <input 
+                                id="rate_per_km" 
+                                v-model.number="form.rate_per_km" 
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="9999.99"
+                                class="w-full rounded border px-3 py-2 mt-1" 
+                                placeholder="10.00"
+                            />
+                            <div v-if="form.errors.rate_per_km" class="text-red-500 text-xs mt-1">
+                                {{ form.errors.rate_per_km }}
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Additional charge per kilometer of delivery distance.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300">
+                        <strong>Delivery Fee Calculation:</strong> Base Fee + (Distance × Rate per KM)<br>
+                        <span class="text-gray-600 dark:text-gray-400">Example: ₱{{ form.base_delivery_fee }} + (5 km × ₱{{ form.rate_per_km }}) = ₱{{ (parseFloat(form.base_delivery_fee) + (5 * parseFloat(form.rate_per_km))).toFixed(2) }}</span>
                     </div>
 
                     <CardFooter class="flex gap-2 justify-end">

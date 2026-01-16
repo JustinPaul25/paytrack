@@ -35,14 +35,25 @@ interface OrderItem {
     quantity: number;
 }
 
+interface Location {
+    lat: number;
+    lng: number;
+}
+
 const props = withDefaults(defineProps<{ 
     customer_id: number;
     products: Product[];
     categories?: Category[];
     baseDeliveryFee?: number;
+    ratePerKm?: number;
+    customerLocation?: Location | null;
+    deliveryOriginLocation?: Location | null;
 }>(), {
     categories: () => [],
-    baseDeliveryFee: 50.00
+    baseDeliveryFee: 50.00,
+    ratePerKm: 10.00,
+    customerLocation: null,
+    deliveryOriginLocation: null
 });
 
 const form = useForm({
@@ -101,9 +112,60 @@ const withholdingTaxAmount = computed(() => {
     return amountNetOfVat.value * (withholdingTaxRate / 100);
 });
 
-// Estimated delivery fee (from admin settings)
-const estimatedDeliveryFee = computed(() => {
-    return form.delivery_type === 'delivery' ? props.baseDeliveryFee : 0;
+// Calculate distance between two coordinates using Haversine formula
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+}
+
+// Calculate delivery fee based on distance
+const deliveryDistance = computed(() => {
+    if (form.delivery_type !== 'delivery') return 0;
+    
+    // Check if both locations are available
+    if (!props.customerLocation || !props.deliveryOriginLocation) {
+        return null; // Distance cannot be calculated
+    }
+    
+    // Validate location data
+    if (!props.customerLocation.lat || !props.customerLocation.lng ||
+        !props.deliveryOriginLocation.lat || !props.deliveryOriginLocation.lng) {
+        return null;
+    }
+    
+    return calculateDistance(
+        props.deliveryOriginLocation.lat,
+        props.deliveryOriginLocation.lng,
+        props.customerLocation.lat,
+        props.customerLocation.lng
+    );
+});
+
+// Calculate exact delivery fee based on distance
+const deliveryFee = computed(() => {
+    if (form.delivery_type !== 'delivery') return 0;
+    
+    // If distance can be calculated, use distance-based pricing
+    if (deliveryDistance.value !== null && deliveryDistance.value > 0) {
+        const calculatedFee = props.baseDeliveryFee + (deliveryDistance.value * props.ratePerKm);
+        return Math.max(calculatedFee, props.baseDeliveryFee); // Ensure minimum fee
+    }
+    
+    // Fallback to base delivery fee if distance cannot be calculated
+    return props.baseDeliveryFee;
+});
+
+// Check if delivery fee can be accurately calculated
+const canCalculateDeliveryFee = computed(() => {
+    return deliveryDistance.value !== null;
 });
 
 // Total Amount Due = Subtotal + VAT - Withholding Tax (for order validation)
@@ -112,9 +174,9 @@ const totalAmountDue = computed(() => {
     return subtotal.value + vatAmount.value - withholdingTaxAmount.value;
 });
 
-// Estimated Total with Delivery Fee (for customer information)
-const estimatedTotalWithDelivery = computed(() => {
-    return totalAmountDue.value + estimatedDeliveryFee.value;
+// Total with Delivery Fee (for customer information)
+const totalWithDelivery = computed(() => {
+    return totalAmountDue.value + deliveryFee.value;
 });
 
 // Legacy computed for backward compatibility (used in minimum check)
@@ -510,21 +572,21 @@ function getItemTotal(index: number): number {
                                 <span class="font-medium">₱{{ totalAmountDue.toFixed(2) }}</span>
                             </div>
                             
-                            <!-- Estimated Delivery Fee (only if delivery) -->
+                            <!-- Delivery Fee (only if delivery) -->
                             <div v-if="form.delivery_type === 'delivery'" class="flex justify-between text-sm">
-                                <span class="text-muted-foreground">Estimated Delivery Fee:</span>
-                                <span class="font-medium">₱{{ estimatedDeliveryFee.toFixed(2) }}</span>
+                                <span class="text-muted-foreground">
+                                    Delivery Fee
+                                    <span v-if="canCalculateDeliveryFee && deliveryDistance" class="text-xs text-gray-500">
+                                        ({{ deliveryDistance.toFixed(2) }} km)
+                                    </span>
+                                </span>
+                                <span class="font-medium">₱{{ deliveryFee.toFixed(2) }}</span>
                             </div>
                             
-                            <!-- Estimated Total Amount Due -->
+                            <!-- Total Amount Due -->
                             <div class="flex justify-between pt-2 mt-2 border-t font-semibold text-base">
-                                <span>Estimated Total Amount Due:</span>
-                                <span class="text-lg">₱{{ estimatedTotalWithDelivery.toFixed(2) }}</span>
-                            </div>
-                            
-                            <!-- Delivery Fee Note -->
-                            <div v-if="form.delivery_type === 'delivery'" class="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded text-xs text-blue-700 dark:text-blue-300">
-                                <strong>Note:</strong> The actual delivery fee may vary based on delivery distance and will be confirmed when your order is processed.
+                                <span>Total Amount Due:</span>
+                                <span class="text-lg">₱{{ totalWithDelivery.toFixed(2) }}</span>
                             </div>
                         </div>
                     </div>

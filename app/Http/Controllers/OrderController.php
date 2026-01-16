@@ -106,12 +106,26 @@ class OrderController extends Controller
         $products = Product::all(['id', 'name', 'selling_price', 'stock', 'unit', 'category_id']);
         $categories = Category::all(['id', 'name']);
         $baseDeliveryFee = (float) Setting::get('base_delivery_fee', '50.00');
+        $ratePerKm = (float) Setting::get('rate_per_km', '10.00');
+        
+        // Get customer location for delivery fee calculation
+        $customer = Customer::find($customerId);
+        $customerLocation = $customer ? $customer->location : null;
+        
+        // Get delivery origin location from settings
+        $deliveryOriginLocation = Setting::get('delivery_origin_location', null);
+        if (is_string($deliveryOriginLocation)) {
+            $deliveryOriginLocation = json_decode($deliveryOriginLocation, true);
+        }
         
         return inertia('orders/Create', [
             'customer_id' => $customerId,
             'products' => $products,
             'categories' => $categories,
             'baseDeliveryFee' => $baseDeliveryFee,
+            'ratePerKm' => $ratePerKm,
+            'customerLocation' => $customerLocation,
+            'deliveryOriginLocation' => $deliveryOriginLocation,
         ]);
     }
 
