@@ -273,9 +273,26 @@ class OrderController extends Controller
             }
         }
 
+        // Get delivery fee calculation data
+        $baseDeliveryFee = (float) Setting::get('base_delivery_fee', '50.00');
+        $ratePerKm = (float) Setting::get('rate_per_km', '10.00');
+        
+        // Get customer location for delivery fee calculation
+        $customerLocation = $order->customer ? $order->customer->location : null;
+        
+        // Get delivery origin location from settings
+        $deliveryOriginLocation = Setting::get('delivery_origin_location', null);
+        if (is_string($deliveryOriginLocation)) {
+            $deliveryOriginLocation = json_decode($deliveryOriginLocation, true);
+        }
+
         return inertia('orders/Show', [
             'order' => $order,
             'hasStockIssues' => $hasStockIssues,
+            'baseDeliveryFee' => $baseDeliveryFee,
+            'ratePerKm' => $ratePerKm,
+            'customerLocation' => $customerLocation,
+            'deliveryOriginLocation' => $deliveryOriginLocation,
         ]);
     }
 

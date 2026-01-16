@@ -150,6 +150,13 @@ class DeliveryController extends Controller
         }
         $invoices = $invoicesQuery->get(['id', 'customer_id', 'total_amount', 'reference_number']);
         $baseDeliveryFee = (float) Setting::get('base_delivery_fee', '50.00');
+        $ratePerKm = (float) Setting::get('rate_per_km', '10.00');
+        
+        // Get delivery origin location from settings
+        $deliveryOriginLocation = Setting::get('delivery_origin_location', null);
+        if (is_string($deliveryOriginLocation)) {
+            $deliveryOriginLocation = json_decode($deliveryOriginLocation, true);
+        }
         
         return inertia('deliveries/Create', [
             'customers' => $customers,
@@ -158,6 +165,8 @@ class DeliveryController extends Controller
             'refundRequest' => $refundRequestData,
             'refundType' => $refundType,
             'baseDeliveryFee' => $baseDeliveryFee,
+            'ratePerKm' => $ratePerKm,
+            'deliveryOriginLocation' => $deliveryOriginLocation,
         ]);
     }
 

@@ -30,6 +30,11 @@ interface OrderItem {
     product: Product;
 }
 
+interface Location {
+    lat: number;
+    lng: number;
+}
+
 interface Customer {
     id: number;
     name: string;
@@ -41,6 +46,7 @@ interface Customer {
     barangay?: string;
     city_municipality?: string;
     province?: string;
+    location?: Location | null;
     media?: any[];
 }
 
@@ -88,10 +94,19 @@ interface OrderComment {
     };
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     order: Order;
     hasStockIssues?: boolean;
-}>();
+    baseDeliveryFee?: number;
+    ratePerKm?: number;
+    customerLocation?: Location | null;
+    deliveryOriginLocation?: Location | null;
+}>(), {
+    baseDeliveryFee: 50.00,
+    ratePerKm: 10.00,
+    customerLocation: null,
+    deliveryOriginLocation: null
+});
 
 const page = usePage();
 const isCustomer = Array.isArray((page.props as any).auth?.userRoles) && (page.props as any).auth.userRoles.includes('Customer');
@@ -363,23 +378,73 @@ const withholdingTaxRate = computed(() => {
     return rate != null && rate !== '' ? Number(rate) : 1.00;
 });
 
-// Delivery fee - for orders, it's 0 since delivery fees are added when invoice is created
-// But we can show an estimated fee for pending delivery orders
-const BASE_DELIVERY_FEE = 50.00;
-const estimatedDeliveryFee = computed(() => {
-    // Only show estimated fee for pending orders with delivery type
-    // Once approved, delivery fee will be in the invoice
-    if (order.value.status === 'pending' && order.value.delivery_type === 'delivery') {
-        return BASE_DELIVERY_FEE;
+// Calculate distance between two coordinates using Haversine formula
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+}
+
+// Calculate delivery fee based on distance
+const deliveryDistance = computed(() => {
+    // Only calculate for pending orders with delivery type
+    if (order.value.status !== 'pending' || order.value.delivery_type !== 'delivery') {
+        return null;
     }
-    return 0;
+    
+    // Check if both locations are available
+    if (!props.customerLocation || !props.deliveryOriginLocation) {
+        return null; // Distance cannot be calculated
+    }
+    
+    // Validate location data
+    if (!props.customerLocation.lat || !props.customerLocation.lng ||
+        !props.deliveryOriginLocation.lat || !props.deliveryOriginLocation.lng) {
+        return null;
+    }
+    
+    return calculateDistance(
+        props.deliveryOriginLocation.lat,
+        props.deliveryOriginLocation.lng,
+        props.customerLocation.lat,
+        props.customerLocation.lng
+    );
+});
+
+// Calculate exact delivery fee based on distance
+const deliveryFee = computed(() => {
+    // Only calculate for pending orders with delivery type
+    if (order.value.status !== 'pending' || order.value.delivery_type !== 'delivery') {
+        return 0;
+    }
+    
+    // If distance can be calculated, use distance-based pricing
+    if (deliveryDistance.value !== null && deliveryDistance.value > 0) {
+        const calculatedFee = props.baseDeliveryFee + (deliveryDistance.value * props.ratePerKm);
+        return Math.max(calculatedFee, props.baseDeliveryFee); // Ensure minimum fee
+    }
+    
+    // Fallback to base delivery fee if distance cannot be calculated
+    return props.baseDeliveryFee;
+});
+
+// Check if delivery fee can be accurately calculated
+const canCalculateDeliveryFee = computed(() => {
+    return deliveryDistance.value !== null;
 });
 
 // Total amount due
 const totalAmountDue = computed(() => {
     // For orders, total_amount already includes subtotal + VAT - withholding tax
     // Delivery fee is not included in order total (only in invoice total after delivery is created)
-    return order.value.total_amount + estimatedDeliveryFee.value;
+    return order.value.total_amount + deliveryFee.value;
 });
 
 function addComment() {
@@ -709,10 +774,16 @@ onUnmounted(() => {
                                     <span class="font-medium text-red-600 dark:text-red-400">-₱{{ withholdingTaxAmount.toFixed(2) }}</span>
                                 </div>
                                 
-                                <!-- Estimated Delivery Fee (only for pending delivery orders) -->
-                                <div v-if="estimatedDeliveryFee > 0" class="flex justify-between text-sm">
-                                    <span class="text-muted-foreground">Delivery Fee <span class="text-xs">(estimated)</span>:</span>
-                                    <span class="font-medium">₱{{ estimatedDeliveryFee.toFixed(2) }}</span>
+                                <!-- Delivery Fee (only for pending delivery orders) -->
+                                <div v-if="deliveryFee > 0" class="flex justify-between text-sm">
+                                    <span class="text-muted-foreground">
+                                        Delivery Fee
+                                        <span v-if="canCalculateDeliveryFee && deliveryDistance" class="text-xs text-gray-500">
+                                            ({{ deliveryDistance.toFixed(2) }} km)
+                                        </span>
+                                        <span v-else class="text-xs text-gray-500">(estimated)</span>
+                                    </span>
+                                    <span class="font-medium">₱{{ deliveryFee.toFixed(2) }}</span>
                                 </div>
                                 
                                 <!-- Total Amount Due -->

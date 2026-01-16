@@ -50,6 +50,11 @@ interface RefundRequest {
     notes: string;
 }
 
+interface Location {
+    lat: number;
+    lng: number;
+}
+
 const props = withDefaults(defineProps<{ 
     customers: Customer[];
     invoices: Invoice[];
@@ -57,8 +62,10 @@ const props = withDefaults(defineProps<{
     refundRequest?: RefundRequest | null;
     refundType?: string | null;
     baseDeliveryFee?: number;
+    ratePerKm?: number;
 }>(), {
-    baseDeliveryFee: 50.00
+    baseDeliveryFee: 50.00,
+    ratePerKm: 10.00
 });
 
 const form = useForm({
@@ -71,7 +78,7 @@ const form = useForm({
     delivery_time: '',
     status: 'pending',
     notes: '',
-    delivery_fee: props.baseDeliveryFee.toString(),
+    delivery_fee: '',
 });
 
 // Check if user is staff (Staff or Admin)
@@ -84,36 +91,146 @@ const isStaff = computed(() => {
 // Delivery fee calculation
 const routeDistance = ref<number | null>(null);
 
-// Delivery fee rates (using base fee from settings)
-const BASE_DELIVERY_FEE = props.baseDeliveryFee; // Base fee in PHP from admin settings
-const RATE_PER_KM = 10.00; // Rate per kilometer in PHP
-const MINIMUM_FEE = props.baseDeliveryFee; // Minimum delivery fee
+// Get delivery origin location from page props (set in admin settings)
+const deliveryOriginLocation = computed(() => {
+    const origin = (page.props as any).deliveryOriginLocation;
+    if (origin && typeof origin.lat === 'number' && typeof origin.lng === 'number') {
+        return { lat: origin.lat, lng: origin.lng };
+    }
+    return null;
+});
 
-// Calculate delivery fee based on distance
-function calculateDeliveryFee(distance: number | null): number {
-    if (!distance || distance <= 0) {
-        return MINIMUM_FEE;
+// Calculate distance between two coordinates using Haversine formula (straight-line)
+// This matches the calculation used in order forms
+function calculateStraightLineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+}
+
+// Get selected customer's location
+const selectedCustomerLocation = computed(() => {
+    if (!form.customer_id) return null;
+    const customer = props.customers.find(c => c.id === form.customer_id);
+    
+    if (!customer?.location) return null;
+    
+    // Handle different location data formats
+    let location = customer.location;
+    
+    // If it's a string, try to parse it
+    if (typeof location === 'string') {
+        try {
+            location = JSON.parse(location);
+        } catch (e) {
+            console.warn('Failed to parse customer location string:', location);
+            return null;
+        }
     }
     
-    const calculatedFee = BASE_DELIVERY_FEE + (distance * RATE_PER_KM);
+    // Validate the location object
+    // Handle both number and string coordinates (convert strings to numbers)
+    if (location) {
+        let lat = location.lat;
+        let lng = location.lng;
+        
+        // Convert strings to numbers if needed
+        if (typeof lat === 'string') {
+            lat = parseFloat(lat);
+        }
+        if (typeof lng === 'string') {
+            lng = parseFloat(lng);
+        }
+        
+        if (typeof lat === 'number' && 
+            typeof lng === 'number' && 
+            !isNaN(lat) && 
+            !isNaN(lng) &&
+            lat >= -90 && lat <= 90 &&
+            lng >= -180 && lng <= 180 &&
+            (lat != 0 || lng != 0)) {
+            return { lat, lng };
+        }
+    }
+    
+    console.warn('Invalid customer location data:', customer.location);
+    return null;
+});
+
+// Calculate initial delivery fee using straight-line distance (same as order forms)
+const straightLineDistance = computed(() => {
+    if (!selectedCustomerLocation.value || !deliveryOriginLocation.value) {
+        return null;
+    }
+    
+    const loc1 = deliveryOriginLocation.value;
+    const loc2 = selectedCustomerLocation.value;
+    
+    if (!loc1.lat || !loc1.lng || !loc2.lat || !loc2.lng) {
+        return null;
+    }
+    
+    return calculateStraightLineDistance(
+        loc1.lat,
+        loc1.lng,
+        loc2.lat,
+        loc2.lng
+    );
+});
+
+// Calculate initial delivery fee based on straight-line distance (same as order forms)
+const initialDeliveryFee = computed(() => {
+    if (!straightLineDistance.value || straightLineDistance.value <= 0) {
+        return props.baseDeliveryFee;
+    }
+    
+    const calculatedFee = props.baseDeliveryFee + (straightLineDistance.value * props.ratePerKm);
+    return Math.max(calculatedFee, props.baseDeliveryFee); // Ensure minimum fee
+});
+
+// Delivery fee rates (using base fee and rate from settings)
+const BASE_DELIVERY_FEE = props.baseDeliveryFee;
+const MINIMUM_FEE = props.baseDeliveryFee;
+
+// Calculate delivery fee based on distance (for route distance updates)
+function calculateDeliveryFee(distance: number | null): number {
+    if (!distance || distance <= 0) {
+        // If no route distance, use straight-line distance calculation
+        return initialDeliveryFee.value;
+    }
+    
+    // Use route distance for calculation
+    const calculatedFee = BASE_DELIVERY_FEE + (distance * props.ratePerKm);
     return Math.max(calculatedFee, MINIMUM_FEE); // Ensure minimum fee
 }
 
-// Handle distance calculated from map
+// Watch for initial delivery fee changes (when customer location changes)
+watch(() => initialDeliveryFee.value, (newFee) => {
+    // Only update if customer is selected and fee field is empty or matches base fee
+    // This allows manual overrides
+    if (form.customer_id) {
+        const currentFee = parseFloat(form.delivery_fee) || 0;
+        const baseFee = props.baseDeliveryFee;
+        if (!form.delivery_fee || currentFee === baseFee || currentFee === 0) {
+            form.delivery_fee = newFee.toFixed(2);
+        }
+    }
+});
+
+// Handle distance calculated from map (route distance - optional override)
 function handleDistanceCalculated(distance: number | null) {
     routeDistance.value = distance;
     
-    // Auto-calculate fee for staff users (including refund requests)
-    if (isStaff.value) {
-        const calculatedFee = calculateDeliveryFee(distance);
-        form.delivery_fee = calculatedFee.toFixed(2);
-    } else {
-        // For non-staff users, auto-calculate fee only if field is empty or zero
-        if (!form.delivery_fee || form.delivery_fee === '0' || form.delivery_fee === '0.00') {
-            const calculatedFee = calculateDeliveryFee(distance);
-            form.delivery_fee = calculatedFee.toFixed(2);
-        }
-    }
+    // Route distance is only used as an optional override
+    // The initial fee is calculated using straight-line distance (same as order forms)
+    // Staff can manually adjust the fee if needed based on actual route distance
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -290,55 +407,6 @@ function formatDeliveryAddress(customer: Customer | null | undefined): string {
     return parts.length > 0 ? parts.join(', ') : '';
 }
 
-// Get selected customer location
-const selectedCustomerLocation = computed(() => {
-    if (!form.customer_id) return null;
-    const customer = props.customers.find(c => c.id === form.customer_id);
-    
-    if (!customer?.location) return null;
-    
-    // Handle different location data formats
-    let location = customer.location;
-    
-    // If it's a string, try to parse it
-    if (typeof location === 'string') {
-        try {
-            location = JSON.parse(location);
-        } catch (e) {
-            console.warn('Failed to parse customer location string:', location);
-            return null;
-        }
-    }
-    
-    // Validate the location object
-    // Handle both number and string coordinates (convert strings to numbers)
-    if (location) {
-        let lat = location.lat;
-        let lng = location.lng;
-        
-        // Convert strings to numbers if needed
-        if (typeof lat === 'string') {
-            lat = parseFloat(lat);
-        }
-        if (typeof lng === 'string') {
-            lng = parseFloat(lng);
-        }
-        
-        if (typeof lat === 'number' && 
-            typeof lng === 'number' && 
-            !isNaN(lat) && 
-            !isNaN(lng) &&
-            lat >= -90 && lat <= 90 &&
-            lng >= -180 && lng <= 180 &&
-            (lat != 0 || lng != 0)) {
-            return { lat, lng };
-        }
-    }
-    
-    console.warn('Invalid customer location data:', customer.location);
-    return null;
-});
-
 // Get selected customer for address
 const selectedCustomer = computed(() => {
     if (!form.customer_id) return null;
@@ -391,6 +459,7 @@ onMounted(() => {
 });
 
 // Auto-fill delivery address and contact info when customer is selected
+// Also initialize delivery fee using straight-line distance (same as order forms)
 watch(() => form.customer_id, (newCustomerId) => {
     if (newCustomerId) {
         const customer = props.customers.find(c => c.id === newCustomerId);
@@ -405,9 +474,21 @@ watch(() => form.customer_id, (newCustomerId) => {
             if (customer.phone && !form.contact_phone) {
                 form.contact_phone = normalizePhoneNumber(customer.phone);
             }
+            
+            // Initialize delivery fee using straight-line distance (same as order forms)
+            // This ensures consistency with the order creation form
+            if (initialDeliveryFee.value) {
+                form.delivery_fee = initialDeliveryFee.value.toFixed(2);
+            } else {
+                // Fallback to base fee if distance cannot be calculated
+                form.delivery_fee = props.baseDeliveryFee.toFixed(2);
+            }
         }
+    } else {
+        // Reset to base fee if no customer selected
+        form.delivery_fee = props.baseDeliveryFee.toFixed(2);
     }
-});
+}, { immediate: true });
 
 // Auto-fill customer details when invoice is selected
 watch(() => form.invoice_id, (newInvoiceId) => {
