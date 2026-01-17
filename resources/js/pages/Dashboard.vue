@@ -562,42 +562,6 @@ const closeNotifications = () => {
                         <h1 class="dashboard-title">Dashboard</h1>
                         <p class="dashboard-subtitle">View your business performance at a glance</p>
                     </div>
-                    
-                    <!-- Filters -->
-                    <div class="dashboard-filters">
-                        <div class="filter-group">
-                            <label class="filter-label">
-                                <Calendar class="w-4 h-4" />
-                                View Period
-                            </label>
-                            <Select
-                                v-model="period"
-                                :options="periodOptions"
-                                placeholder="Choose time period"
-                                class="period-select"
-                            />
-                        </div>
-                        
-                        <!-- Custom Date Range -->
-                        <div v-if="period === 'custom'" class="date-range-group">
-                            <div class="date-input-group">
-                                <label class="date-label">Start Date</label>
-                                <input
-                                    v-model="startDate"
-                                    type="date"
-                                    class="date-input"
-                                />
-                            </div>
-                            <div class="date-input-group">
-                                <label class="date-label">End Date</label>
-                                <input
-                                    v-model="endDate"
-                                    type="date"
-                                    class="date-input"
-                                />
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Key Metrics Overview -->
