@@ -55,6 +55,7 @@ const isStaff = userRoles.includes('Staff');
 const canCreateInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can create invoices
 const canEditInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can edit invoices
 const canDeleteInvoice = isStaff && !isAdmin; // Only Staff (not Admin) can delete invoices
+const canMarkAsPaid = isAdmin; // Only Admin can mark invoices as paid (handles money and proof of payment)
 const filters = ref<{ search?: string; status?: string; payment_status?: string }>(
     page.props.filters ? (page.props.filters as { search?: string; status?: string; payment_status?: string }) : {}
 );
@@ -503,7 +504,7 @@ function formatDateFriendly(dateString: string) {
                                                 <Icon name="edit" class="h-4 w-4" />
                                             </Button>
                                         </Link>
-                                        <Button v-if="canEditInvoice && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice)" title="Mark as Paid">
+                                        <Button v-if="canMarkAsPaid && invoice.payment_status === 'pending' && invoice.status !== 'cancelled'" variant="ghost" size="sm" @click="markAsPaid(invoice)" title="Mark as Paid">
                                             <Icon name="check" class="h-4 w-4" />
                                         </Button>
                                         <Button v-if="canDeleteInvoice" variant="ghost" size="sm" @click="deleteInvoice(invoice.id)" title="Delete">

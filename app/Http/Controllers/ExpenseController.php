@@ -17,6 +17,9 @@ class ExpenseController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->input('search', '');
+        $expenseType = $request->input('expense_type', '');
+        $startDate = $request->input('start_date', '');
+        $endDate = $request->input('end_date', '');
         
         $expenses = Expense::query()
             ->with(['user:id,name', 'branch:id,name'])
@@ -25,6 +28,15 @@ class ExpenseController extends Controller
                     $q->where('expense_type', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%");
                 });
+            })
+            ->when($expenseType, function ($query, $expenseType) {
+                $query->where('expense_type', $expenseType);
+            })
+            ->when($startDate, function ($query, $startDate) {
+                $query->whereDate('date', '>=', $startDate);
+            })
+            ->when($endDate, function ($query, $endDate) {
+                $query->whereDate('date', '<=', $endDate);
             })
             ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
@@ -39,6 +51,9 @@ class ExpenseController extends Controller
             'expenses' => $expenses,
             'filters' => [
                 'search' => $search,
+                'expense_type' => $expenseType,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
             ],
             'stats' => [
                 'totalExpenses' => $totalExpenses,

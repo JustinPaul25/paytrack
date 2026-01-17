@@ -18,6 +18,8 @@ class DeliveryController extends Controller
         $query = Delivery::with(['customer', 'invoice']);
         $search = $request->input('search');
         $customerId = $request->input('customer_id');
+        $type = $request->input('type'); // 'order' or 'return'
+        
         if ($search) {
             $query->whereHas('customer', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%");
@@ -26,6 +28,10 @@ class DeliveryController extends Controller
         if ($customerId) {
             $query->where('customer_id', $customerId);
         }
+        if ($type && in_array($type, ['order', 'return'])) {
+            $query->where('type', $type);
+        }
+        
         $deliveries = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
 
         // Calculate statistics
@@ -39,6 +45,7 @@ class DeliveryController extends Controller
             'filters' => [
                 'search' => $search,
                 'customer_id' => $customerId,
+                'type' => $type,
             ],
             'stats' => [
                 'totalDeliveries' => $totalDeliveries,
@@ -188,11 +195,17 @@ class DeliveryController extends Controller
             'status' => 'required|string|in:pending,completed,cancelled',
             'notes' => 'nullable|string',
             'delivery_fee' => $isRefundDelivery ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
+            'type' => 'nullable|string|in:order,return',
         ]);
 
         // Default to 0 if not provided for refund deliveries (but allow setting a fee)
         if ($isRefundDelivery && !isset($validated['delivery_fee'])) {
             $validated['delivery_fee'] = 0;
+        }
+        
+        // Set type if not provided: default to 'return' for refund deliveries, 'order' otherwise
+        if (!isset($validated['type'])) {
+            $validated['type'] = $isRefundDelivery ? 'return' : 'order';
         }
         
         // Note: Pass delivery_fee as dollars - the Delivery model setter will convert to cents with proper rounding
@@ -305,6 +318,7 @@ class DeliveryController extends Controller
             $oldDeliveryFee = $delivery->delivery_fee; // Get old fee before update
             
             // Handle proof of delivery file upload
+            $proofWasUploaded = false;
             if ($request->hasFile('proof_of_delivery')) {
                 // Remove old proof of delivery if exists
                 $delivery->clearMediaCollection('proof_of_delivery');
@@ -314,6 +328,8 @@ class DeliveryController extends Controller
                     ->usingFileName($request->file('proof_of_delivery')->hashName())
                     ->usingName($request->file('proof_of_delivery')->getClientOriginalName())
                     ->toMediaCollection('proof_of_delivery');
+                
+                $proofWasUploaded = true;
             }
             
             // Remove proof_of_delivery from validated array since it's already handled above
@@ -362,6 +378,33 @@ class DeliveryController extends Controller
                             }
                         }
                     }
+                }
+            }
+            
+            // If proof of delivery was uploaded for a return delivery, notify the customer
+            if ($proofWasUploaded && $delivery->type === 'return' && $delivery->customer) {
+                $customer = $delivery->customer;
+                $customerUser = \App\Models\User::where('email', $customer->email)->first();
+                
+                if ($customerUser) {
+                    $notification = \App\Models\Notification::create([
+                        'user_id' => $customerUser->id,
+                        'type' => 'delivery.proof_uploaded',
+                        'notifiable_id' => $delivery->id,
+                        'notifiable_type' => Delivery::class,
+                        'title' => 'Proof of Delivery Available',
+                        'message' => "Proof of delivery has been uploaded for your return delivery #{$delivery->id}",
+                        'action_url' => "/my-deliveries/{$delivery->id}",
+                        'read' => false,
+                        'data' => [
+                            'delivery_id' => $delivery->id,
+                            'delivery_type' => $delivery->type,
+                            'invoice_id' => $delivery->invoice_id,
+                        ],
+                    ]);
+                    
+                    // Broadcast notification.created event for real-time updates
+                    broadcast(new \App\Events\NotificationCreated($notification));
                 }
             }
             
@@ -444,8 +487,13 @@ class DeliveryController extends Controller
         }
 
         $delivery->load(['customer', 'invoice']);
+        
+        // Ensure proof_of_delivery_url is included in the response
+        $deliveryData = $delivery->toArray();
+        $deliveryData['proof_of_delivery_url'] = $delivery->proof_of_delivery_url;
+        
         return inertia('deliveries/CustomerShow', [
-            'delivery' => $delivery,
+            'delivery' => $deliveryData,
         ]);
     }
 

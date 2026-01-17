@@ -61,7 +61,15 @@ watch(search, (val) => {
     }, 400);
 });
 
-watch([verificationStatus, userRole, archived], () => {
+watch([verificationStatus, archived], () => {
+    updateFilters();
+});
+
+watch(userRole, (newRole) => {
+    // Clear verification status filter when admin or staff role is selected
+    if (newRole === 'admin' || newRole === 'staff') {
+        verificationStatus.value = '';
+    }
     updateFilters();
 });
 
@@ -232,7 +240,7 @@ async function setUserActive(user: UnifiedUser) {
                         </div>
 
                         <!-- Verification Status Filter (for customers) -->
-                        <div>
+                        <div v-if="!userRole || userRole === 'customer'">
                             <label class="block text-sm font-medium mb-2">Customer Verification</label>
                             <select 
                                 v-model="verificationStatus" 

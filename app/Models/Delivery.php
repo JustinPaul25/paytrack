@@ -14,7 +14,7 @@ class Delivery extends Model implements HasMedia
     protected $fillable = [
         'customer_id', 'invoice_id', 'delivery_address', 'contact_person', 
         'contact_phone', 'delivery_date', 'delivery_time', 'status', 
-        'notes', 'delivery_fee'
+        'notes', 'delivery_fee', 'type'
     ];
 
     protected $casts = [

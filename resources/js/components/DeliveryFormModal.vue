@@ -127,6 +127,60 @@ function handleDistanceCalculated(distance: number | null) {
 // Set minimum date to today
 const today = new Date().toISOString().split('T')[0];
 
+// Delivery time options (base options)
+const baseDeliveryTimeOptions = [
+    { value: '09:00 AM - 12:00 PM', label: '09:00 AM - 12:00 PM' },
+    { value: '12:00 PM - 03:00 PM', label: '12:00 PM - 03:00 PM' },
+    { value: '03:00 PM - 06:00 PM', label: '03:00 PM - 06:00 PM' },
+    { value: '06:00 PM - 09:00 PM', label: '06:00 PM - 09:00 PM' },
+    { value: 'Custom', label: 'Custom' }
+];
+
+// Helper function to convert time string to 24-hour format minutes
+function timeToMinutes(timeStr: string): number {
+    const [time, period] = timeStr.trim().split(' ');
+    const [hours, minutes = '0'] = time.split(':');
+    let hour24 = parseInt(hours);
+    
+    if (period === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+    } else if (period === 'AM' && hour24 === 12) {
+        hour24 = 0;
+    }
+    
+    return hour24 * 60 + parseInt(minutes);
+}
+
+// Helper function to check if a time slot has passed
+function hasTimeSlotPassed(timeSlot: string): boolean {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    // Extract start time from time slot (e.g., "09:00 AM - 12:00 PM" -> "09:00 AM")
+    const startTimeStr = timeSlot.split(' - ')[0].trim();
+    const startMinutes = timeToMinutes(startTimeStr);
+    
+    return currentMinutes >= startMinutes;
+}
+
+// Computed property for delivery time options based on selected date
+const deliveryTimeOptions = computed(() => {
+    // If no date is selected or date is in the future, show all options
+    if (!form.delivery_date || form.delivery_date !== today) {
+        return baseDeliveryTimeOptions;
+    }
+    
+    // If today is selected, filter out past time slots
+    return baseDeliveryTimeOptions.filter(option => {
+        // Always include "Custom" option
+        if (option.value === 'Custom') {
+            return true;
+        }
+        // Filter out time slots that have already started
+        return !hasTimeSlotPassed(option.value);
+    });
+});
+
 // Helper function to normalize phone number to +63XXXXXXXXXX format
 function normalizePhoneNumber(phone: string | null | undefined): string {
     if (!phone) return '';
@@ -190,15 +244,6 @@ const statusOptions = [
     { value: 'pending', label: 'Out for Delivery' },
     { value: 'completed', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' }
-];
-
-// Delivery time options
-const deliveryTimeOptions = [
-    { value: '09:00 AM - 12:00 PM', label: '09:00 AM - 12:00 PM' },
-    { value: '12:00 PM - 03:00 PM', label: '12:00 PM - 03:00 PM' },
-    { value: '03:00 PM - 06:00 PM', label: '03:00 PM - 06:00 PM' },
-    { value: '06:00 PM - 09:00 PM', label: '06:00 PM - 09:00 PM' },
-    { value: 'Custom', label: 'Custom' }
 ];
 
 // Get selected customer location
@@ -267,6 +312,23 @@ watch(() => form.customer_id, (newCustomerId) => {
         routeDistance.value = null;
         if (isAutoCalculatingFee.value === false) {
             form.delivery_fee = '';
+        }
+    }
+});
+
+// Reset delivery time if it's no longer available when date changes
+watch(() => form.delivery_date, () => {
+    if (form.delivery_time) {
+        const availableOptions = deliveryTimeOptions.value;
+        const isTimeAvailable = availableOptions.some(option => option.value === form.delivery_time);
+        
+        if (!isTimeAvailable) {
+            // Reset to first available option or empty
+            if (availableOptions.length > 0) {
+                form.delivery_time = availableOptions[0].value;
+            } else {
+                form.delivery_time = '';
+            }
         }
     }
 });
@@ -415,6 +477,7 @@ function closeModal() {
                         <div>
                             <Label for="delivery_time">Delivery Time</Label>
                             <Select
+                                :key="`delivery-time-${form.delivery_date || 'no-date'}`"
                                 v-model="form.delivery_time"
                                 :options="deliveryTimeOptions"
                                 placeholder="Select delivery time"

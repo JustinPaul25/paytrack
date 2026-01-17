@@ -25,11 +25,19 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 const expenseTypes = [
+    { value: 'Bills', label: 'Bills' },
     { value: 'Cash Advance', label: 'Cash Advance' },
+    { value: 'Insurance', label: 'Insurance' },
+    { value: 'Maintenance', label: 'Maintenance & Repairs' },
+    { value: 'Marketing', label: 'Marketing & Advertising' },
+    { value: 'Office Supplies', label: 'Office Supplies' },
+    { value: 'Professional Services', label: 'Professional Services' },
+    { value: 'Rent', label: 'Rent' },
     { value: 'Salary', label: 'Salary' },
     { value: 'Tax', label: 'Tax' },
-    { value: 'Bills', label: 'Bills' },
     { value: 'Transportation', label: 'Transportation' },
+    { value: 'Utilities', label: 'Utilities' },
+    { value: 'Other', label: 'Other' },
 ];
 
 const form = useForm({
@@ -131,7 +139,7 @@ function submit() {
                     </div>
                     
                     <div>
-                        <Label for="description">Description *</Label>
+                        <Label for="description">Short Description *</Label>
                         <input
                             v-model="form.description"
                             type="text"
@@ -139,8 +147,9 @@ function submit() {
                             class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                             placeholder="e.g., Electricity bill for March"
                             required
+                            maxlength="255"
                         />
-                        <div class="text-[11px] text-gray-500 mt-1">Brief, clear note (e.g., vendor or bill name).</div>
+                        <div class="text-[11px] text-gray-500 mt-1">Enter a brief description of the expense (e.g., vendor name, purpose, or item details).</div>
                         <InputError :message="form.errors.description" />
                     </div>
                 </CardContent>

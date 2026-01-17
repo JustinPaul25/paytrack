@@ -555,9 +555,10 @@ class InvoiceController extends Controller
 
     public function markPaid(Request $request, Invoice $invoice)
     {
-        // Only Admin and Staff can mark as paid (Customer cannot)
+        // Only Admin can mark as paid (Staff and Customer cannot)
+        // This is because the admin handles the money and the proof of payment
         $user = auth()->user();
-        if (!$user || $user->hasRole('Customer') || (!$user->hasRole('Admin') && !$user->hasRole('Staff'))) {
+        if (!$user || !$user->hasRole('Admin')) {
             abort(403);
         }
         
@@ -634,7 +635,8 @@ class InvoiceController extends Controller
         try {
             // Calculate days until due (negative if overdue)
             $today = Carbon::today();
-            $daysUntilDue = Carbon::parse($invoice->due_date)->diffInDays($today, false);
+            // Calculate from today to due_date: positive if future, negative if past (overdue)
+            $daysUntilDue = $today->diffInDays(Carbon::parse($invoice->due_date), false);
 
             // Check if a reminder already exists for this invoice
             $existingReminder = Reminder::where('invoice_id', $invoice->id)

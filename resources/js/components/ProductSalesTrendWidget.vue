@@ -6,6 +6,30 @@
                     <Package class="w-5 h-5 text-indigo-600" />
                     Product Sales Trend
                 </CardTitle>
+                <div class="flex flex-col gap-2" style="min-width: 200px;">
+                    <div class="flex items-center gap-2">
+                        <Calendar class="w-4 h-4" />
+                        <label class="text-sm font-medium">Date Filter</label>
+                    </div>
+                    <Select
+                        v-model="productTrendFilterPeriod"
+                        :options="periodOptions"
+                        placeholder="Choose time period"
+                        class="w-full"
+                    />
+                    <div v-if="productTrendFilterPeriod === 'custom'" class="flex gap-2">
+                        <input
+                            v-model="productTrendFilterStartDate"
+                            type="date"
+                            class="flex-1 px-2 py-1 text-sm border rounded"
+                        />
+                        <input
+                            v-model="productTrendFilterEndDate"
+                            type="date"
+                            class="flex-1 px-2 py-1 text-sm border rounded"
+                        />
+                    </div>
+                </div>
             </div>
         </CardHeader>
         
@@ -130,7 +154,8 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { Package, Trophy, TrendingUp, ChevronDown } from 'lucide-vue-next';
+import { Package, Trophy, TrendingUp, ChevronDown, Calendar } from 'lucide-vue-next';
+import { Select } from '@/components/ui/select';
 
 // Register Chart.js components
 ChartJS.register(
@@ -155,25 +180,112 @@ const props = defineProps<{
     topProducts: TopProduct[];
 }>();
 
-// Generate last 7 days with proper labels
-const last7DaysData = computed(() => {
-    const today = new Date();
-    const days = [];
+// Date filter for Product Sales Trend Widget
+const productTrendFilterPeriod = ref('week');
+const productTrendFilterStartDate = ref('');
+const productTrendFilterEndDate = ref('');
+
+const periodOptions = [
+    { value: 'week', label: 'Last 7 Days' },
+    { value: 'month', label: 'Last 30 Days' },
+    { value: 'quarter', label: 'Last 3 Months' },
+    { value: 'year', label: 'Last 12 Months' },
+    { value: 'custom', label: 'Choose Dates' },
+];
+
+// Initialize dates on mount
+const initializeDates = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    productTrendFilterStartDate.value = start.toISOString().split('T')[0];
+    productTrendFilterEndDate.value = end.toISOString().split('T')[0];
+};
+
+// Helper function to filter data by date range
+function filterByDateRange<T extends { date: string }>(
+    data: T[],
+    periodValue: string,
+    startDateStr?: string,
+    endDateStr?: string
+): T[] {
+    if (!data || data.length === 0) return [];
     
-    // Create array for last 7 days
-    for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
-        
-        // Find matching data or use 0
-        const dataPoint = props.salesByDate.find(item => item.date === dateStr);
-        days.push({
-            date: dateStr,
-            dateObj: date,
-            sales: dataPoint ? dataPoint.sales : 0
-        });
+    let start: Date;
+    let end: Date = new Date();
+    
+    if (periodValue === 'custom' && startDateStr && endDateStr) {
+        start = new Date(startDateStr);
+        end = new Date(endDateStr);
+    } else {
+        start = new Date();
+        switch (periodValue) {
+            case 'week':
+                start.setDate(start.getDate() - 7);
+                break;
+            case 'month':
+                start.setMonth(start.getMonth() - 1);
+                break;
+            case 'quarter':
+                start.setMonth(start.getMonth() - 3);
+                break;
+            case 'year':
+                start.setFullYear(start.getFullYear() - 1);
+                break;
+            default:
+                start.setDate(start.getDate() - 7);
+        }
     }
+    
+    return data.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= start && itemDate <= end;
+    });
+}
+
+// Get filtered sales data for product trend widget
+const filteredSalesDataForProductTrend = computed(() => {
+    return filterByDateRange(
+        props.salesByDate,
+        productTrendFilterPeriod.value,
+        productTrendFilterStartDate.value || undefined,
+        productTrendFilterEndDate.value || undefined
+    );
+});
+
+// Generate last 7 days (or filtered range) with proper labels
+const last7DaysData = computed(() => {
+    // Get filtered data
+    const filteredData = filteredSalesDataForProductTrend.value;
+    
+    if (!filteredData || filteredData.length === 0) {
+        // Fallback to last 7 days if no filtered data
+        const today = new Date();
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            days.push({
+                date: date.toISOString().split('T')[0],
+                dateObj: date,
+                sales: 0
+            });
+        }
+        return days;
+    }
+    
+    // Use filtered data to create chart data
+    const days = filteredData.map(item => {
+        const date = new Date(item.date);
+        return {
+            date: item.date,
+            dateObj: date,
+            sales: item.sales
+        };
+    });
+    
+    // Sort by date
+    days.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
     
     return days;
 });

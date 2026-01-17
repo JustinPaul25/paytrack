@@ -22,6 +22,7 @@ interface Delivery {
     delivery_time: string;
     status: string;
     delivery_fee: number;
+    type?: string;
     notes?: string;
     created_at: string;
     updated_at: string;
@@ -47,8 +48,9 @@ interface DeliveryStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
+const filters = ref<{ search?: string; type?: string }>(page.props.filters ? (page.props.filters as { search?: string; type?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const typeFilter = ref(typeof filters.value.type === 'string' ? filters.value.type : '');
 const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -59,18 +61,25 @@ watchEffect(() => {
     search.value = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
         ? (page.props.filters as { search?: string }).search!
         : '';
+    typeFilter.value = (page.props.filters && typeof (page.props.filters as { type?: string }).type === 'string')
+        ? (page.props.filters as { type?: string }).type!
+        : '';
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/deliveries', { search: val }, { preserveState: true, replace: true });
+        router.get('/deliveries', { search: val, type: typeFilter.value || undefined }, { preserveState: true, replace: true });
     }, 400);
 });
 
+watch(typeFilter, (val) => {
+    router.get('/deliveries', { search: search.value, type: val || undefined }, { preserveState: true, replace: true });
+});
+
 function goToPage(pageNum: number) {
-    router.get('/deliveries', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
+    router.get('/deliveries', { search: search.value, type: typeFilter.value || undefined, page: pageNum }, { preserveState: true, replace: true });
 }
 
 function getStatusBadgeClass(status: string) {
@@ -88,6 +97,22 @@ function getStatusLabel(status: string): string {
         case 'completed': return 'Delivered';
         case 'cancelled': return 'Cancelled';
         default: return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+}
+
+function getTypeBadgeClass(type?: string) {
+    switch (type) {
+        case 'return': return 'bg-orange-100 text-orange-800';
+        case 'order': return 'bg-blue-100 text-blue-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
+
+function getTypeLabel(type?: string): string {
+    switch (type) {
+        case 'return': return 'Return Delivery';
+        case 'order': return 'Order Delivery';
+        default: return 'Order Delivery'; // Default to order for backward compatibility
     }
 }
 
@@ -216,6 +241,14 @@ async function deleteDelivery(id: number) {
                     placeholder="Search deliveries by customer name..." 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
+                <select 
+                    v-model="typeFilter" 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                    <option value="">All Types</option>
+                    <option value="order">Order Delivery</option>
+                    <option value="return">Return Delivery</option>
+                </select>
             </div>
         </div>
 
@@ -228,6 +261,7 @@ async function deleteDelivery(id: number) {
                             <th class="px-4 py-2 text-left">Contact Person</th>
                             <th class="px-4 py-2 text-left">Delivery Date</th>
                             <th class="px-4 py-2 text-left">Status</th>
+                            <th class="px-4 py-2 text-left">Type</th>
                             <th class="px-4 py-2 text-left">Delivery Fee</th>
                             <th class="px-4 py-2 text-left">Invoice</th>
                             <th class="px-4 py-2 text-left">Actions</th>
@@ -258,6 +292,11 @@ async function deleteDelivery(id: number) {
                                     {{ getStatusLabel(delivery.status) }}
                                 </span>
                             </td>
+                            <td class="px-4 py-2">
+                                <span :class="['px-2 py-1 rounded-full text-xs font-medium', getTypeBadgeClass(delivery.type)]">
+                                    {{ getTypeLabel(delivery.type) }}
+                                </span>
+                            </td>
                             <td class="px-4 py-2 font-medium">{{ formatCurrency(delivery.delivery_fee) }}</td>
                             <td class="px-4 py-2">
                                 <Link v-if="delivery.invoice" :href="route('invoices.show', delivery.invoice.id)" class="text-blue-500 hover:underline font-medium">
@@ -286,7 +325,7 @@ async function deleteDelivery(id: number) {
                     </tbody>
                     <tbody v-else>
                         <tr>
-                            <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
+                            <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-500">
                                 No deliveries found.
                                 <button v-if="(search && search.toString().trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
                                     Clear search

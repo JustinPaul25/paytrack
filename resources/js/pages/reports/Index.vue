@@ -417,6 +417,72 @@ function formatCurrency(amount: number | null | undefined) {
     }).format(value);
 }
 
+// Helper function to format filter text
+function formatFilterText(filterType: string, filterMonth: string, filterYear: string, startDate: string, endDate: string): string {
+    switch (filterType) {
+        case 'month':
+            if (filterMonth) {
+                try {
+                    const date = new Date(filterMonth + '-01');
+                    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                } catch (e) {
+                    return 'All Time';
+                }
+            }
+            return 'All Time';
+            
+        case 'year':
+            if (filterYear) {
+                return filterYear;
+            }
+            return 'All Time';
+            
+        case 'date_range':
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+            }
+            return 'All Time';
+            
+        default:
+            return 'All Time';
+    }
+}
+
+// Computed properties for active filter text
+const activeSalesFilterText = computed(() => {
+    return formatFilterText(filterType.value, filterMonth.value, filterYear.value, startDate.value, endDate.value);
+});
+
+const activeFinancialFilterText = computed(() => {
+    const type = financialFilterType.value !== 'all' ? financialFilterType.value : filterType.value;
+    const month = financialFilterMonth.value || filterMonth.value;
+    const year = financialFilterYear.value || filterYear.value;
+    const start = financialStartDate.value || startDate.value;
+    const end = financialEndDate.value || endDate.value;
+    return formatFilterText(type, month, year, start, end);
+});
+
+const activeDeliveryFilterText = computed(() => {
+    return formatFilterText(filterType.value, filterMonth.value, filterYear.value, startDate.value, endDate.value);
+});
+
+const activeTransactionFilterText = computed(() => {
+    const type = transactionFilterType.value !== 'all' ? transactionFilterType.value : filterType.value;
+    const month = transactionFilterMonth.value || filterMonth.value;
+    const year = transactionFilterYear.value || filterYear.value;
+    const start = transactionStartDate.value || startDate.value;
+    const end = transactionEndDate.value || endDate.value;
+    return formatFilterText(type, month, year, start, end);
+});
+
+// Check if filters are active
+const isSalesFilterActive = computed(() => filterType.value !== 'all');
+const isFinancialFilterActive = computed(() => financialFilterType.value !== 'all' || filterType.value !== 'all');
+const isDeliveryFilterActive = computed(() => filterType.value !== 'all');
+const isTransactionFilterActive = computed(() => transactionFilterType.value !== 'all' || filterType.value !== 'all');
+
 function printReport() {
     window.print();
 }
@@ -467,9 +533,10 @@ function printAllReports() {
         <!-- Filters -->
         <Card class="no-print mb-6">
             <CardHeader>
-                <CardTitle>Filters</CardTitle>
+                <CardTitle>Filters - Sales Report & Delivery Summary</CardTitle>
             </CardHeader>
             <CardContent>
+                <p class="text-sm text-gray-600 mb-4">These filters apply to the <strong>Sales Report</strong> and <strong>Delivery Summary</strong> tabs.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-1">Filter Type</label>
@@ -543,10 +610,15 @@ function printAllReports() {
             <TabsContent value="sales" class="print-break">
                 <Card>
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <TrendingUp class="h-5 w-5" />
-                            Sales Report
-                        </CardTitle>
+                        <div class="flex items-center justify-between">
+                            <CardTitle class="flex items-center gap-2">
+                                <TrendingUp class="h-5 w-5" />
+                                Sales Report
+                            </CardTitle>
+                            <div v-if="isSalesFilterActive" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                                Filter: {{ activeSalesFilterText }}
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div class="mb-4 grid grid-cols-3 gap-4">
@@ -592,6 +664,7 @@ function printAllReports() {
                         <CardTitle>Financial Report Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
+                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Financial Report</strong>. If not set, the global filters from above will be used.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">Filter Type</label>
@@ -642,10 +715,15 @@ function printAllReports() {
                 
                 <Card>
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <FileText class="h-5 w-5" />
-                            Financial Report
-                        </CardTitle>
+                        <div class="flex items-center justify-between">
+                            <CardTitle class="flex items-center gap-2">
+                                <FileText class="h-5 w-5" />
+                                Financial Report
+                            </CardTitle>
+                            <div v-if="isFinancialFilterActive" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                                Filter: {{ activeFinancialFilterText }}
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <table class="min-w-full border-collapse border border-gray-300">
@@ -686,10 +764,15 @@ function printAllReports() {
             <TabsContent value="delivery" class="print-break">
                 <Card>
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <Truck class="h-5 w-5" />
-                            Delivery Summary
-                        </CardTitle>
+                        <div class="flex items-center justify-between">
+                            <CardTitle class="flex items-center gap-2">
+                                <Truck class="h-5 w-5" />
+                                Delivery Summary
+                            </CardTitle>
+                            <div v-if="isDeliveryFilterActive" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                                Filter: {{ activeDeliveryFilterText }}
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div class="mb-4 grid grid-cols-4 gap-4">
@@ -759,6 +842,7 @@ function printAllReports() {
                         <CardTitle>Transactions Report Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
+                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Transactions Report</strong>. If not set, the global filters from above will be used.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">Filter Type</label>
@@ -809,10 +893,15 @@ function printAllReports() {
                 
                 <Card>
                     <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <CreditCard class="h-5 w-5" />
-                            Transactions Report
-                        </CardTitle>
+                        <div class="flex items-center justify-between">
+                            <CardTitle class="flex items-center gap-2">
+                                <CreditCard class="h-5 w-5" />
+                                Transactions Report
+                            </CardTitle>
+                            <div v-if="isTransactionFilterActive" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                                Filter: {{ activeTransactionFilterText }}
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <p class="text-sm text-gray-600 mb-4">Total Transactions: {{ (transactions || []).length }}</p>

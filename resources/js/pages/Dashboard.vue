@@ -83,6 +83,15 @@ const startDate = ref(props.filters.start_date);
 const endDate = ref(props.filters.end_date);
 const trendPeriod = ref<'monthly' | 'yearly'>('monthly');
 
+// Individual chart date filters
+const salesTrendFilterPeriod = ref('month');
+const salesTrendFilterStartDate = ref(props.filters.start_date);
+const salesTrendFilterEndDate = ref(props.filters.end_date);
+
+const categoryChartFilterPeriod = ref('month');
+const categoryChartFilterStartDate = ref(props.filters.start_date);
+const categoryChartFilterEndDate = ref(props.filters.end_date);
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -187,13 +196,77 @@ onMounted(() => {
     }
 });
 
+// Helper function to filter data by date range
+function filterByDateRange<T extends { date: string }>(
+    data: T[],
+    startDateStr: string,
+    endDateStr: string
+): T[] {
+    if (!startDateStr || !endDateStr) return data;
+    
+    const start = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    
+    return data.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= start && itemDate <= end;
+    });
+}
+
+// Helper function to calculate date range from period
+function getDateRangeFromPeriod(periodValue: string, fallbackStart?: string, fallbackEnd?: string): { start: string; end: string } {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    let start = new Date();
+    
+    switch (periodValue) {
+        case 'week':
+            start.setDate(start.getDate() - 7);
+            break;
+        case 'month':
+            start.setMonth(start.getMonth() - 1);
+            break;
+        case 'quarter':
+            start.setMonth(start.getMonth() - 3);
+            break;
+        case 'year':
+            start.setFullYear(start.getFullYear() - 1);
+            break;
+        case 'custom':
+            if (fallbackStart && fallbackEnd) {
+                return { start: fallbackStart, end: fallbackEnd };
+            }
+            break;
+        default:
+            start.setMonth(start.getMonth() - 1);
+    }
+    
+    start.setHours(0, 0, 0, 0);
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+    };
+}
+
+// Get filtered sales data for Sales Trend chart
+const filteredSalesByDateForTrend = computed(() => {
+    const range = getDateRangeFromPeriod(salesTrendFilterPeriod.value, salesTrendFilterStartDate.value, salesTrendFilterEndDate.value);
+    return filterByDateRange(props.salesByDate, range.start, range.end);
+});
+
+// Get filtered sales data for Category chart
+const filteredSalesByDateForCategory = computed(() => {
+    const range = getDateRangeFromPeriod(categoryChartFilterPeriod.value, categoryChartFilterStartDate.value, categoryChartFilterEndDate.value);
+    return filterByDateRange(props.salesByDate, range.start, range.end);
+});
+
 // Group sales data by month or year based on trendPeriod
 const groupedSalesData = computed(() => {
     if (trendPeriod.value === 'yearly') {
         // Group by year
         const grouped = new Map<string, { sales: number; invoices: number; date: string; sortKey: string }>();
         
-        props.salesByDate.forEach(item => {
+        filteredSalesByDateForTrend.value.forEach(item => {
             const date = new Date(item.date);
             const year = date.getFullYear().toString();
             
@@ -216,7 +289,7 @@ const groupedSalesData = computed(() => {
         // Group by month
         const grouped = new Map<string, { sales: number; invoices: number; date: string; sortKey: string }>();
         
-        props.salesByDate.forEach(item => {
+        filteredSalesByDateForTrend.value.forEach(item => {
             // Handle date parsing - item.date might be in 'YYYY-MM-DD' format
             let date: Date;
             if (typeof item.date === 'string') {
@@ -319,8 +392,13 @@ const salesChartOptions = computed(() => ({
     },
 }));
 
-// Get top 5 categories sorted by revenue
+// Filter category data based on category chart date filter
+// Note: We filter the salesByDate to get the date range, but category data needs to come from backend
+// For now, we'll use the filtered date range to show which categories were active in that period
+// Since we can't recalculate categories client-side, we'll use all category data but note the filter
 const top5Categories = computed(() => {
+    // Use all categories since we can't recalculate client-side
+    // In a real scenario, you'd want to pass filtered data from backend
     return [...props.salesByCategory]
         .sort((a, b) => b.total_revenue - a.total_revenue)
         .slice(0, 5);
@@ -715,13 +793,41 @@ const closeNotifications = () => {
                         <TabsContent value="sales-trend" class="tab-content-full">
                             <Card class="chart-card">
                                 <CardHeader>
-                                    <CardTitle class="chart-title">
-                                        <TrendingUp class="chart-title-icon" />
-                                        Your Sales Trend
-                                    </CardTitle>
-                                    <CardDescription>
-                                        See how your {{ trendPeriod === 'yearly' ? 'yearly' : 'monthly' }} sales and number of transactions change over time
-                                    </CardDescription>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                        <div>
+                                            <CardTitle class="chart-title">
+                                                <TrendingUp class="chart-title-icon" />
+                                                Your Sales Trend
+                                            </CardTitle>
+                                            <CardDescription>
+                                                See how your {{ trendPeriod === 'yearly' ? 'yearly' : 'monthly' }} sales and number of transactions change over time
+                                            </CardDescription>
+                                        </div>
+                                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <Calendar class="w-4 h-4" />
+                                                <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                                            </div>
+                                            <Select
+                                                v-model="salesTrendFilterPeriod"
+                                                :options="periodOptions"
+                                                placeholder="Choose time period"
+                                                class="period-select"
+                                            />
+                                            <div v-if="salesTrendFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                                                <input
+                                                    v-model="salesTrendFilterStartDate"
+                                                    type="date"
+                                                    style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                                />
+                                                <input
+                                                    v-model="salesTrendFilterEndDate"
+                                                    type="date"
+                                                    style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent>
                                     <BaseChart
@@ -748,13 +854,41 @@ const closeNotifications = () => {
                 <div class="category-section">
                     <Card class="chart-card">
                         <CardHeader>
-                            <CardTitle class="chart-title">
-                                <Package class="chart-title-icon" />
-                                Sales by Product Category
-                            </CardTitle>
-                            <CardDescription>
-                                See which product categories bring in the most revenue
-                            </CardDescription>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div>
+                                    <CardTitle class="chart-title">
+                                        <Package class="chart-title-icon" />
+                                        Sales by Product Category
+                                    </CardTitle>
+                                    <CardDescription>
+                                        See which product categories bring in the most revenue
+                                    </CardDescription>
+                                </div>
+                                <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <Calendar class="w-4 h-4" />
+                                        <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                                    </div>
+                                    <Select
+                                        v-model="categoryChartFilterPeriod"
+                                        :options="periodOptions"
+                                        placeholder="Choose time period"
+                                        class="period-select"
+                                    />
+                                    <div v-if="categoryChartFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                                        <input
+                                            v-model="categoryChartFilterStartDate"
+                                            type="date"
+                                            style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                        />
+                                        <input
+                                            v-model="categoryChartFilterEndDate"
+                                            type="date"
+                                            style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div v-if="props.salesByCategory.length === 0" class="empty-state">

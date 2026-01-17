@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, watch, watchEffect } from 'vue';
+import { ref, watch, watchEffect, computed } from 'vue';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
@@ -10,6 +11,7 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
+import { Calendar, Filter, X } from 'lucide-vue-next';
 
 interface Expense {
     id: number;
@@ -28,26 +30,77 @@ interface ExpenseStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string }>((page.props as any).filters || {});
+const filters = ref<{ search?: string; expense_type?: string; start_date?: string; end_date?: string }>((page.props as any).filters || {});
 const search = ref(filters.value.search || '');
+const expenseTypeFilter = ref(filters.value.expense_type || '');
+const startDateFilter = ref(filters.value.start_date || '');
+const endDateFilter = ref(filters.value.end_date || '');
 const showStats = ref(false);
+const showFilters = ref(false);
+
+const expenseTypeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'Bills', label: 'Bills' },
+    { value: 'Cash Advance', label: 'Cash Advance' },
+    { value: 'Insurance', label: 'Insurance' },
+    { value: 'Maintenance', label: 'Maintenance & Repairs' },
+    { value: 'Marketing', label: 'Marketing & Advertising' },
+    { value: 'Office Supplies', label: 'Office Supplies' },
+    { value: 'Professional Services', label: 'Professional Services' },
+    { value: 'Rent', label: 'Rent' },
+    { value: 'Salary', label: 'Salary' },
+    { value: 'Tax', label: 'Tax' },
+    { value: 'Transportation', label: 'Transportation' },
+    { value: 'Utilities', label: 'Utilities' },
+    { value: 'Other', label: 'Other' },
+];
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Expenses', href: '/expenses' },
 ];
 
 watchEffect(() => {
-    search.value = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
-        ? (page.props.filters as { search?: string }).search!
-        : '';
+    const propsFilters = (page.props.filters as any) || {};
+    search.value = propsFilters.search || '';
+    expenseTypeFilter.value = propsFilters.expense_type || '';
+    startDateFilter.value = propsFilters.start_date || '';
+    endDateFilter.value = propsFilters.end_date || '';
 });
+
+function updateFilters() {
+    router.get('/expenses', {
+        search: search.value,
+        expense_type: expenseTypeFilter.value || undefined,
+        start_date: startDateFilter.value || undefined,
+        end_date: endDateFilter.value || undefined,
+    }, {
+        preserveState: true,
+        replace: true,
+    });
+}
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/expenses', { search: val }, { preserveState: true, replace: true });
+        updateFilters();
     }, 400);
+});
+
+watch([expenseTypeFilter, startDateFilter, endDateFilter], () => {
+    updateFilters();
+});
+
+function clearFilters() {
+    search.value = '';
+    expenseTypeFilter.value = '';
+    startDateFilter.value = '';
+    endDateFilter.value = '';
+    updateFilters();
+}
+
+const hasActiveFilters = computed(() => {
+    return expenseTypeFilter.value || startDateFilter.value || endDateFilter.value;
 });
 
 async function deleteExpense(id: number) {
@@ -71,11 +124,19 @@ async function deleteExpense(id: number) {
 
 function getExpenseTypeBadgeClass(type: string) {
     switch (type) {
-        case 'Salary': return 'bg-green-100 text-green-800';
         case 'Bills': return 'bg-blue-100 text-blue-800';
-        case 'Transportation': return 'bg-yellow-100 text-yellow-800';
         case 'Cash Advance': return 'bg-purple-100 text-purple-800';
+        case 'Insurance': return 'bg-cyan-100 text-cyan-800';
+        case 'Maintenance': return 'bg-orange-100 text-orange-800';
+        case 'Marketing': return 'bg-pink-100 text-pink-800';
+        case 'Office Supplies': return 'bg-indigo-100 text-indigo-800';
+        case 'Professional Services': return 'bg-teal-100 text-teal-800';
+        case 'Rent': return 'bg-amber-100 text-amber-800';
+        case 'Salary': return 'bg-green-100 text-green-800';
         case 'Tax': return 'bg-red-100 text-red-800';
+        case 'Transportation': return 'bg-yellow-100 text-yellow-800';
+        case 'Utilities': return 'bg-sky-100 text-sky-800';
+        case 'Other': return 'bg-gray-100 text-gray-800';
         default: return 'bg-gray-100 text-gray-800';
     }
 }
@@ -189,22 +250,104 @@ function formatDate(date: string) {
             </div>
         </Transition>
 
-        <!-- Search and Actions -->
-        <div class="flex items-center justify-between mt-4 mb-2">
-            <div class="flex gap-2 items-center">
-                <input 
-                    v-model="search" 
-                    type="text" 
-                    placeholder="Search expenses by type or description..." 
-                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
-                />
+        <!-- Search, Filters, and Actions -->
+        <div class="space-y-3 mt-4 mb-2">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex gap-2 items-center flex-1 min-w-[200px]">
+                    <input 
+                        v-model="search" 
+                        type="text" 
+                        placeholder="Search expenses by type or description..." 
+                        class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                    />
+                    <Button 
+                        variant="outline" 
+                        @click="showFilters = !showFilters"
+                        :class="hasActiveFilters ? 'border-blue-500 text-blue-600' : ''"
+                    >
+                        <Filter class="w-4 h-4 mr-2" />
+                        Filters
+                        <span v-if="hasActiveFilters" class="ml-2 bg-blue-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center">
+                            {{ (expenseTypeFilter ? 1 : 0) + (startDateFilter ? 1 : 0) + (endDateFilter ? 1 : 0) }}
+                        </span>
+                    </Button>
+                </div>
+                <Link :href="route('expenses.create')">
+                    <Button variant="default">
+                        <span class="mr-2">+</span>
+                        Add New Expense
+                    </Button>
+                </Link>
             </div>
-            <Link :href="route('expenses.create')">
-                <Button variant="default">
-                    <span class="mr-2">+</span>
-                    Add New Expense
-                </Button>
-            </Link>
+            
+            <!-- Filter Panel -->
+            <Transition
+                enter-active-class="transition-all duration-200 ease-out"
+                enter-from-class="opacity-0 transform -translate-y-2"
+                enter-to-class="opacity-100 transform translate-y-0"
+                leave-active-class="transition-all duration-150 ease-in"
+                leave-from-class="opacity-100 transform translate-y-0"
+                leave-to-class="opacity-0 transform -translate-y-2"
+            >
+                <Card v-show="showFilters" class="mt-2">
+                    <CardContent class="p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-semibold flex items-center gap-2">
+                                <Filter class="w-4 h-4" />
+                                Filter Expenses
+                            </h3>
+                            <div class="flex gap-2">
+                                <Button 
+                                    v-if="hasActiveFilters" 
+                                    variant="ghost" 
+                                    size="sm"
+                                    @click="clearFilters"
+                                    class="text-xs"
+                                >
+                                    <X class="w-3 h-3 mr-1" />
+                                    Clear All
+                                </Button>
+                                <Button variant="ghost" size="sm" @click="showFilters = false" class="text-xs">
+                                    <X class="w-3 h-3" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="text-xs font-medium text-muted-foreground mb-1 block">Expense Type</label>
+                                <Select
+                                    v-model="expenseTypeFilter"
+                                    :options="expenseTypeOptions"
+                                    placeholder="Select type"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
+                                    <Calendar class="w-3 h-3" />
+                                    Start Date
+                                </label>
+                                <input
+                                    v-model="startDateFilter"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-medium text-muted-foreground mb-1 block flex items-center gap-1">
+                                    <Calendar class="w-3 h-3" />
+                                    End Date
+                                </label>
+                                <input
+                                    v-model="endDateFilter"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </Transition>
         </div>
 
         <Card>

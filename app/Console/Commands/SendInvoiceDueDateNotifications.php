@@ -56,7 +56,8 @@ class SendInvoiceDueDateNotifications extends Command
             }
 
             // Calculate days until due (negative if overdue)
-            $daysUntilDue = Carbon::parse($invoice->due_date)->diffInDays($today, false);
+            // Calculate from today to due_date: positive if future, negative if past (overdue)
+            $daysUntilDue = $today->diffInDays(Carbon::parse($invoice->due_date), false);
             
             // Only create reminder if due within 7 days (including overdue)
             if ($daysUntilDue <= 7) {

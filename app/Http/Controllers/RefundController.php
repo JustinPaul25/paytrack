@@ -267,6 +267,7 @@ class RefundController extends Controller
                     'status' => 'pending',
                     'notes' => $deliveryNotes,
                     'delivery_fee' => $deliveryFee, // Pass as dollars - model setter will round and convert to cents
+                    'type' => 'return', // Refund deliveries are return deliveries
                 ]);
                 
                 // Update invoice total to include the refund delivery fee

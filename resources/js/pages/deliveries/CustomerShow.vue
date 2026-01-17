@@ -17,7 +17,9 @@ interface Delivery {
     delivery_time: string;
     status: string;
     delivery_fee: number;
+    type?: string;
     notes?: string;
+    proof_of_delivery_url?: string | null;
     invoice?: { id: number; reference_number?: string; total_amount: number };
     customer?: { id: number; name: string; company_name?: string; email?: string; phone?: string; address?: string };
 }
@@ -113,6 +115,45 @@ function getStatusLabel(status: string): string {
                                 <div class="text-sm text-gray-500">Notes</div>
                                 <div class="whitespace-pre-wrap">{{ props.delivery.notes }}</div>
                             </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Proof of Delivery - Prominent display for return deliveries -->
+                <Card v-if="props.delivery.proof_of_delivery_url" class="border-2" :class="props.delivery.type === 'return' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : ''">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <svg v-if="props.delivery.type === 'return'" class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Proof of Delivery</span>
+                            <span v-if="props.delivery.type === 'return'" class="ml-auto px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                Available
+                            </span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <p v-if="props.delivery.type === 'return'" class="text-sm text-green-700 dark:text-green-300 font-medium">
+                                ✓ Your return delivery proof has been uploaded by our staff.
+                            </p>
+                            <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-white">
+                                <img 
+                                    :src="props.delivery.proof_of_delivery_url" 
+                                    alt="Proof of Delivery"
+                                    class="w-full h-auto object-contain max-h-96 mx-auto"
+                                />
+                            </div>
+                            <a 
+                                :href="props.delivery.proof_of_delivery_url" 
+                                target="_blank"
+                                class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                Open Proof of Delivery in New Tab
+                            </a>
                         </div>
                     </CardContent>
                 </Card>

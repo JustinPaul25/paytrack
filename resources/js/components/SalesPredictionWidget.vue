@@ -6,6 +6,30 @@
                     <TrendingUp class="w-5 h-5 text-blue-600" />
                     Sales Prediction
                 </CardTitle>
+                <div class="flex flex-col gap-2" style="min-width: 200px;">
+                    <div class="flex items-center gap-2">
+                        <Calendar class="w-4 h-4" />
+                        <label class="text-sm font-medium">Date Filter</label>
+                    </div>
+                    <Select
+                        v-model="predictionFilterPeriod"
+                        :options="periodOptions"
+                        placeholder="Choose time period"
+                        class="w-full"
+                    />
+                    <div v-if="predictionFilterPeriod === 'custom'" class="flex gap-2">
+                        <input
+                            v-model="predictionFilterStartDate"
+                            type="date"
+                            class="flex-1 px-2 py-1 text-sm border rounded"
+                        />
+                        <input
+                            v-model="predictionFilterEndDate"
+                            type="date"
+                            class="flex-1 px-2 py-1 text-sm border rounded"
+                        />
+                    </div>
+                </div>
             </div>
         </CardHeader>
         
@@ -159,7 +183,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { TrendingUp, ChevronDown, BarChart3 } from 'lucide-vue-next';
+import { TrendingUp, ChevronDown, BarChart3, Calendar } from 'lucide-vue-next';
 import { Select } from '@/components/ui/select';
 
 // Register Chart.js components
@@ -185,6 +209,80 @@ const isCollapsed = ref(false);
 
 // Forecast period filter (monthly/yearly)
 const forecastPeriod = ref<'monthly' | 'yearly'>('monthly');
+
+// Date filter for Sales Prediction Widget
+const predictionFilterPeriod = ref('month');
+const predictionFilterStartDate = ref('');
+const predictionFilterEndDate = ref('');
+
+const periodOptions = [
+    { value: 'week', label: 'Last 7 Days' },
+    { value: 'month', label: 'Last 30 Days' },
+    { value: 'quarter', label: 'Last 3 Months' },
+    { value: 'year', label: 'Last 12 Months' },
+    { value: 'custom', label: 'Choose Dates' },
+];
+
+// Initialize dates on mount
+const initializeDates = () => {
+    const end = new Date();
+    const start = new Date();
+    start.setMonth(start.getMonth() - 1);
+    predictionFilterStartDate.value = start.toISOString().split('T')[0];
+    predictionFilterEndDate.value = end.toISOString().split('T')[0];
+};
+
+// Helper function to filter data by date range
+function filterByDateRange<T extends { date: string }>(
+    data: T[],
+    periodValue: string,
+    startDateStr?: string,
+    endDateStr?: string
+): T[] {
+    if (!data || data.length === 0) return [];
+    
+    let start: Date;
+    let end: Date = new Date();
+    
+    if (periodValue === 'custom' && startDateStr && endDateStr) {
+        start = new Date(startDateStr);
+        end = new Date(endDateStr);
+    } else {
+        start = new Date();
+        switch (periodValue) {
+            case 'week':
+                start.setDate(start.getDate() - 7);
+                break;
+            case 'month':
+                start.setMonth(start.getMonth() - 1);
+                break;
+            case 'quarter':
+                start.setMonth(start.getMonth() - 3);
+                break;
+            case 'year':
+                start.setFullYear(start.getFullYear() - 1);
+                break;
+            default:
+                start.setMonth(start.getMonth() - 1);
+        }
+    }
+    
+    return data.filter(item => {
+        const itemDate = new Date(item.date);
+        return itemDate >= start && itemDate <= end;
+    });
+}
+
+// Get filtered sales data for prediction widget
+const filteredSalesDataForPrediction = computed(() => {
+    if (!props.salesData) return [];
+    return filterByDateRange(
+        props.salesData,
+        predictionFilterPeriod.value,
+        predictionFilterStartDate.value || undefined,
+        predictionFilterEndDate.value || undefined
+    );
+});
 
 const tomorrow = computed(() => {
     const date = new Date();
@@ -218,13 +316,13 @@ const usingDummy = ref(false);
 
 // Group historical sales data by month
 const groupedHistoricalData = computed(() => {
-    if (!props.salesData || props.salesData.length === 0) {
+    if (!filteredSalesDataForPrediction.value || filteredSalesDataForPrediction.value.length === 0) {
         return new Map<string, { sales: number; date: string; sortKey: string; isHistorical: boolean }>();
     }
     
     const grouped = new Map<string, { sales: number; date: string; sortKey: string; isHistorical: boolean }>();
     
-    props.salesData.forEach(item => {
+    filteredSalesDataForPrediction.value.forEach(item => {
         // Handle date parsing
         let date: Date;
         if (typeof item.date === 'string') {
@@ -529,6 +627,7 @@ function getPredictionBarWidth(prediction: number): number {
 
 // Fetch live predictions on mount
 onMounted(async () => {
+    initializeDates();
     try {
         const res = await fetch(`/sales/predictions?period=month&days_ahead=30`, {
             headers: {

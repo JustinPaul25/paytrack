@@ -307,8 +307,37 @@ class RefundRequestController extends Controller
             'completed_refund_id' => $refund->id,
         ]);
 
-        // For credit invoices: Check if refund fully settles the invoice
+        // Get the invoice
         $invoice = $refund->invoice;
+
+        // Remove delivery fees when refund is approved
+        // Calculate total delivery fees before removing them
+        $totalDeliveryFees = $invoice->deliveries()
+            ->where('delivery_fee', '>', 0)
+            ->sum('delivery_fee') / 100; // Convert from cents to dollars
+
+        // If there are delivery fees, remove them by setting to 0
+        if ($totalDeliveryFees > 0) {
+            // Set all delivery fees to 0 for this invoice (refund the delivery fees)
+            $invoice->deliveries()
+                ->where('delivery_fee', '>', 0)
+                ->update(['delivery_fee' => 0]);
+
+            // Recalculate invoice total excluding delivery fees
+            // Total = Subtotal + VAT - Withholding Tax (delivery fees removed)
+            $subtotal = $invoice->subtotal_amount; // Already in dollars (accessor)
+            $vatAmount = $invoice->vat_amount; // Already in dollars (accessor)
+            $withholdingTaxAmount = $invoice->withholding_tax_amount; // Already in dollars (accessor)
+
+            // New total without delivery fees
+            $newTotal = $subtotal + $vatAmount - $withholdingTaxAmount;
+
+            // Update invoice total to reflect removal of delivery fees
+            $invoice->total_amount = $newTotal;
+            $invoice->save();
+        }
+
+        // For credit invoices: Check if refund fully settles the invoice
         $invoiceAutoSettled = false;
         if ($invoice && $invoice->payment_method === 'credit' && $invoice->payment_status === 'pending') {
             // Calculate net balance after this refund

@@ -78,7 +78,7 @@ const form = useForm({
     delivery_time: '',
     status: 'pending',
     notes: '',
-    delivery_fee: '',
+    delivery_fee: props.refundRequest ? '0' : '',
 });
 
 // Check if user is staff (Staff or Admin)
@@ -217,6 +217,10 @@ function calculateDeliveryFee(distance: number | null): number {
 
 // Watch for initial delivery fee changes (when customer location changes)
 watch(() => initialDeliveryFee.value, (newFee) => {
+    // Skip for refund requests (delivery fee should remain 0)
+    if (props.refundRequest) {
+        return;
+    }
     // Only update if customer is selected and fee field is empty or matches base fee
     // This allows manual overrides
     if (form.customer_id && newFee != null) {
@@ -269,14 +273,15 @@ function submit() {
     }
     
     // Delivery fee should be auto-calculated or manually set before submission
-    // For refund requests, the fee will be auto-calculated from route distance if not manually set
+    // For refund requests, delivery fee is always 0
     
-    // Transform form data to include refund_request_id if present
+    // Transform form data to include refund_request_id if present and ensure delivery_fee is 0 for refund requests
     form.transform((data) => {
         if (props.refundRequest) {
             return {
                 ...data,
                 refund_request_id: props.refundRequest.id,
+                delivery_fee: '0', // Always 0 for refund return pickups
             };
         }
         return data;
@@ -342,14 +347,62 @@ const statusOptions = [
     { value: 'cancelled', label: 'Cancelled' }
 ];
 
-// Delivery time options
-const deliveryTimeOptions = [
+// Set minimum date to today
+const today = new Date().toISOString().split('T')[0];
+
+// Delivery time options (base options)
+const baseDeliveryTimeOptions = [
     { value: '09:00 AM - 12:00 PM', label: '09:00 AM - 12:00 PM' },
     { value: '12:00 PM - 03:00 PM', label: '12:00 PM - 03:00 PM' },
     { value: '03:00 PM - 06:00 PM', label: '03:00 PM - 06:00 PM' },
     { value: '06:00 PM - 09:00 PM', label: '06:00 PM - 09:00 PM' },
     { value: 'Custom', label: 'Custom' }
 ];
+
+// Helper function to convert time string to 24-hour format minutes
+function timeToMinutes(timeStr: string): number {
+    const [time, period] = timeStr.trim().split(' ');
+    const [hours, minutes = '0'] = time.split(':');
+    let hour24 = parseInt(hours);
+    
+    if (period === 'PM' && hour24 !== 12) {
+        hour24 += 12;
+    } else if (period === 'AM' && hour24 === 12) {
+        hour24 = 0;
+    }
+    
+    return hour24 * 60 + parseInt(minutes);
+}
+
+// Helper function to check if a time slot has passed
+function hasTimeSlotPassed(timeSlot: string): boolean {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    // Extract start time from time slot (e.g., "09:00 AM - 12:00 PM" -> "09:00 AM")
+    const startTimeStr = timeSlot.split(' - ')[0].trim();
+    const startMinutes = timeToMinutes(startTimeStr);
+    
+    return currentMinutes >= startMinutes;
+}
+
+// Computed property for delivery time options based on selected date
+const deliveryTimeOptions = computed(() => {
+    // If no date is selected or date is in the future, show all options
+    if (!form.delivery_date || form.delivery_date !== today) {
+        return baseDeliveryTimeOptions;
+    }
+    
+    // If today is selected, filter out past time slots
+    return baseDeliveryTimeOptions.filter(option => {
+        // Always include "Custom" option
+        if (option.value === 'Custom') {
+            return true;
+        }
+        // Filter out time slots that have already started
+        return !hasTimeSlotPassed(option.value);
+    });
+});
 
 function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', {
@@ -358,9 +411,6 @@ function formatCurrency(amount: number) {
         minimumFractionDigits: 2
     }).format(amount);
 }
-
-// Set minimum date to today
-const today = new Date().toISOString().split('T')[0];
 
 // Helper function to normalize phone number to +63XXXXXXXXXX format
 function normalizePhoneNumber(phone: string | null | undefined): string {
@@ -428,7 +478,8 @@ onMounted(() => {
         form.contact_person = refundReq.contact_person;
         form.contact_phone = normalizePhoneNumber(refundReq.contact_phone);
         form.notes = refundReq.notes;
-        // Delivery fee will be auto-calculated when route distance is calculated
+        // Delivery fee is 0 for refund return pickups
+        form.delivery_fee = '0';
         
         // Set default delivery date to tomorrow
         const tomorrow = new Date();
@@ -481,21 +532,28 @@ watch(() => form.customer_id, (newCustomerId) => {
             
             // Initialize delivery fee using straight-line distance (same as order forms)
             // This ensures consistency with the order creation form
-            if (initialDeliveryFee.value != null) {
-                form.delivery_fee = initialDeliveryFee.value.toFixed(2);
-            } else if (props.baseDeliveryFee != null) {
-                // Fallback to base fee if distance cannot be calculated
+            // Skip for refund requests (delivery fee should be 0)
+            if (!props.refundRequest) {
+                if (initialDeliveryFee.value != null) {
+                    form.delivery_fee = initialDeliveryFee.value.toFixed(2);
+                } else if (props.baseDeliveryFee != null) {
+                    // Fallback to base fee if distance cannot be calculated
+                    form.delivery_fee = props.baseDeliveryFee.toFixed(2);
+                } else {
+                    form.delivery_fee = '50.00'; // Default fallback
+                }
+            }
+        }
+    } else {
+        // Reset to base fee if no customer selected (skip for refund requests)
+        if (!props.refundRequest) {
+            if (props.baseDeliveryFee != null) {
                 form.delivery_fee = props.baseDeliveryFee.toFixed(2);
             } else {
                 form.delivery_fee = '50.00'; // Default fallback
             }
-        }
-    } else {
-        // Reset to base fee if no customer selected
-        if (props.baseDeliveryFee != null) {
-            form.delivery_fee = props.baseDeliveryFee.toFixed(2);
         } else {
-            form.delivery_fee = '50.00'; // Default fallback
+            form.delivery_fee = '0';
         }
     }
 }, { immediate: true });
@@ -519,6 +577,23 @@ watch(() => form.invoice_id, (newInvoiceId) => {
             }
             if (invoice.customer.phone && !form.contact_phone) {
                 form.contact_phone = normalizePhoneNumber(invoice.customer.phone);
+            }
+        }
+    }
+});
+
+// Reset delivery time if it's no longer available when date changes
+watch(() => form.delivery_date, () => {
+    if (form.delivery_time) {
+        const availableOptions = deliveryTimeOptions.value;
+        const isTimeAvailable = availableOptions.some(option => option.value === form.delivery_time);
+        
+        if (!isTimeAvailable) {
+            // Reset to first available option or empty
+            if (availableOptions.length > 0) {
+                form.delivery_time = availableOptions[0].value;
+            } else {
+                form.delivery_time = '';
             }
         }
     }
@@ -642,6 +717,7 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                         <div>
                             <Label for="delivery_time">Delivery Time *</Label>
                             <Select
+                                :key="`delivery-time-${form.delivery_date || 'no-date'}`"
                                 v-model="form.delivery_time"
                                 :options="deliveryTimeOptions"
                                 placeholder="Select delivery time"
@@ -665,9 +741,9 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                     </div>
                     
                     <div :class="props.refundRequest ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'">
-                        <!-- Delivery fee field - now available for refund requests too -->
-                        <div>
-                            <Label for="delivery_fee">Delivery Fee <span v-if="!props.refundRequest">*</span></Label>
+                        <!-- Delivery fee field - not shown for refund requests -->
+                        <div v-if="!props.refundRequest">
+                            <Label for="delivery_fee">Delivery Fee *</Label>
                             <input
                                 v-model="form.delivery_fee"
                                 type="number"
@@ -678,12 +754,9 @@ watch(() => form.invoice_id, (newInvoiceId) => {
                                 :disabled="isStaff"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="0.00"
-                                :required="!props.refundRequest"
+                                required
                             />
-                            <div v-if="props.refundRequest" class="text-xs text-muted-foreground mt-1">
-                                Optional: Set delivery fee for refund return pickup
-                            </div>
-                            <div v-else-if="isStaff && routeDistance !== null" class="text-xs text-muted-foreground mt-1">
+                            <div v-if="isStaff && routeDistance !== null" class="text-xs text-muted-foreground mt-1">
                                 Distance: {{ routeDistance }} km • Fee: ₱{{ BASE_DELIVERY_FEE.toFixed(2) }} base + ₱{{ RATE_PER_KM.toFixed(2) }}/km
                             </div>
                             <div v-else-if="isStaff && routeDistance === null" class="text-xs text-muted-foreground mt-1">

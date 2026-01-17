@@ -134,7 +134,7 @@ class SalesAnalyticsController extends Controller
                         'is_read' => $reminder->is_read,
                         'invoice_id' => $reminder->invoice_id,
                         'invoice_reference' => $reminder->invoice ? $reminder->invoice->reference_number : null,
-                        'days_until_due' => Carbon::parse($reminder->due_date)->diffInDays(Carbon::today(), false),
+                        'days_until_due' => Carbon::today()->diffInDays($reminder->due_date, false),
                     ];
                 });
 
