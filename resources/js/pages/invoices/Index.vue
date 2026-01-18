@@ -22,6 +22,7 @@ interface Invoice {
     payment_method: string;
     payment_status: string;
     payment_reference?: string;
+    payment_proof_url?: string;
     notes?: string;
     created_at: string;
     updated_at: string;
@@ -156,15 +157,38 @@ async function deleteInvoice(id: number) {
 async function markAsPaid(invoice: Invoice) {
     const customerName = invoice.customer.name;
     const invoiceNumber = invoice.reference_number;
+    const hasExistingProof = !!invoice.payment_proof_url;
+    const isImage = invoice.payment_proof_url?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
     
-    // Create a form with file input
+    // Create a form with file input and existing proof display
     const htmlContent = `
         <div style="text-align: left;">
             <p>Are you sure you want to mark invoice <strong>${invoiceNumber}</strong> for customer <strong>${customerName}</strong> as paid?</p>
             <p style="margin-top: 10px; margin-bottom: 15px;">This will update the payment status to paid. This action cannot be undone.</p>
-            <div style="margin-top: 20px;">
-                <label for="payment_proof" style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Payment Proof <span style="color: #ef4444;">*</span></label>
-                <input type="file" id="payment_proof" name="payment_proof" accept="image/*,.pdf" required 
+            
+            ${hasExistingProof ? `
+                <div style="margin-top: 20px; margin-bottom: 20px; padding: 12px; background-color: #f3f4f6; border-radius: 6px; border: 1px solid #d1d5db;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-weight: 600; color: #374151;">Customer Uploaded Payment Proof</label>
+                        <a href="${invoice.payment_proof_url}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-size: 14px;">View/Download</a>
+                    </div>
+                    ${isImage ? `
+                        <img src="${invoice.payment_proof_url}" alt="Payment Proof" style="max-width: 100%; max-height: 200px; border-radius: 4px; border: 1px solid #d1d5db; object-fit: contain;" />
+                    ` : `
+                        <div style="padding: 20px; text-align: center; background-color: white; border-radius: 4px; border: 1px solid #d1d5db;">
+                            <p style="color: #6b7280; font-size: 14px;">PDF File - <a href="${invoice.payment_proof_url}" target="_blank" rel="noopener noreferrer" style="color: #2563eb;">Click to download</a></p>
+                        </div>
+                    `}
+                    <p style="margin-top: 8px; font-size: 12px; color: #6b7280;">You can upload a new file to replace this, or use the existing proof.</p>
+                </div>
+            ` : ''}
+            
+            <div style="margin-top: ${hasExistingProof ? '10' : '20'}px;">
+                <label for="payment_proof" style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
+                    ${hasExistingProof ? 'Replace Payment Proof (Optional)' : 'Payment Proof'}
+                    ${!hasExistingProof ? '<span style="color: #ef4444;">*</span>' : ''}
+                </label>
+                <input type="file" id="payment_proof" name="payment_proof" accept="image/*,.pdf" ${!hasExistingProof ? 'required' : ''}
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;"
                     class="swal2-file">
                 <p style="margin-top: 6px; font-size: 12px; color: #6b7280;">Accepted formats: JPEG, PNG, GIF, WEBP, PDF (Max 10MB)</p>
@@ -182,13 +206,22 @@ async function markAsPaid(invoice: Invoice) {
         confirmButtonText: 'Yes, mark as paid',
         cancelButtonText: 'Cancel',
         focusConfirm: false,
+        width: '600px',
         preConfirm: () => {
             const fileInput = document.getElementById('payment_proof') as HTMLInputElement;
-            if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-                Swal.showValidationMessage('Payment proof is required to mark the invoice as paid.');
-                return false;
+            // If there's existing proof, file is optional
+            if (!hasExistingProof) {
+                if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                    Swal.showValidationMessage('Payment proof is required to mark the invoice as paid. Either the customer must upload it first, or you must upload it now.');
+                    return false;
+                }
+                return fileInput.files[0];
             }
-            return fileInput.files[0];
+            // If existing proof exists, return the file if uploaded, or null to use existing
+            if (fileInput && fileInput.files && fileInput.files.length > 0) {
+                return fileInput.files[0];
+            }
+            return null; // Use existing proof
         },
         didOpen: () => {
             // Add event listener to file input for validation feedback
@@ -217,10 +250,12 @@ async function markAsPaid(invoice: Invoice) {
         }
     });
     
-    if (result.isConfirmed && result.value) {
-        // Create FormData to send file
+    if (result.isConfirmed) {
+        // Create FormData - only append file if a new one was uploaded
         const formData = new FormData();
-        formData.append('payment_proof', result.value);
+        if (result.value) {
+            formData.append('payment_proof', result.value);
+        }
         
         router.post(route('invoices.markPaid', invoice.id), formData, {
             preserveScroll: true,

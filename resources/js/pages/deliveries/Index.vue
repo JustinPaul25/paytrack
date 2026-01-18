@@ -48,9 +48,12 @@ interface DeliveryStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string; type?: string }>(page.props.filters ? (page.props.filters as { search?: string; type?: string }) : {});
+const filters = ref<{ search?: string; type?: string; classification?: string; date_from?: string; date_to?: string }>(page.props.filters ? (page.props.filters as { search?: string; type?: string; classification?: string; date_from?: string; date_to?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
 const typeFilter = ref(typeof filters.value.type === 'string' ? filters.value.type : '');
+const classificationFilter = ref(typeof filters.value.classification === 'string' ? filters.value.classification : '');
+const dateFrom = ref(typeof filters.value.date_from === 'string' ? filters.value.date_from : '');
+const dateTo = ref(typeof filters.value.date_to === 'string' ? filters.value.date_to : '');
 const showStats = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -64,22 +67,58 @@ watchEffect(() => {
     typeFilter.value = (page.props.filters && typeof (page.props.filters as { type?: string }).type === 'string')
         ? (page.props.filters as { type?: string }).type!
         : '';
+    classificationFilter.value = (page.props.filters && typeof (page.props.filters as { classification?: string }).classification === 'string')
+        ? (page.props.filters as { classification?: string }).classification!
+        : '';
+    dateFrom.value = (page.props.filters && typeof (page.props.filters as { date_from?: string }).date_from === 'string')
+        ? (page.props.filters as { date_from?: string }).date_from!
+        : '';
+    dateTo.value = (page.props.filters && typeof (page.props.filters as { date_to?: string }).date_to === 'string')
+        ? (page.props.filters as { date_to?: string }).date_to!
+        : '';
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/deliveries', { search: val, type: typeFilter.value || undefined }, { preserveState: true, replace: true });
+        applyFilters();
     }, 400);
 });
 
-watch(typeFilter, (val) => {
-    router.get('/deliveries', { search: search.value, type: val || undefined }, { preserveState: true, replace: true });
+watch(typeFilter, () => {
+    applyFilters();
 });
 
+watch(classificationFilter, () => {
+    applyFilters();
+});
+
+watch([dateFrom, dateTo], () => {
+    applyFilters();
+});
+
+function applyFilters() {
+    const params: Record<string, string | undefined> = {
+        search: search.value || undefined,
+        type: typeFilter.value || undefined,
+        classification: classificationFilter.value || undefined,
+        date_from: dateFrom.value || undefined,
+        date_to: dateTo.value || undefined,
+    };
+    router.get('/deliveries', params, { preserveState: true, replace: true });
+}
+
 function goToPage(pageNum: number) {
-    router.get('/deliveries', { search: search.value, type: typeFilter.value || undefined, page: pageNum }, { preserveState: true, replace: true });
+    const params: Record<string, string | undefined> = {
+        search: search.value || undefined,
+        type: typeFilter.value || undefined,
+        classification: classificationFilter.value || undefined,
+        date_from: dateFrom.value || undefined,
+        date_to: dateTo.value || undefined,
+        page: pageNum.toString(),
+    };
+    router.get('/deliveries', params, { preserveState: true, replace: true });
 }
 
 function getStatusBadgeClass(status: string) {
@@ -232,9 +271,10 @@ async function deleteDelivery(id: number) {
             </div>
         </Transition>
 
-        <!-- Search and Actions -->
-        <div class="flex items-center justify-between mt-4 mb-2">
-            <div class="flex gap-2 items-center">
+        <!-- Search and Filters -->
+        <div class="flex flex-col gap-4 mt-4 mb-2">
+            <!-- First Row: Search and Type Filter -->
+            <div class="flex items-center gap-2">
                 <input 
                     v-model="search" 
                     type="text" 
@@ -249,6 +289,36 @@ async function deleteDelivery(id: number) {
                     <option value="order">Order Delivery</option>
                     <option value="return">Return Delivery</option>
                 </select>
+            </div>
+            
+            <!-- Second Row: Classification and Date Filters -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <select 
+                    v-model="classificationFilter" 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                    <option value="">All Deliveries</option>
+                    <option value="complete_no_issues">Complete Deliveries (No Issues)</option>
+                    <option value="refunded_orders">Deliveries from Refunded Orders</option>
+                </select>
+                
+                <label class="text-sm text-muted-foreground flex items-center gap-2">
+                    <span>From:</span>
+                    <input 
+                        v-model="dateFrom" 
+                        type="date" 
+                        class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                    />
+                </label>
+                
+                <label class="text-sm text-muted-foreground flex items-center gap-2">
+                    <span>To:</span>
+                    <input 
+                        v-model="dateTo" 
+                        type="date" 
+                        class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                    />
+                </label>
             </div>
         </div>
 
@@ -327,8 +397,13 @@ async function deleteDelivery(id: number) {
                         <tr>
                             <td colspan="8" class="px-4 py-10 text-center text-sm text-gray-500">
                                 No deliveries found.
-                                <button v-if="(search && search.toString().trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
-                                    Clear search
+                                <button 
+                                    v-if="(search && search.toString().trim().length) || typeFilter || classificationFilter || dateFrom || dateTo" 
+                                    type="button" 
+                                    class="underline underline-offset-4 ml-1" 
+                                    @click="search = ''; typeFilter = ''; classificationFilter = ''; dateFrom = ''; dateTo = '';"
+                                >
+                                    Clear filters
                                 </button>
                             </td>
                         </tr>

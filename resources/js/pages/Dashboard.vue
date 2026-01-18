@@ -190,7 +190,7 @@ onMounted(() => {
             localStorage.setItem('lowStockAlertLastShown', today);
             
             if (result.isConfirmed) {
-                router.visit('/products?low_stock=1');
+                router.visit('/products?stock_filter=lowest');
             }
         });
     }
@@ -710,11 +710,161 @@ const closeNotifications = () => {
                     </Card>
                 </div>
 
+                <!-- Sales Trends & Insights Section - Moved to Top -->
+                <div class="section-header">
+                    <h2 class="section-title">Sales Trends & Insights</h2>
+                    <p class="section-description">Key sales metrics and performance indicators</p>
+                </div>
+
+                <!-- Sales by Category Chart -->
+                <div class="category-section">
+                    <Card class="chart-card">
+                        <CardHeader>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div>
+                                    <CardTitle class="chart-title">
+                                        <Package class="chart-title-icon" />
+                                        Sales by Product Category
+                                    </CardTitle>
+                                    <CardDescription>
+                                        See which product categories bring in the most revenue
+                                    </CardDescription>
+                                </div>
+                                <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <Calendar class="w-4 h-4" />
+                                        <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                                    </div>
+                                    <Select
+                                        v-model="categoryChartFilterPeriod"
+                                        :options="periodOptions"
+                                        placeholder="Choose time period"
+                                        class="period-select"
+                                    />
+                                    <div v-if="categoryChartFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                                        <input
+                                            v-model="categoryChartFilterStartDate"
+                                            type="date"
+                                            style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                        />
+                                        <input
+                                            v-model="categoryChartFilterEndDate"
+                                            type="date"
+                                            style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div v-if="props.salesByCategory.length === 0" class="empty-state">
+                                <p class="empty-title">No category data for the selected period</p>
+                                <p class="empty-subtitle">Try expanding the date range or confirming there are paid invoices.</p>
+                            </div>
+                            <div v-else>
+                                <BaseChart
+                                    type="doughnut"
+                                    :data="categoryChartData"
+                                    :options="categoryChartOptions"
+                                    height="300px"
+                                />
+                                <p v-if="props.salesByCategory.length > 5" class="text-xs text-muted-foreground text-center mt-2">
+                                    Showing top 5 categories ({{ props.salesByCategory.length }} total)
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Best-Selling Products and Recent Transactions -->
+                <div class="tables-grid">
+                    <!-- Top Products Table -->
+                    <Card class="table-card">
+                        <CardHeader>
+                            <CardTitle class="table-title">
+                                <Package class="table-title-icon" />
+                                Best-Selling Products
+                            </CardTitle>
+                            <CardDescription>
+                                Products that have generated the most revenue
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr class="table-header-row">
+                                            <th class="table-header">Product Name</th>
+                                            <th class="table-header table-header-right">Units Sold</th>
+                                            <th class="table-header table-header-right">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="product in topProducts" :key="product.id" class="table-row">
+                                            <td class="table-cell table-cell-bold">{{ product.name }}</td>
+                                            <td class="table-cell table-cell-right">{{ product.total_quantity.toLocaleString() }}</td>
+                                            <td class="table-cell table-cell-right table-cell-highlight">{{ formatCurrency(product.total_revenue) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <!-- Recent Invoices Table -->
+                    <Card class="table-card">
+                        <CardHeader>
+                            <CardTitle class="table-title">
+                                <FileText class="table-title-icon" />
+                                Recent Transactions
+                            </CardTitle>
+                            <CardDescription>
+                                Your most recent sales and invoices
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr class="table-header-row">
+                                            <th class="table-header">Invoice #</th>
+                                            <th class="table-header">Customer</th>
+                                            <th class="table-header table-header-right">Amount</th>
+                                            <th class="table-header table-header-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="invoice in recentInvoices" :key="invoice.id" class="table-row">
+                                            <td class="table-cell">
+                                                <a :href="`/invoices/${invoice.id}`" class="invoice-link">
+                                                    #{{ invoice.id }}
+                                                </a>
+                                            </td>
+                                            <td class="table-cell">{{ invoice.customer_name }}</td>
+                                            <td class="table-cell table-cell-right table-cell-bold">{{ formatCurrency(invoice.total_amount) }}</td>
+                                            <td class="table-cell table-cell-center">
+                                                <span :class="{
+                                                    'status-badge': true,
+                                                    'status-paid': invoice.status === 'paid',
+                                                    'status-pending': invoice.status === 'pending',
+                                                    'status-cancelled': invoice.status === 'cancelled'
+                                                }">
+                                                    {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 <!-- Analytics Section -->
                 <div class="analytics-section">
                     <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <div>
-                            <h2 class="section-title">Sales Trends & Insights</h2>
+                            <h2 class="section-title">Sales Analytics</h2>
                             <p class="section-description">Track how your sales are performing over time</p>
                         </div>
                         <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
@@ -812,155 +962,6 @@ const closeNotifications = () => {
                             <ProductSalesTrendWidget :sales-by-date="salesByDate" :top-products="topProducts" />
                         </TabsContent>
                     </Tabs>
-                </div>
-
-                <!-- Sales by Category Chart -->
-                <div class="category-section">
-                    <Card class="chart-card">
-                        <CardHeader>
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                                <div>
-                                    <CardTitle class="chart-title">
-                                        <Package class="chart-title-icon" />
-                                        Sales by Product Category
-                                    </CardTitle>
-                                    <CardDescription>
-                                        See which product categories bring in the most revenue
-                                    </CardDescription>
-                                </div>
-                                <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <Calendar class="w-4 h-4" />
-                                        <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
-                                    </div>
-                                    <Select
-                                        v-model="categoryChartFilterPeriod"
-                                        :options="periodOptions"
-                                        placeholder="Choose time period"
-                                        class="period-select"
-                                    />
-                                    <div v-if="categoryChartFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
-                                        <input
-                                            v-model="categoryChartFilterStartDate"
-                                            type="date"
-                                            style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
-                                        />
-                                        <input
-                                            v-model="categoryChartFilterEndDate"
-                                            type="date"
-                                            style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div v-if="props.salesByCategory.length === 0" class="empty-state">
-                                <p class="empty-title">No category data for the selected period</p>
-                                <p class="empty-subtitle">Try expanding the date range or confirming there are paid invoices.</p>
-                            </div>
-                            <div v-else>
-                                <BaseChart
-                                    type="doughnut"
-                                    :data="categoryChartData"
-                                    :options="categoryChartOptions"
-                                    height="300px"
-                                />
-                                <p v-if="props.salesByCategory.length > 5" class="text-xs text-muted-foreground text-center mt-2">
-                                    Showing top 5 categories ({{ props.salesByCategory.length }} total)
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <!-- Business Intelligence Section -->
-                <div class="section-header">
-                    <h2 class="section-title">Product Performance & Recent Activity</h2>
-                    <p class="section-description">Your best-selling products and latest transactions</p>
-                </div>
-
-                <div class="tables-grid">
-                    <!-- Top Products Table -->
-                    <Card class="table-card">
-                        <CardHeader>
-                            <CardTitle class="table-title">
-                                <Package class="table-title-icon" />
-                                Best-Selling Products
-                            </CardTitle>
-                            <CardDescription>
-                                Products that have generated the most revenue
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="table-wrapper">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr class="table-header-row">
-                                            <th class="table-header">Product Name</th>
-                                            <th class="table-header table-header-right">Units Sold</th>
-                                            <th class="table-header table-header-right">Revenue</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="product in topProducts" :key="product.id" class="table-row">
-                                            <td class="table-cell table-cell-bold">{{ product.name }}</td>
-                                            <td class="table-cell table-cell-right">{{ product.total_quantity.toLocaleString() }}</td>
-                                            <td class="table-cell table-cell-right table-cell-highlight">{{ formatCurrency(product.total_revenue) }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <!-- Recent Invoices Table -->
-                    <Card class="table-card">
-                        <CardHeader>
-                            <CardTitle class="table-title">
-                                <FileText class="table-title-icon" />
-                                Recent Transactions
-                            </CardTitle>
-                            <CardDescription>
-                                Your most recent sales and invoices
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="table-wrapper">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr class="table-header-row">
-                                            <th class="table-header">Invoice #</th>
-                                            <th class="table-header">Customer</th>
-                                            <th class="table-header table-header-right">Amount</th>
-                                            <th class="table-header table-header-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="invoice in recentInvoices" :key="invoice.id" class="table-row">
-                                            <td class="table-cell">
-                                                <a :href="`/invoices/${invoice.id}`" class="invoice-link">
-                                                    #{{ invoice.id }}
-                                                </a>
-                                            </td>
-                                            <td class="table-cell">{{ invoice.customer_name }}</td>
-                                            <td class="table-cell table-cell-right table-cell-bold">{{ formatCurrency(invoice.total_amount) }}</td>
-                                            <td class="table-cell table-cell-center">
-                                                <span :class="{
-                                                    'status-badge': true,
-                                                    'status-paid': invoice.status === 'paid',
-                                                    'status-pending': invoice.status === 'pending',
-                                                    'status-cancelled': invoice.status === 'cancelled'
-                                                }">
-                                                    {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </TooltipProvider>

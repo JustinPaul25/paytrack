@@ -122,8 +122,16 @@ const markAsRead = async (notification: Notification) => {
         });
         
         if (response.ok) {
-            notification.read = true;
-            notification.read_at = new Date().toISOString();
+            // Find and update the notification in the array to ensure reactivity
+            const index = allNotifications.value.findIndex(n => n.id === notification.id);
+            if (index !== -1) {
+                allNotifications.value[index].read = true;
+                allNotifications.value[index].read_at = new Date().toISOString();
+            } else {
+                // Fallback: update the notification object directly
+                notification.read = true;
+                notification.read_at = new Date().toISOString();
+            }
         }
     } catch (error) {
         console.error('Error marking notification as read:', error);
@@ -154,8 +162,13 @@ const markAllAsRead = async () => {
 };
 
 const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read and wait for it to complete
     await markAsRead(notification);
     
+    // Wait a tick to ensure UI updates before navigation
+    await nextTick();
+    
+    // Then navigate if there's an action URL
     if (notification.action_url) {
         router.visit(notification.action_url);
     }

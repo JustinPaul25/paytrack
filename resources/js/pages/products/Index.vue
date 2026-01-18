@@ -61,11 +61,10 @@ interface ProductStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string; low_stock?: string; category_id?: string; stock_filter?: string; sort_by?: string; sort_order?: string }>(
-    page.props.filters ? (page.props.filters as { search?: string; low_stock?: string; category_id?: string; stock_filter?: string; sort_by?: string; sort_order?: string }) : {}
+const filters = ref<{ search?: string; category_id?: string; stock_filter?: string; sort_by?: string; sort_order?: string }>(
+    page.props.filters ? (page.props.filters as { search?: string; category_id?: string; stock_filter?: string; sort_by?: string; sort_order?: string }) : {}
 );
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
-const lowStock = ref(typeof filters.value.low_stock === 'string' ? filters.value.low_stock : '');
 const categoryId = ref<number | null>(typeof filters.value.category_id === 'string' ? parseInt(filters.value.category_id) : (typeof filters.value.category_id === 'number' ? filters.value.category_id : null));
 const stockFilter = ref(typeof filters.value.stock_filter === 'string' ? filters.value.stock_filter : '');
 const sortBy = ref(typeof filters.value.sort_by === 'string' ? filters.value.sort_by : 'updated_at');
@@ -96,9 +95,6 @@ watchEffect(() => {
     search.value = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
         ? (page.props.filters as { search?: string }).search!
         : '';
-    lowStock.value = (page.props.filters && typeof (page.props.filters as { low_stock?: string }).low_stock === 'string')
-        ? (page.props.filters as { low_stock?: string }).low_stock!
-        : '';
     const catId = (page.props.filters as { category_id?: string | number })?.category_id;
     categoryId.value = catId ? (typeof catId === 'number' ? catId : parseInt(catId)) : null;
     stockFilter.value = (page.props.filters && typeof (page.props.filters as { stock_filter?: string }).stock_filter === 'string')
@@ -113,7 +109,6 @@ watch(search, (val) => {
     searchTimeout = setTimeout(() => {
         router.get('/products', { 
             search: val, 
-            low_stock: lowStock.value,
             category_id: categoryId.value,
             stock_filter: stockFilter.value,
             sort_by: sortBy.value,
@@ -125,7 +120,6 @@ watch(search, (val) => {
 watch(categoryId, (val) => {
     router.get('/products', { 
         search: search.value, 
-        low_stock: lowStock.value,
         category_id: val,
         stock_filter: stockFilter.value,
         sort_by: sortBy.value,
@@ -136,7 +130,6 @@ watch(categoryId, (val) => {
 watch(stockFilter, (val) => {
     router.get('/products', { 
         search: search.value, 
-        low_stock: lowStock.value,
         category_id: categoryId.value,
         stock_filter: val,
         sort_by: sortBy.value,
@@ -153,23 +146,10 @@ watchEffect(() => {
         : 'desc';
 });
 
-function toggleLowStock() {
-    lowStock.value = lowStock.value ? '' : '1';
-    router.get('/products', { 
-        search: search.value, 
-        low_stock: lowStock.value,
-        category_id: categoryId.value,
-        stock_filter: stockFilter.value,
-        sort_by: sortBy.value,
-        sort_order: sortOrder.value
-    }, { preserveState: true, replace: true });
-}
-
 function toggleStockFilter(filter: 'highest' | 'lowest' | '') {
     stockFilter.value = stockFilter.value === filter ? '' : filter;
     router.get('/products', { 
         search: search.value, 
-        low_stock: lowStock.value,
         category_id: categoryId.value,
         stock_filter: stockFilter.value,
         sort_by: sortBy.value,
@@ -180,7 +160,6 @@ function toggleStockFilter(filter: 'highest' | 'lowest' | '') {
 function goToPage(pageNum: number) {
     router.get('/products', { 
         search: search.value, 
-        low_stock: lowStock.value,
         category_id: categoryId.value,
         stock_filter: stockFilter.value,
         page: pageNum,
@@ -201,7 +180,6 @@ function handleSort(field: string) {
     
     router.get('/products', { 
         search: search.value, 
-        low_stock: lowStock.value,
         category_id: categoryId.value,
         stock_filter: stockFilter.value,
         sort_by: sortBy.value,
@@ -395,14 +373,6 @@ async function submitAddStock() {
                         class="w-full"
                     />
                 </div>
-                <Button 
-                    @click="toggleLowStock" 
-                    :variant="lowStock ? 'default' : 'outline'"
-                    :class="lowStock ? 'bg-yellow-600 hover:bg-yellow-700 text-white' : ''"
-                >
-                    <Icon name="alertTriangle" class="w-4 h-4 mr-2" />
-                    Low Stock
-                </Button>
                 <Button 
                     @click="toggleStockFilter('highest')" 
                     :variant="stockFilter === 'highest' ? 'default' : 'outline'"

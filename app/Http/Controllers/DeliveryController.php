@@ -15,10 +15,13 @@ class DeliveryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Delivery::with(['customer', 'invoice']);
+        $query = Delivery::with(['customer', 'invoice.refunds']);
         $search = $request->input('search');
         $customerId = $request->input('customer_id');
         $type = $request->input('type'); // 'order' or 'return'
+        $classification = $request->input('classification'); // 'complete_no_issues' or 'refunded_orders'
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         
         if ($search) {
             $query->whereHas('customer', function ($q) use ($search) {
@@ -32,7 +35,32 @@ class DeliveryController extends Controller
             $query->where('type', $type);
         }
         
-        $deliveries = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
+        // Filter by classification
+        if ($classification === 'complete_no_issues') {
+            // Complete deliveries without issues: status is completed AND invoice has no refunds
+            $query->where('status', 'completed')
+                  ->whereHas('invoice', function ($q) {
+                      $q->whereDoesntHave('refunds');
+                  });
+        } elseif ($classification === 'refunded_orders') {
+            // Deliveries from refunded orders: invoice has refunds
+            $query->whereHas('invoice', function ($q) {
+                $q->whereHas('refunds');
+            });
+        }
+        
+        // Filter by delivery date range
+        if ($dateFrom) {
+            $query->whereDate('delivery_date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('delivery_date', '<=', $dateTo);
+        }
+        
+        // Order by delivery_date descending (latest first), then delivery_time descending
+        $deliveries = $query->orderBy('delivery_date', 'desc')
+                           ->orderBy('delivery_time', 'desc')
+                           ->paginate(10)->withQueryString();
 
         // Calculate statistics
         $totalDeliveries = Delivery::count();
@@ -46,6 +74,9 @@ class DeliveryController extends Controller
                 'search' => $search,
                 'customer_id' => $customerId,
                 'type' => $type,
+                'classification' => $classification,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
             ],
             'stats' => [
                 'totalDeliveries' => $totalDeliveries,
@@ -456,8 +487,9 @@ class DeliveryController extends Controller
             });
         }
 
-        $deliveries = $query->orderBy('delivery_date', 'desc')
-            ->orderBy('delivery_time', 'desc')
+        // Order by delivery_date descending (latest first), then delivery_time descending
+        $deliveries = $query->orderBy('delivery_date', 'asc')
+            ->orderBy('delivery_time', 'asc')
             ->paginate(10)
             ->withQueryString();
 

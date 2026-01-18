@@ -74,6 +74,7 @@ interface Invoice {
     payment_method: string;
     payment_status?: string;
     payment_reference?: string;
+    payment_proof_url?: string;
     due_date?: string;
     notes?: string;
     invoice_type?: string;
@@ -120,6 +121,9 @@ const canSendReminder = computed(() => {
            props.invoice.payment_status !== 'paid';
 });
 const isSendingReminder = ref(false);
+const isUploadingProof = ref(false);
+const paymentProofFile = ref<File | null>(null);
+const paymentProofPreview = ref<string | null>(null);
 
 // Calculate net balance if not provided
 const netBalance = computed(() => {
@@ -356,6 +360,100 @@ function sendPaymentReminder() {
     });
 }
 
+function handlePaymentProofFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file size (10MB)
+        const maxSize = 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File too large',
+                text: 'Payment proof file size must not exceed 10MB.',
+            });
+            input.value = '';
+            paymentProofFile.value = null;
+            paymentProofPreview.value = null;
+            return;
+        }
+        
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+        if (!validTypes.includes(file.type)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid file type',
+                text: 'Please upload a valid image (JPEG, PNG, GIF, WEBP) or PDF file.',
+            });
+            input.value = '';
+            paymentProofFile.value = null;
+            paymentProofPreview.value = null;
+            return;
+        }
+        
+        paymentProofFile.value = file;
+        
+        // Create preview for images
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                paymentProofPreview.value = e.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            paymentProofPreview.value = null;
+        }
+    }
+}
+
+function uploadPaymentProof() {
+    if (!paymentProofFile.value || isUploadingProof.value) {
+        return;
+    }
+    
+    isUploadingProof.value = true;
+    const formData = new FormData();
+    formData.append('payment_proof', paymentProofFile.value);
+    
+    router.post(route('invoices.uploadPaymentProof', props.invoice.id), formData, {
+        preserveScroll: true,
+        onSuccess: () => {
+            paymentProofFile.value = null;
+            paymentProofPreview.value = null;
+            const flash = (page.props as any).flash;
+            if (flash?.success) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: flash.success,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+            }
+        },
+        onError: (errors) => {
+            const flash = (page.props as any).flash;
+            const errorMessage = flash?.error || errors.payment_proof?.[0] || 'Failed to upload payment proof. Please try again.';
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'error',
+                title: errorMessage,
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+        },
+        onFinish: () => {
+            isUploadingProof.value = false;
+        },
+    });
+}
+
 // Watch for flash messages (only after navigation)
 watch(() => (page.props as any).flash, (flash) => {
     if (flash?.success) {
@@ -469,6 +567,67 @@ watch(() => (page.props as any).flash, (flash) => {
                         <div v-if="props.invoice.notes" class="mt-4">
                             <label class="text-sm font-medium text-gray-500">Notes</label>
                             <p class="mt-1">{{ props.invoice.notes }}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Payment Proof Upload (Customer Only) -->
+                <Card v-if="isCustomer && props.invoice.payment_status === 'pending'">
+                    <CardHeader>
+                        <CardTitle>Payment Proof</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <p class="text-sm text-gray-600">
+                                Upload proof of payment (e.g., screenshot of transaction, receipt). The admin will review it before marking the invoice as paid.
+                            </p>
+                            
+                            <!-- Existing Payment Proof -->
+                            <div v-if="props.invoice.payment_proof_url" class="border rounded-lg p-4 bg-gray-50">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-medium text-gray-700">Current Payment Proof</p>
+                                    <a :href="props.invoice.payment_proof_url" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-sm underline">
+                                        View/Download
+                                    </a>
+                                </div>
+                                <div v-if="props.invoice.payment_proof_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)" class="mt-2">
+                                    <img :src="props.invoice.payment_proof_url" alt="Payment Proof" class="max-w-full h-auto rounded border max-h-64 object-contain" />
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">You can upload a new file to replace the existing one.</p>
+                            </div>
+                            
+                            <!-- Upload Form -->
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="payment_proof_file" class="block text-sm font-medium text-gray-700 mb-2">
+                                        {{ props.invoice.payment_proof_url ? 'Replace Payment Proof' : 'Upload Payment Proof' }}
+                                    </label>
+                                    <input 
+                                        id="payment_proof_file"
+                                        type="file" 
+                                        accept="image/*,.pdf" 
+                                        @change="handlePaymentProofFileChange"
+                                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                    />
+                                    <p class="mt-1 text-xs text-gray-500">Accepted formats: JPEG, PNG, GIF, WEBP, PDF (Max 10MB)</p>
+                                </div>
+                                
+                                <!-- Preview -->
+                                <div v-if="paymentProofPreview" class="border rounded-lg p-4 bg-gray-50">
+                                    <p class="text-sm font-medium text-gray-700 mb-2">Preview</p>
+                                    <img :src="paymentProofPreview" alt="Preview" class="max-w-full h-auto rounded border max-h-64 object-contain" />
+                                </div>
+                                
+                                <!-- Upload Button -->
+                                <Button 
+                                    @click="uploadPaymentProof" 
+                                    :disabled="!paymentProofFile || isUploadingProof"
+                                    variant="default"
+                                    class="w-full sm:w-auto"
+                                >
+                                    {{ isUploadingProof ? 'Uploading...' : 'Upload Payment Proof' }}
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

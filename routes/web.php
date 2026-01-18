@@ -145,6 +145,7 @@ Route::middleware(['auth'])->group(function () {
     // Invoice CRUD routes (all authenticated can view/manage per your policy)
     Route::resource('invoices', \App\Http\Controllers\InvoiceController::class)->except(['update']);
     Route::post('invoices/{invoice}', [\App\Http\Controllers\InvoiceController::class, 'update'])->name('invoices.update');
+    Route::post('invoices/{invoice}/upload-payment-proof', [\App\Http\Controllers\InvoiceController::class, 'uploadPaymentProof'])->name('invoices.uploadPaymentProof');
     Route::post('invoices/{invoice}/mark-paid', [\App\Http\Controllers\InvoiceController::class, 'markPaid'])->name('invoices.markPaid');
     Route::post('invoices/{invoice}/send-payment-reminder', [\App\Http\Controllers\InvoiceController::class, 'sendPaymentReminder'])->name('invoices.sendPaymentReminder');
 

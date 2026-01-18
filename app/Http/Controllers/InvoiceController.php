@@ -370,6 +370,61 @@ class InvoiceController extends Controller
         ]);
     }
 
+    public function uploadPaymentProof(Request $request, Invoice $invoice)
+    {
+        // Only Customers can upload payment proof
+        $user = auth()->user();
+        if (!$user || !$user->hasRole('Customer')) {
+            abort(403);
+        }
+
+        // Verify customer owns this invoice
+        $customerId = Customer::where('email', $user->email)->value('id');
+        if (!$customerId || $invoice->customer_id !== $customerId) {
+            abort(403);
+        }
+
+        // Only allow upload for pending payment invoices
+        if ($invoice->payment_status === 'paid') {
+            return redirect()->back()->withErrors([
+                'payment_proof' => 'This invoice is already marked as paid.'
+            ]);
+        }
+
+        $validated = $request->validate([
+            'payment_proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240', // 10MB max
+        ], [
+            'payment_proof.required' => 'Please select a payment proof file.',
+            'payment_proof.file' => 'Payment proof must be a valid file.',
+            'payment_proof.mimes' => 'Payment proof must be an image (JPEG, PNG, GIF, WEBP) or PDF file.',
+            'payment_proof.max' => 'Payment proof file size must not exceed 10MB.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Handle payment proof file upload
+            if ($request->hasFile('payment_proof')) {
+                // Remove old payment proof if exists
+                $invoice->clearMediaCollection('payment_proof');
+                
+                // Add new payment proof
+                $invoice->addMediaFromRequest('payment_proof')
+                    ->usingFileName($request->file('payment_proof')->hashName())
+                    ->usingName($request->file('payment_proof')->getClientOriginalName())
+                    ->toMediaCollection('payment_proof');
+            }
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors([
+                'payment_proof' => 'Failed to upload payment proof. Please try again.'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Payment proof uploaded successfully. The admin will review it before marking the invoice as paid.');
+    }
+
     public function edit(Invoice $invoice)
     {
         // Only Admin and Staff can edit (Customer cannot)
@@ -562,11 +617,14 @@ class InvoiceController extends Controller
             abort(403);
         }
         
-        // Validate that payment proof is required
+        // Check if customer already uploaded payment proof
+        $existingProof = $invoice->getFirstMedia('payment_proof');
+        
+        // Payment proof is optional if customer already uploaded, otherwise required
         $validated = $request->validate([
-            'payment_proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240', // 10MB max
+            'payment_proof' => $existingProof ? 'nullable' : 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240', // 10MB max
         ], [
-            'payment_proof.required' => 'Payment proof is required to mark the invoice as paid.',
+            'payment_proof.required' => 'Payment proof is required to mark the invoice as paid. Either the customer must upload it first, or you must upload it now.',
             'payment_proof.file' => 'Payment proof must be a valid file.',
             'payment_proof.mimes' => 'Payment proof must be an image (JPEG, PNG, GIF, WEBP) or PDF file.',
             'payment_proof.max' => 'Payment proof file size must not exceed 10MB.',
@@ -574,7 +632,7 @@ class InvoiceController extends Controller
         
         DB::beginTransaction();
         try {
-            // Handle payment proof file upload
+            // Handle payment proof file upload only if admin is uploading a new one
             if ($request->hasFile('payment_proof')) {
                 // Remove old payment proof if exists
                 $invoice->clearMediaCollection('payment_proof');
@@ -585,6 +643,7 @@ class InvoiceController extends Controller
                     ->usingName($request->file('payment_proof')->getClientOriginalName())
                     ->toMediaCollection('payment_proof');
             }
+            // If no new file uploaded but existing proof exists, keep the existing one
             
             // Update invoice status and payment status
             $updateData = ['payment_status' => 'paid'];

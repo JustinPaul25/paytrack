@@ -165,11 +165,19 @@ const deliverySummary = computed<DeliverySummary>(() => {
 
 const filters = computed(() => page.props.filters ? (page.props.filters as any) : {});
 
-const filterType = ref(filters.value.filter_type || 'all');
-const filterMonth = ref(filters.value.filter_month || '');
-const filterYear = ref(filters.value.filter_year || new Date().getFullYear().toString());
-const startDate = ref(filters.value.start_date || '');
-const endDate = ref(filters.value.end_date || '');
+// Sales Report specific filters
+const salesFilterType = ref(filters.value.filter_type || 'all');
+const salesFilterMonth = ref(filters.value.filter_month || '');
+const salesFilterYear = ref(filters.value.filter_year || new Date().getFullYear().toString());
+const salesStartDate = ref(filters.value.start_date || '');
+const salesEndDate = ref(filters.value.end_date || '');
+
+// Delivery Summary specific filters
+const deliveryFilterType = ref(filters.value.delivery_filter_type || 'all');
+const deliveryFilterMonth = ref(filters.value.delivery_filter_month || '');
+const deliveryFilterYear = ref(filters.value.delivery_filter_year || new Date().getFullYear().toString());
+const deliveryStartDate = ref(filters.value.delivery_start_date || '');
+const deliveryEndDate = ref(filters.value.delivery_end_date || '');
 
 // Financial Report specific filters
 const financialFilterType = ref(filters.value.financial_filter_type || 'all');
@@ -189,11 +197,19 @@ const transactionEndDate = ref(filters.value.transaction_end_date || '');
 watch(() => page.props.filters, (newFilters) => {
     if (newFilters) {
         const f = newFilters as any;
-        filterType.value = f.filter_type || 'all';
-        filterMonth.value = f.filter_month || '';
-        filterYear.value = f.filter_year || new Date().getFullYear().toString();
-        startDate.value = f.start_date || '';
-        endDate.value = f.end_date || '';
+        // Sales report filters (backward compatibility with filter_type)
+        salesFilterType.value = f.filter_type || f.sales_filter_type || 'all';
+        salesFilterMonth.value = f.filter_month || f.sales_filter_month || '';
+        salesFilterYear.value = f.filter_year || f.sales_filter_year || new Date().getFullYear().toString();
+        salesStartDate.value = f.start_date || f.sales_start_date || '';
+        salesEndDate.value = f.end_date || f.sales_end_date || '';
+        
+        // Delivery Summary filters
+        deliveryFilterType.value = f.delivery_filter_type || 'all';
+        deliveryFilterMonth.value = f.delivery_filter_month || '';
+        deliveryFilterYear.value = f.delivery_filter_year || new Date().getFullYear().toString();
+        deliveryStartDate.value = f.delivery_start_date || '';
+        deliveryEndDate.value = f.delivery_end_date || '';
         
         // Financial report filters
         financialFilterType.value = f.financial_filter_type || 'all';
@@ -246,14 +262,22 @@ const yearOptions = computed(() => {
     return years;
 });
 
-let filterTimeout: ReturnType<typeof setTimeout> | null = null;
+let salesFilterTimeout: ReturnType<typeof setTimeout> | null = null;
+let deliveryFilterTimeout: ReturnType<typeof setTimeout> | null = null;
 let financialFilterTimeout: ReturnType<typeof setTimeout> | null = null;
 let transactionFilterTimeout: ReturnType<typeof setTimeout> | null = null;
 
-watch([filterType, filterMonth, filterYear, startDate, endDate], () => {
-    if (filterTimeout) clearTimeout(filterTimeout);
-    filterTimeout = setTimeout(() => {
-        updateFilters();
+watch([salesFilterType, salesFilterMonth, salesFilterYear, salesStartDate, salesEndDate], () => {
+    if (salesFilterTimeout) clearTimeout(salesFilterTimeout);
+    salesFilterTimeout = setTimeout(() => {
+        updateSalesFilters();
+    }, 300);
+});
+
+watch([deliveryFilterType, deliveryFilterMonth, deliveryFilterYear, deliveryStartDate, deliveryEndDate], () => {
+    if (deliveryFilterTimeout) clearTimeout(deliveryFilterTimeout);
+    deliveryFilterTimeout = setTimeout(() => {
+        updateDeliveryFilters();
     }, 300);
 });
 
@@ -271,19 +295,92 @@ watch([transactionFilterType, transactionFilterMonth, transactionFilterYear, tra
     }, 300);
 });
 
-function updateFilters() {
+function updateSalesFilters() {
     const params: any = {};
     
-    if (filterType.value !== 'all') {
-        params.filter_type = filterType.value;
+    // Sales report filters (backward compatibility: use filter_type for sales)
+    if (salesFilterType.value !== 'all') {
+        params.filter_type = salesFilterType.value;
         
-        if (filterType.value === 'month' && filterMonth.value) {
-            params.filter_month = filterMonth.value;
-        } else if (filterType.value === 'year' && filterYear.value) {
-            params.filter_year = filterYear.value;
-        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
-            params.start_date = startDate.value;
-            params.end_date = endDate.value;
+        if (salesFilterType.value === 'month' && salesFilterMonth.value) {
+            params.filter_month = salesFilterMonth.value;
+        } else if (salesFilterType.value === 'year' && salesFilterYear.value) {
+            params.filter_year = salesFilterYear.value;
+        } else if (salesFilterType.value === 'date_range' && salesStartDate.value && salesEndDate.value) {
+            params.start_date = salesStartDate.value;
+            params.end_date = salesEndDate.value;
+        }
+    }
+    
+    // Preserve delivery filters
+    if (deliveryFilterType.value !== 'all') {
+        params.delivery_filter_type = deliveryFilterType.value;
+        if (deliveryFilterType.value === 'month' && deliveryFilterMonth.value) {
+            params.delivery_filter_month = deliveryFilterMonth.value;
+        } else if (deliveryFilterType.value === 'year' && deliveryFilterYear.value) {
+            params.delivery_filter_year = deliveryFilterYear.value;
+        } else if (deliveryFilterType.value === 'date_range' && deliveryStartDate.value && deliveryEndDate.value) {
+            params.delivery_start_date = deliveryStartDate.value;
+            params.delivery_end_date = deliveryEndDate.value;
+        }
+    }
+    
+    // Preserve financial report filters
+    if (financialFilterType.value !== 'all') {
+        params.financial_filter_type = financialFilterType.value;
+        if (financialFilterType.value === 'month' && financialFilterMonth.value) {
+            params.financial_filter_month = financialFilterMonth.value;
+        } else if (financialFilterType.value === 'year' && financialFilterYear.value) {
+            params.financial_filter_year = financialFilterYear.value;
+        } else if (financialFilterType.value === 'date_range' && financialStartDate.value && financialEndDate.value) {
+            params.financial_start_date = financialStartDate.value;
+            params.financial_end_date = financialEndDate.value;
+        }
+    }
+    
+    // Preserve transaction filters
+    if (transactionFilterType.value !== 'all') {
+        params.transaction_filter_type = transactionFilterType.value;
+        if (transactionFilterType.value === 'month' && transactionFilterMonth.value) {
+            params.transaction_filter_month = transactionFilterMonth.value;
+        } else if (transactionFilterType.value === 'year' && transactionFilterYear.value) {
+            params.transaction_filter_year = transactionFilterYear.value;
+        } else if (transactionFilterType.value === 'date_range' && transactionStartDate.value && transactionEndDate.value) {
+            params.transaction_start_date = transactionStartDate.value;
+            params.transaction_end_date = transactionEndDate.value;
+        }
+    }
+    
+    router.get('/reports', params, { preserveState: true, replace: true });
+}
+
+function updateDeliveryFilters() {
+    const params: any = {};
+    
+    // Preserve sales filters
+    if (salesFilterType.value !== 'all') {
+        params.filter_type = salesFilterType.value;
+        if (salesFilterType.value === 'month' && salesFilterMonth.value) {
+            params.filter_month = salesFilterMonth.value;
+        } else if (salesFilterType.value === 'year' && salesFilterYear.value) {
+            params.filter_year = salesFilterYear.value;
+        } else if (salesFilterType.value === 'date_range' && salesStartDate.value && salesEndDate.value) {
+            params.start_date = salesStartDate.value;
+            params.end_date = salesEndDate.value;
+        }
+    }
+    
+    // Delivery Summary filters
+    if (deliveryFilterType.value !== 'all') {
+        params.delivery_filter_type = deliveryFilterType.value;
+        
+        if (deliveryFilterType.value === 'month' && deliveryFilterMonth.value) {
+            params.delivery_filter_month = deliveryFilterMonth.value;
+        } else if (deliveryFilterType.value === 'year' && deliveryFilterYear.value) {
+            params.delivery_filter_year = deliveryFilterYear.value;
+        } else if (deliveryFilterType.value === 'date_range' && deliveryStartDate.value && deliveryEndDate.value) {
+            params.delivery_start_date = deliveryStartDate.value;
+            params.delivery_end_date = deliveryEndDate.value;
         }
     }
     
@@ -319,20 +416,33 @@ function updateFilters() {
 function updateFinancialFilters() {
     const params: any = {};
     
-    // Preserve global filters
-    if (filterType.value !== 'all') {
-        params.filter_type = filterType.value;
-        if (filterType.value === 'month' && filterMonth.value) {
-            params.filter_month = filterMonth.value;
-        } else if (filterType.value === 'year' && filterYear.value) {
-            params.filter_year = filterYear.value;
-        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
-            params.start_date = startDate.value;
-            params.end_date = endDate.value;
+    // Preserve sales filters
+    if (salesFilterType.value !== 'all') {
+        params.filter_type = salesFilterType.value;
+        if (salesFilterType.value === 'month' && salesFilterMonth.value) {
+            params.filter_month = salesFilterMonth.value;
+        } else if (salesFilterType.value === 'year' && salesFilterYear.value) {
+            params.filter_year = salesFilterYear.value;
+        } else if (salesFilterType.value === 'date_range' && salesStartDate.value && salesEndDate.value) {
+            params.start_date = salesStartDate.value;
+            params.end_date = salesEndDate.value;
         }
     }
     
-    // Add financial report filters
+    // Preserve delivery filters
+    if (deliveryFilterType.value !== 'all') {
+        params.delivery_filter_type = deliveryFilterType.value;
+        if (deliveryFilterType.value === 'month' && deliveryFilterMonth.value) {
+            params.delivery_filter_month = deliveryFilterMonth.value;
+        } else if (deliveryFilterType.value === 'year' && deliveryFilterYear.value) {
+            params.delivery_filter_year = deliveryFilterYear.value;
+        } else if (deliveryFilterType.value === 'date_range' && deliveryStartDate.value && deliveryEndDate.value) {
+            params.delivery_start_date = deliveryStartDate.value;
+            params.delivery_end_date = deliveryEndDate.value;
+        }
+    }
+    
+    // Financial report filters
     if (financialFilterType.value !== 'all') {
         params.financial_filter_type = financialFilterType.value;
         
@@ -365,16 +475,29 @@ function updateFinancialFilters() {
 function updateTransactionFilters() {
     const params: any = {};
     
-    // Preserve global filters
-    if (filterType.value !== 'all') {
-        params.filter_type = filterType.value;
-        if (filterType.value === 'month' && filterMonth.value) {
-            params.filter_month = filterMonth.value;
-        } else if (filterType.value === 'year' && filterYear.value) {
-            params.filter_year = filterYear.value;
-        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
-            params.start_date = startDate.value;
-            params.end_date = endDate.value;
+    // Preserve sales filters
+    if (salesFilterType.value !== 'all') {
+        params.filter_type = salesFilterType.value;
+        if (salesFilterType.value === 'month' && salesFilterMonth.value) {
+            params.filter_month = salesFilterMonth.value;
+        } else if (salesFilterType.value === 'year' && salesFilterYear.value) {
+            params.filter_year = salesFilterYear.value;
+        } else if (salesFilterType.value === 'date_range' && salesStartDate.value && salesEndDate.value) {
+            params.start_date = salesStartDate.value;
+            params.end_date = salesEndDate.value;
+        }
+    }
+    
+    // Preserve delivery filters
+    if (deliveryFilterType.value !== 'all') {
+        params.delivery_filter_type = deliveryFilterType.value;
+        if (deliveryFilterType.value === 'month' && deliveryFilterMonth.value) {
+            params.delivery_filter_month = deliveryFilterMonth.value;
+        } else if (deliveryFilterType.value === 'year' && deliveryFilterYear.value) {
+            params.delivery_filter_year = deliveryFilterYear.value;
+        } else if (deliveryFilterType.value === 'date_range' && deliveryStartDate.value && deliveryEndDate.value) {
+            params.delivery_start_date = deliveryStartDate.value;
+            params.delivery_end_date = deliveryEndDate.value;
         }
     }
     
@@ -391,7 +514,7 @@ function updateTransactionFilters() {
         }
     }
     
-    // Add transaction report filters
+    // Transaction report filters
     if (transactionFilterType.value !== 'all') {
         params.transaction_filter_type = transactionFilterType.value;
         
@@ -452,36 +575,26 @@ function formatFilterText(filterType: string, filterMonth: string, filterYear: s
 
 // Computed properties for active filter text
 const activeSalesFilterText = computed(() => {
-    return formatFilterText(filterType.value, filterMonth.value, filterYear.value, startDate.value, endDate.value);
-});
-
-const activeFinancialFilterText = computed(() => {
-    const type = financialFilterType.value !== 'all' ? financialFilterType.value : filterType.value;
-    const month = financialFilterMonth.value || filterMonth.value;
-    const year = financialFilterYear.value || filterYear.value;
-    const start = financialStartDate.value || startDate.value;
-    const end = financialEndDate.value || endDate.value;
-    return formatFilterText(type, month, year, start, end);
+    return formatFilterText(salesFilterType.value, salesFilterMonth.value, salesFilterYear.value, salesStartDate.value, salesEndDate.value);
 });
 
 const activeDeliveryFilterText = computed(() => {
-    return formatFilterText(filterType.value, filterMonth.value, filterYear.value, startDate.value, endDate.value);
+    return formatFilterText(deliveryFilterType.value, deliveryFilterMonth.value, deliveryFilterYear.value, deliveryStartDate.value, deliveryEndDate.value);
+});
+
+const activeFinancialFilterText = computed(() => {
+    return formatFilterText(financialFilterType.value, financialFilterMonth.value, financialFilterYear.value, financialStartDate.value, financialEndDate.value);
 });
 
 const activeTransactionFilterText = computed(() => {
-    const type = transactionFilterType.value !== 'all' ? transactionFilterType.value : filterType.value;
-    const month = transactionFilterMonth.value || filterMonth.value;
-    const year = transactionFilterYear.value || filterYear.value;
-    const start = transactionStartDate.value || startDate.value;
-    const end = transactionEndDate.value || endDate.value;
-    return formatFilterText(type, month, year, start, end);
+    return formatFilterText(transactionFilterType.value, transactionFilterMonth.value, transactionFilterYear.value, transactionStartDate.value, transactionEndDate.value);
 });
 
 // Check if filters are active
-const isSalesFilterActive = computed(() => filterType.value !== 'all');
-const isFinancialFilterActive = computed(() => financialFilterType.value !== 'all' || filterType.value !== 'all');
-const isDeliveryFilterActive = computed(() => filterType.value !== 'all');
-const isTransactionFilterActive = computed(() => transactionFilterType.value !== 'all' || filterType.value !== 'all');
+const isSalesFilterActive = computed(() => salesFilterType.value !== 'all');
+const isDeliveryFilterActive = computed(() => deliveryFilterType.value !== 'all');
+const isFinancialFilterActive = computed(() => financialFilterType.value !== 'all');
+const isTransactionFilterActive = computed(() => transactionFilterType.value !== 'all');
 
 function printReport() {
     window.print();
@@ -490,16 +603,55 @@ function printReport() {
 function printAllReports() {
     const params: any = {};
     
-    if (filterType.value !== 'all') {
-        params.filter_type = filterType.value;
-        
-        if (filterType.value === 'month' && filterMonth.value) {
-            params.filter_month = filterMonth.value;
-        } else if (filterType.value === 'year' && filterYear.value) {
-            params.filter_year = filterYear.value;
-        } else if (filterType.value === 'date_range' && startDate.value && endDate.value) {
-            params.start_date = startDate.value;
-            params.end_date = endDate.value;
+    // Sales filters
+    if (salesFilterType.value !== 'all') {
+        params.filter_type = salesFilterType.value;
+        if (salesFilterType.value === 'month' && salesFilterMonth.value) {
+            params.filter_month = salesFilterMonth.value;
+        } else if (salesFilterType.value === 'year' && salesFilterYear.value) {
+            params.filter_year = salesFilterYear.value;
+        } else if (salesFilterType.value === 'date_range' && salesStartDate.value && salesEndDate.value) {
+            params.start_date = salesStartDate.value;
+            params.end_date = salesEndDate.value;
+        }
+    }
+    
+    // Delivery filters
+    if (deliveryFilterType.value !== 'all') {
+        params.delivery_filter_type = deliveryFilterType.value;
+        if (deliveryFilterType.value === 'month' && deliveryFilterMonth.value) {
+            params.delivery_filter_month = deliveryFilterMonth.value;
+        } else if (deliveryFilterType.value === 'year' && deliveryFilterYear.value) {
+            params.delivery_filter_year = deliveryFilterYear.value;
+        } else if (deliveryFilterType.value === 'date_range' && deliveryStartDate.value && deliveryEndDate.value) {
+            params.delivery_start_date = deliveryStartDate.value;
+            params.delivery_end_date = deliveryEndDate.value;
+        }
+    }
+    
+    // Financial filters
+    if (financialFilterType.value !== 'all') {
+        params.financial_filter_type = financialFilterType.value;
+        if (financialFilterType.value === 'month' && financialFilterMonth.value) {
+            params.financial_filter_month = financialFilterMonth.value;
+        } else if (financialFilterType.value === 'year' && financialFilterYear.value) {
+            params.financial_filter_year = financialFilterYear.value;
+        } else if (financialFilterType.value === 'date_range' && financialStartDate.value && financialEndDate.value) {
+            params.financial_start_date = financialStartDate.value;
+            params.financial_end_date = financialEndDate.value;
+        }
+    }
+    
+    // Transaction filters
+    if (transactionFilterType.value !== 'all') {
+        params.transaction_filter_type = transactionFilterType.value;
+        if (transactionFilterType.value === 'month' && transactionFilterMonth.value) {
+            params.transaction_filter_month = transactionFilterMonth.value;
+        } else if (transactionFilterType.value === 'year' && transactionFilterYear.value) {
+            params.transaction_filter_year = transactionFilterYear.value;
+        } else if (transactionFilterType.value === 'date_range' && transactionStartDate.value && transactionEndDate.value) {
+            params.transaction_start_date = transactionStartDate.value;
+            params.transaction_end_date = transactionEndDate.value;
         }
     }
     
@@ -530,60 +682,6 @@ function printAllReports() {
             </div>
         </div>
 
-        <!-- Filters -->
-        <Card class="no-print mb-6">
-            <CardHeader>
-                <CardTitle>Filters - Sales Report & Delivery Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p class="text-sm text-gray-600 mb-4">These filters apply to the <strong>Sales Report</strong> and <strong>Delivery Summary</strong> tabs.</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-1">Filter Type</label>
-                        <Select
-                            v-model="filterType"
-                            :options="filterTypeOptions"
-                            placeholder="Select filter"
-                            class="w-full"
-                        />
-                    </div>
-                    <div v-if="filterType === 'month'">
-                        <label class="block text-sm font-medium mb-1">Month</label>
-                        <Select
-                            v-model="filterMonth"
-                            :options="monthOptions"
-                            placeholder="Select month"
-                            class="w-full"
-                        />
-                    </div>
-                    <div v-if="filterType === 'year'">
-                        <label class="block text-sm font-medium mb-1">Year</label>
-                        <Select
-                            v-model="filterYear"
-                            :options="yearOptions"
-                            placeholder="Select year"
-                            class="w-full"
-                        />
-                    </div>
-                    <div v-if="filterType === 'date_range'">
-                        <label class="block text-sm font-medium mb-1">Start Date</label>
-                        <input
-                            v-model="startDate"
-                            type="date"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        />
-                    </div>
-                    <div v-if="filterType === 'date_range'">
-                        <label class="block text-sm font-medium mb-1">End Date</label>
-                        <input
-                            v-model="endDate"
-                            type="date"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        />
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
 
         <!-- Tabs -->
         <Tabs default-value="sales" class="w-full">
@@ -608,6 +706,60 @@ function printAllReports() {
 
             <!-- Sales Tab -->
             <TabsContent value="sales" class="print-break">
+                <Card class="mb-6 no-print">
+                    <CardHeader>
+                        <CardTitle>Sales Report Filters</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Sales Report</strong>.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Filter Type</label>
+                                <Select
+                                    v-model="salesFilterType"
+                                    :options="filterTypeOptions"
+                                    placeholder="Select filter"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="salesFilterType === 'month'">
+                                <label class="block text-sm font-medium mb-1">Month</label>
+                                <Select
+                                    v-model="salesFilterMonth"
+                                    :options="monthOptions"
+                                    placeholder="Select month"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="salesFilterType === 'year'">
+                                <label class="block text-sm font-medium mb-1">Year</label>
+                                <Select
+                                    v-model="salesFilterYear"
+                                    :options="yearOptions"
+                                    placeholder="Select year"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="salesFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">Start Date</label>
+                                <input
+                                    v-model="salesStartDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div v-if="salesFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">End Date</label>
+                                <input
+                                    v-model="salesEndDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
                 <Card>
                     <CardHeader>
                         <div class="flex items-center justify-between">
@@ -664,7 +816,7 @@ function printAllReports() {
                         <CardTitle>Financial Report Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Financial Report</strong>. If not set, the global filters from above will be used.</p>
+                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Financial Report</strong>.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">Filter Type</label>
@@ -762,6 +914,60 @@ function printAllReports() {
 
             <!-- Delivery Summary Tab -->
             <TabsContent value="delivery" class="print-break">
+                <Card class="mb-6 no-print">
+                    <CardHeader>
+                        <CardTitle>Delivery Summary Filters</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Delivery Summary</strong>.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Filter Type</label>
+                                <Select
+                                    v-model="deliveryFilterType"
+                                    :options="filterTypeOptions"
+                                    placeholder="Select filter"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="deliveryFilterType === 'month'">
+                                <label class="block text-sm font-medium mb-1">Month</label>
+                                <Select
+                                    v-model="deliveryFilterMonth"
+                                    :options="monthOptions"
+                                    placeholder="Select month"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="deliveryFilterType === 'year'">
+                                <label class="block text-sm font-medium mb-1">Year</label>
+                                <Select
+                                    v-model="deliveryFilterYear"
+                                    :options="yearOptions"
+                                    placeholder="Select year"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div v-if="deliveryFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">Start Date</label>
+                                <input
+                                    v-model="deliveryStartDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <div v-if="deliveryFilterType === 'date_range'">
+                                <label class="block text-sm font-medium mb-1">End Date</label>
+                                <input
+                                    v-model="deliveryEndDate"
+                                    type="date"
+                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
                 <Card>
                     <CardHeader>
                         <div class="flex items-center justify-between">
@@ -842,7 +1048,7 @@ function printAllReports() {
                         <CardTitle>Transactions Report Filters</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Transactions Report</strong>. If not set, the global filters from above will be used.</p>
+                        <p class="text-sm text-gray-600 mb-4">These filters apply <strong>only</strong> to the <strong>Transactions Report</strong>.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             <div>
                                 <label class="block text-sm font-medium mb-1">Filter Type</label>

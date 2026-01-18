@@ -16,11 +16,19 @@ class ReportsController extends Controller
 {
     public function index(Request $request)
     {
+        // Sales Report specific filters (backward compatibility: filter_type still used for sales)
         $filterType = $request->input('filter_type', 'all'); // all, month, year, date_range
         $filterMonth = $request->input('filter_month');
         $filterYear = $request->input('filter_year');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
+        
+        // Delivery Summary specific filters
+        $deliveryFilterType = $request->input('delivery_filter_type', 'all');
+        $deliveryFilterMonth = $request->input('delivery_filter_month');
+        $deliveryFilterYear = $request->input('delivery_filter_year');
+        $deliveryStartDate = $request->input('delivery_start_date');
+        $deliveryEndDate = $request->input('delivery_end_date');
         
         // Financial Report specific filters
         $financialFilterType = $request->input('financial_filter_type', 'all');
@@ -39,7 +47,16 @@ class ReportsController extends Controller
         // Calculate date range based on filter
         $dateRange = $this->getDateRange($filterType, $filterMonth, $filterYear, $startDate, $endDate);
         
-        // Calculate financial report date range (use financial filters if provided, otherwise use global filters)
+        // Calculate delivery summary date range (use delivery filters if provided, otherwise use sales filters for backward compatibility)
+        $deliveryDateRange = $this->getDateRange(
+            $deliveryFilterType !== 'all' ? $deliveryFilterType : $filterType,
+            $deliveryFilterMonth !== null && $deliveryFilterMonth !== '' ? $deliveryFilterMonth : $filterMonth,
+            $deliveryFilterYear !== null && $deliveryFilterYear !== '' ? $deliveryFilterYear : $filterYear,
+            $deliveryStartDate !== null && $deliveryStartDate !== '' ? $deliveryStartDate : $startDate,
+            $deliveryEndDate !== null && $deliveryEndDate !== '' ? $deliveryEndDate : $endDate
+        );
+        
+        // Calculate financial report date range (use financial filters if provided, otherwise use sales filters for backward compatibility)
         $financialDateRange = $this->getDateRange(
             $financialFilterType !== 'all' ? $financialFilterType : $filterType,
             $financialFilterMonth !== null && $financialFilterMonth !== '' ? $financialFilterMonth : $filterMonth,
@@ -48,7 +65,7 @@ class ReportsController extends Controller
             $financialEndDate !== null && $financialEndDate !== '' ? $financialEndDate : $endDate
         );
         
-        // Calculate transaction report date range (use transaction filters if provided, otherwise use global filters)
+        // Calculate transaction report date range (use transaction filters if provided, otherwise use sales filters for backward compatibility)
         $transactionDateRange = $this->getDateRange(
             $transactionFilterType !== 'all' ? $transactionFilterType : $filterType,
             $transactionFilterMonth !== null && $transactionFilterMonth !== '' ? $transactionFilterMonth : $filterMonth,
@@ -66,8 +83,8 @@ class ReportsController extends Controller
         // Financial Report (uses its own date range)
         $financialReport = $this->getFinancialReport($financialDateRange);
         
-        // Delivery Summary
-        $deliveriesData = $this->getDeliveries($dateRange);
+        // Delivery Summary (uses its own date range)
+        $deliveriesData = $this->getDeliveries($deliveryDateRange);
         $deliveries = $deliveriesData['deliveries'];
         $deliverySummary = $deliveriesData['summary'];
         
@@ -83,6 +100,11 @@ class ReportsController extends Controller
                 'filter_year' => $filterYear,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'delivery_filter_type' => $deliveryFilterType,
+                'delivery_filter_month' => $deliveryFilterMonth,
+                'delivery_filter_year' => $deliveryFilterYear,
+                'delivery_start_date' => $deliveryStartDate,
+                'delivery_end_date' => $deliveryEndDate,
                 'financial_filter_type' => $financialFilterType,
                 'financial_filter_month' => $financialFilterMonth,
                 'financial_filter_year' => $financialFilterYear,
@@ -350,11 +372,19 @@ class ReportsController extends Controller
      */
     public function printAll(Request $request)
     {
+        // Sales Report specific filters
         $filterType = $request->input('filter_type', 'all');
         $filterMonth = $request->input('filter_month');
         $filterYear = $request->input('filter_year');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
+        
+        // Delivery Summary specific filters
+        $deliveryFilterType = $request->input('delivery_filter_type', 'all');
+        $deliveryFilterMonth = $request->input('delivery_filter_month');
+        $deliveryFilterYear = $request->input('delivery_filter_year');
+        $deliveryStartDate = $request->input('delivery_start_date');
+        $deliveryEndDate = $request->input('delivery_end_date');
         
         // Financial Report specific filters
         $financialFilterType = $request->input('financial_filter_type', 'all');
@@ -373,7 +403,16 @@ class ReportsController extends Controller
         // Calculate date range based on filter
         $dateRange = $this->getDateRange($filterType, $filterMonth, $filterYear, $startDate, $endDate);
         
-        // Calculate financial report date range (use financial filters if provided, otherwise use global filters)
+        // Calculate delivery summary date range (use delivery filters if provided, otherwise use sales filters for backward compatibility)
+        $deliveryDateRange = $this->getDateRange(
+            $deliveryFilterType !== 'all' ? $deliveryFilterType : $filterType,
+            $deliveryFilterMonth !== null && $deliveryFilterMonth !== '' ? $deliveryFilterMonth : $filterMonth,
+            $deliveryFilterYear !== null && $deliveryFilterYear !== '' ? $deliveryFilterYear : $filterYear,
+            $deliveryStartDate !== null && $deliveryStartDate !== '' ? $deliveryStartDate : $startDate,
+            $deliveryEndDate !== null && $deliveryEndDate !== '' ? $deliveryEndDate : $endDate
+        );
+        
+        // Calculate financial report date range (use financial filters if provided, otherwise use sales filters for backward compatibility)
         $financialDateRange = $this->getDateRange(
             $financialFilterType !== 'all' ? $financialFilterType : $filterType,
             $financialFilterMonth !== null && $financialFilterMonth !== '' ? $financialFilterMonth : $filterMonth,
@@ -382,7 +421,7 @@ class ReportsController extends Controller
             $financialEndDate !== null && $financialEndDate !== '' ? $financialEndDate : $endDate
         );
         
-        // Calculate transaction report date range (use transaction filters if provided, otherwise use global filters)
+        // Calculate transaction report date range (use transaction filters if provided, otherwise use sales filters for backward compatibility)
         $transactionDateRange = $this->getDateRange(
             $transactionFilterType !== 'all' ? $transactionFilterType : $filterType,
             $transactionFilterMonth !== null && $transactionFilterMonth !== '' ? $transactionFilterMonth : $filterMonth,
@@ -395,7 +434,7 @@ class ReportsController extends Controller
         $salesReport = $this->getSalesReport($dateRange);
         $transactions = $this->getTransactions($transactionDateRange);
         $financialReport = $this->getFinancialReport($financialDateRange);
-        $deliveriesData = $this->getDeliveries($dateRange);
+        $deliveriesData = $this->getDeliveries($deliveryDateRange);
         $deliveries = $deliveriesData['deliveries'];
         $deliverySummary = $deliveriesData['summary'];
         
