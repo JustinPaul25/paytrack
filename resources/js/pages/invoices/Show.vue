@@ -632,6 +632,79 @@ watch(() => (page.props as any).flash, (flash) => {
                     </CardContent>
                 </Card>
 
+                <!-- Payment Proof View (Admin/Staff Only) -->
+                <Card v-if="!isCustomer && props.invoice.payment_proof_url">
+                    <CardHeader>
+                        <CardTitle>Payment Proof</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <p class="text-sm text-gray-600">
+                                Payment proof uploaded by the customer.
+                            </p>
+                            
+                            <div class="border rounded-lg p-4 bg-gray-50">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-medium text-gray-700">Customer Payment Proof</p>
+                                    <a :href="props.invoice.payment_proof_url" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-sm underline">
+                                        View/Download
+                                    </a>
+                                </div>
+                                <div v-if="props.invoice.payment_proof_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)" class="mt-2">
+                                    <img :src="props.invoice.payment_proof_url" alt="Payment Proof" class="max-w-full h-auto rounded border max-h-64 object-contain" />
+                                </div>
+                                <div v-else class="mt-2 p-8 text-center bg-white border rounded-lg">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="mt-2 text-sm text-gray-600">PDF Document</p>
+                                    <a :href="props.invoice.payment_proof_url" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-blue-600 hover:text-blue-800 text-sm underline">
+                                        Click to view or download
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Payment Proof View (Customer - Paid Invoice) -->
+                <Card v-if="isCustomer && props.invoice.payment_status === 'paid' && props.invoice.payment_proof_url">
+                    <CardHeader>
+                        <CardTitle>Payment Proof</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <div class="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                                <svg class="h-5 w-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span>Payment verified and accepted</span>
+                            </div>
+                            
+                            <div class="border rounded-lg p-4 bg-gray-50">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-sm font-medium text-gray-700">Your Payment Proof</p>
+                                    <a :href="props.invoice.payment_proof_url" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 text-sm underline">
+                                        View/Download
+                                    </a>
+                                </div>
+                                <div v-if="props.invoice.payment_proof_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)" class="mt-2">
+                                    <img :src="props.invoice.payment_proof_url" alt="Payment Proof" class="max-w-full h-auto rounded border max-h-64 object-contain" />
+                                </div>
+                                <div v-else class="mt-2 p-8 text-center bg-white border rounded-lg">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <p class="mt-2 text-sm text-gray-600">PDF Document</p>
+                                    <a :href="props.invoice.payment_proof_url" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-blue-600 hover:text-blue-800 text-sm underline">
+                                        Click to view or download
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <!-- Invoice Items -->
                 <Card>
                     <CardHeader>

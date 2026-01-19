@@ -35,6 +35,10 @@ class Invoice extends Model implements HasMedia
         'due_date' => 'date',
     ];
 
+    protected $appends = [
+        'payment_proof_url',
+    ];
+
     protected static function boot()
     {
         parent::boot();
