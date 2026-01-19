@@ -101,12 +101,12 @@ function goToRefundsPage(pageNum: number) {
         <!-- Approved Damaged Items -->
         <Card>
             <CardHeader>
-                <CardTitle>Approved Damaged Items</CardTitle>
-                <p class="text-sm text-gray-500 mt-1">View-only listing of damaged items from approved refund requests</p>
+                <CardTitle>Damaged Items</CardTitle>
+                <p class="text-sm text-gray-500 mt-1">View-only listing of damaged items from approved and completed refund requests</p>
             </CardHeader>
             <CardContent>
                 <div v-if="!refunds.data.length" class="py-8 text-center text-sm text-gray-500">
-                    No approved damaged items found.
+                    No damaged items found.
                 </div>
                 <div v-else>
                     <table class="min-w-full divide-y divide-border">

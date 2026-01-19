@@ -341,11 +341,11 @@ class RefundController extends Controller
             abort(403);
         }
 
-        // Only fetch approved damaged refunds (view-only)
+        // Fetch all damaged refunds that are approved or completed (view-only)
         // Get damaged refunds from approved refund requests
         $refundsQuery = Refund::with(['invoice', 'product.media', 'user', 'refundRequest.media'])
             ->where('is_damaged', true)
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'completed'])
             ->orderByDesc('created_at');
         
         $refunds = $refundsQuery->paginate(10, ['*'], 'refunds_page')->withQueryString();
@@ -393,8 +393,8 @@ class RefundController extends Controller
 
         // Calculate statistics
         $stats = [
-            'total_damaged_refunds' => Refund::where('is_damaged', true)->where('status', 'approved')->count(),
-            'total_damaged_value' => Refund::where('is_damaged', true)->where('status', 'approved')->sum('refund_amount') / 100, // Convert from cents
+            'total_damaged_refunds' => Refund::where('is_damaged', true)->whereIn('status', ['approved', 'completed'])->count(),
+            'total_damaged_value' => Refund::where('is_damaged', true)->whereIn('status', ['approved', 'completed'])->sum('refund_amount') / 100, // Convert from cents
         ];
 
         return inertia('refunds/DamagedItems', [
