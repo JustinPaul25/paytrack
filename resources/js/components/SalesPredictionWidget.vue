@@ -6,28 +6,45 @@
                     <TrendingUp class="w-5 h-5 text-blue-600" />
                     Sales Prediction
                 </CardTitle>
-                <div class="flex flex-col gap-2" style="min-width: 200px;">
-                    <div class="flex items-center gap-2">
-                        <Calendar class="w-4 h-4" />
-                        <label class="text-sm font-medium">Date Filter</label>
+                <div class="flex gap-4">
+                    <div class="flex flex-col gap-2" style="min-width: 160px;">
+                        <div class="flex items-center gap-2">
+                            <BarChart3 class="w-4 h-4" />
+                            <label class="text-sm font-medium">View Period</label>
+                        </div>
+                        <Select
+                            v-model="forecastPeriod"
+                            :options="[
+                                { value: 'monthly', label: 'Monthly' },
+                                { value: 'yearly', label: 'Yearly' }
+                            ]"
+                            placeholder="Select period"
+                            class="w-full"
+                        />
                     </div>
-                    <Select
-                        v-model="predictionFilterPeriod"
-                        :options="periodOptions"
-                        placeholder="Choose time period"
-                        class="w-full"
-                    />
-                    <div v-if="predictionFilterPeriod === 'custom'" class="flex gap-2">
-                        <input
-                            v-model="predictionFilterStartDate"
-                            type="date"
-                            class="flex-1 px-2 py-1 text-sm border rounded"
+                    <div class="flex flex-col gap-2" style="min-width: 200px;">
+                        <div class="flex items-center gap-2">
+                            <Calendar class="w-4 h-4" />
+                            <label class="text-sm font-medium">Date Filter</label>
+                        </div>
+                        <Select
+                            v-model="predictionFilterPeriod"
+                            :options="periodOptions"
+                            placeholder="Choose time period"
+                            class="w-full"
                         />
-                        <input
-                            v-model="predictionFilterEndDate"
-                            type="date"
-                            class="flex-1 px-2 py-1 text-sm border rounded"
-                        />
+                        <div v-if="predictionFilterPeriod === 'custom'" class="flex gap-2">
+                            <input
+                                v-model="predictionFilterStartDate"
+                                type="date"
+                                class="flex-1 px-2 py-1 text-sm border rounded"
+                            />
+                            <input
+                                v-model="predictionFilterEndDate"
+                                type="date"
+                                class="flex-1 px-2 py-1 text-sm border rounded"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -108,21 +125,7 @@
 
                     <!-- Prediction Chart -->
                     <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">Sales Forecast Trend</h4>
-                            <div class="flex items-center gap-2">
-                                <BarChart3 class="w-4 h-4 text-muted-foreground" />
-                                <Select
-                                    v-model="forecastPeriod"
-                                    :options="[
-                                        { value: 'monthly', label: 'Monthly' },
-                                        { value: 'yearly', label: 'Yearly' }
-                                    ]"
-                                    placeholder="Select period"
-                                    class="w-32"
-                                />
-                            </div>
-                        </div>
+                        <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-4">Sales Forecast Trend</h4>
                         <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                             <Line
                                 :data="predictionChartData"
@@ -216,10 +219,10 @@ const predictionFilterStartDate = ref('');
 const predictionFilterEndDate = ref('');
 
 const periodOptions = [
-    { value: 'week', label: 'Last 7 Days' },
-    { value: 'month', label: 'Last 30 Days' },
-    { value: 'quarter', label: 'Last 3 Months' },
-    { value: 'year', label: 'Last 12 Months' },
+    { value: 'week', label: 'Next 7 Days' },
+    { value: 'month', label: 'Next 30 Days' },
+    { value: 'quarter', label: 'Next 3 Months' },
+    { value: 'year', label: 'Next 12 Months' },
     { value: 'custom', label: 'Choose Dates' },
 ];
 

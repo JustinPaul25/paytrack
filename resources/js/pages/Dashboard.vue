@@ -862,26 +862,10 @@ const closeNotifications = () => {
 
                 <!-- Analytics Section -->
                 <div class="analytics-section">
-                    <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div class="section-header" style="margin-bottom: 1.5rem;">
                         <div>
                             <h2 class="section-title">Sales Analytics</h2>
                             <p class="section-description">Track how your sales are performing over time</p>
-                        </div>
-                        <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
-                            <label class="filter-label" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--foreground);">
-                                <BarChart3 class="w-4 h-4" />
-                                View Period
-                            </label>
-                            <Select
-                                v-model="trendPeriod"
-                                :options="[
-                                    { value: 'monthly', label: 'Monthly' },
-                                    { value: 'yearly', label: 'Yearly' }
-                                ]"
-                                placeholder="Select period"
-                                class="period-select"
-                                style="min-width: 120px;"
-                            />
                         </div>
                     </div>
                 </div>
@@ -917,28 +901,45 @@ const closeNotifications = () => {
                                                 See how your {{ trendPeriod === 'yearly' ? 'yearly' : 'monthly' }} sales and number of transactions change over time
                                             </CardDescription>
                                         </div>
-                                        <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
-                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                                <Calendar class="w-4 h-4" />
-                                                <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                                        <div style="display: flex; gap: 1rem;">
+                                            <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 160px;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <BarChart3 class="w-4 h-4" />
+                                                    <label style="font-size: 0.875rem; font-weight: 500;">View Period</label>
+                                                </div>
+                                                <Select
+                                                    v-model="trendPeriod"
+                                                    :options="[
+                                                        { value: 'monthly', label: 'Monthly' },
+                                                        { value: 'yearly', label: 'Yearly' }
+                                                    ]"
+                                                    placeholder="Select period"
+                                                    class="period-select"
+                                                />
                                             </div>
-                                            <Select
-                                                v-model="salesTrendFilterPeriod"
-                                                :options="periodOptions"
-                                                placeholder="Choose time period"
-                                                class="period-select"
-                                            />
-                                            <div v-if="salesTrendFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
-                                                <input
-                                                    v-model="salesTrendFilterStartDate"
-                                                    type="date"
-                                                    style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                            <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <Calendar class="w-4 h-4" />
+                                                    <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                                                </div>
+                                                <Select
+                                                    v-model="salesTrendFilterPeriod"
+                                                    :options="periodOptions"
+                                                    placeholder="Choose time period"
+                                                    class="period-select"
                                                 />
-                                                <input
-                                                    v-model="salesTrendFilterEndDate"
-                                                    type="date"
-                                                    style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
-                                                />
+                                                <div v-if="salesTrendFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                                                    <input
+                                                        v-model="salesTrendFilterStartDate"
+                                                        type="date"
+                                                        style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                                    />
+                                                    <input
+                                                        v-model="salesTrendFilterEndDate"
+                                                        type="date"
+                                                        style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

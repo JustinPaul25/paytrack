@@ -272,54 +272,47 @@ async function deleteDelivery(id: number) {
         </Transition>
 
         <!-- Search and Filters -->
-        <div class="flex flex-col gap-4 mt-4 mb-2">
-            <!-- First Row: Search and Type Filter -->
-            <div class="flex items-center gap-2">
-                <input 
-                    v-model="search" 
-                    type="text" 
-                    placeholder="Search deliveries by customer name..." 
-                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
-                />
-                <select 
-                    v-model="typeFilter" 
-                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                    <option value="">All Types</option>
-                    <option value="order">Order Delivery</option>
-                    <option value="return">Return Delivery</option>
-                </select>
-            </div>
+        <div class="flex items-center gap-2 flex-wrap mt-4 mb-2">
+            <input 
+                v-model="search" 
+                type="text" 
+                placeholder="Search deliveries by customer name..." 
+                class="flex-1 min-w-[200px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+            />
+            <select 
+                v-model="typeFilter" 
+                class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+                <option value="">All Types</option>
+                <option value="order">Order Delivery</option>
+                <option value="return">Return Delivery</option>
+            </select>
+            <select 
+                v-model="classificationFilter" 
+                class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+                <option value="">All Deliveries</option>
+                <option value="complete_no_issues">Complete Deliveries (No Issues)</option>
+                <option value="refunded_orders">Deliveries from Refunded Orders</option>
+            </select>
             
-            <!-- Second Row: Classification and Date Filters -->
-            <div class="flex items-center gap-2 flex-wrap">
-                <select 
-                    v-model="classificationFilter" 
-                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                    <option value="">All Deliveries</option>
-                    <option value="complete_no_issues">Complete Deliveries (No Issues)</option>
-                    <option value="refunded_orders">Deliveries from Refunded Orders</option>
-                </select>
-                
-                <label class="text-sm text-muted-foreground flex items-center gap-2">
-                    <span>From:</span>
-                    <input 
-                        v-model="dateFrom" 
-                        type="date" 
-                        class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
-                    />
-                </label>
-                
-                <label class="text-sm text-muted-foreground flex items-center gap-2">
-                    <span>To:</span>
-                    <input 
-                        v-model="dateTo" 
-                        type="date" 
-                        class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
-                    />
-                </label>
-            </div>
+            <label class="text-sm text-muted-foreground flex items-center gap-2">
+                <span>From:</span>
+                <input 
+                    v-model="dateFrom" 
+                    type="date" 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                />
+            </label>
+            
+            <label class="text-sm text-muted-foreground flex items-center gap-2">
+                <span>To:</span>
+                <input 
+                    v-model="dateTo" 
+                    type="date" 
+                    class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
+                />
+            </label>
         </div>
 
         <Card>

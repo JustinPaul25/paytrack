@@ -6,28 +6,45 @@
                     <Package class="w-5 h-5 text-indigo-600" />
                     Product Sales Trend
                 </CardTitle>
-                <div class="flex flex-col gap-2" style="min-width: 200px;">
-                    <div class="flex items-center gap-2">
-                        <Calendar class="w-4 h-4" />
-                        <label class="text-sm font-medium">Date Filter</label>
+                <div class="flex gap-4">
+                    <div class="flex flex-col gap-2" style="min-width: 160px;">
+                        <div class="flex items-center gap-2">
+                            <BarChart3 class="w-4 h-4" />
+                            <label class="text-sm font-medium">View Period</label>
+                        </div>
+                        <Select
+                            v-model="productViewPeriod"
+                            :options="[
+                                { value: 'monthly', label: 'Monthly' },
+                                { value: 'yearly', label: 'Yearly' }
+                            ]"
+                            placeholder="Select period"
+                            class="w-full"
+                        />
                     </div>
-                    <Select
-                        v-model="productTrendFilterPeriod"
-                        :options="periodOptions"
-                        placeholder="Choose time period"
-                        class="w-full"
-                    />
-                    <div v-if="productTrendFilterPeriod === 'custom'" class="flex gap-2">
-                        <input
-                            v-model="productTrendFilterStartDate"
-                            type="date"
-                            class="flex-1 px-2 py-1 text-sm border rounded"
+                    <div class="flex flex-col gap-2" style="min-width: 200px;">
+                        <div class="flex items-center gap-2">
+                            <Calendar class="w-4 h-4" />
+                            <label class="text-sm font-medium">Date Filter</label>
+                        </div>
+                        <Select
+                            v-model="productTrendFilterPeriod"
+                            :options="periodOptions"
+                            placeholder="Choose time period"
+                            class="w-full"
                         />
-                        <input
-                            v-model="productTrendFilterEndDate"
-                            type="date"
-                            class="flex-1 px-2 py-1 text-sm border rounded"
-                        />
+                        <div v-if="productTrendFilterPeriod === 'custom'" class="flex gap-2">
+                            <input
+                                v-model="productTrendFilterStartDate"
+                                type="date"
+                                class="flex-1 px-2 py-1 text-sm border rounded"
+                            />
+                            <input
+                                v-model="productTrendFilterEndDate"
+                                type="date"
+                                class="flex-1 px-2 py-1 text-sm border rounded"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -154,7 +171,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { Package, Trophy, TrendingUp, ChevronDown, Calendar } from 'lucide-vue-next';
+import { Package, Trophy, TrendingUp, ChevronDown, Calendar, BarChart3 } from 'lucide-vue-next';
 import { Select } from '@/components/ui/select';
 
 // Register Chart.js components
@@ -179,6 +196,9 @@ const props = defineProps<{
     salesByDate: SalesByDate[];
     topProducts: TopProduct[];
 }>();
+
+// View period for Product Sales Trend Widget
+const productViewPeriod = ref<'monthly' | 'yearly'>('monthly');
 
 // Date filter for Product Sales Trend Widget
 const productTrendFilterPeriod = ref('week');
