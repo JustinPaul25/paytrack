@@ -169,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Line } from 'vue-chartjs';
 import {
@@ -625,11 +625,10 @@ function getPredictionBarWidth(prediction: number): number {
     return maxPrediction > 0 ? (prediction / maxPrediction) * 100 : 0;
 }
 
-// Fetch live predictions on mount
-onMounted(async () => {
-    initializeDates();
+// Function to fetch predictions based on current filter settings
+async function fetchPredictions() {
     try {
-        const res = await fetch(`/sales/predictions?period=month&days_ahead=30`, {
+        const res = await fetch(`/sales/predictions?period=${predictionFilterPeriod.value}&days_ahead=30`, {
             headers: {
                 'Accept': 'application/json'
             }
@@ -643,5 +642,16 @@ onMounted(async () => {
         predictions.value = [];
         console.error(e);
     }
+}
+
+// Watch for changes in date filter and re-fetch predictions
+watch([predictionFilterPeriod, predictionFilterStartDate, predictionFilterEndDate], () => {
+    fetchPredictions();
+});
+
+// Fetch live predictions on mount
+onMounted(async () => {
+    initializeDates();
+    await fetchPredictions();
 });
 </script> 
