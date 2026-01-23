@@ -34,9 +34,12 @@ class CashFlowController extends Controller
 
         $historicalIncome = array_map(static fn (array $entry) => $entry['income'], $historical);
         $historicalExpenses = array_map(static fn (array $entry) => $entry['expenses'], $historical);
+        $historicalNet = array_map(static fn (array $entry) => $entry['net'], $historical);
 
-        $incomeForecast = $this->projectSeries($historicalIncome, $forecastMonths);
-        $expenseForecast = $this->projectSeries($historicalExpenses, $forecastMonths);
+        // Use time series forecasting with confidence intervals
+        $incomeForecast = $this->forecastTimeSeries($historicalIncome, $forecastMonths);
+        $expenseForecast = $this->forecastTimeSeries($historicalExpenses, $forecastMonths);
+        $netForecast = $this->forecastTimeSeries($historicalNet, $forecastMonths);
 
         $lastHistorical = !empty($historical) ? end($historical) : null;
 
@@ -44,7 +47,8 @@ class CashFlowController extends Controller
             $historyEnd->copy()->startOfMonth(),
             $lastHistorical['running_balance'] ?? 0.0,
             $incomeForecast,
-            $expenseForecast
+            $expenseForecast,
+            $netForecast
         );
 
         $summaries = $this->buildSummaries($historical, $projections);
@@ -101,23 +105,43 @@ class CashFlowController extends Controller
     }
 
     /**
+     * Time series forecasting with confidence intervals
+     * Uses exponential smoothing with trend and seasonality detection
+     * 
      * @param list<float> $historicalValues
-     * @return list<float>
+     * @param int $futurePeriods
+     * @return list<array{forecast: float, lower: float, upper: float}>
      */
-    private function projectSeries(array $historicalValues, int $futurePeriods): array
+    private function forecastTimeSeries(array $historicalValues, int $futurePeriods): array
     {
         $periods = max(0, $futurePeriods);
         $count = count($historicalValues);
 
         if ($periods === 0 || $count === 0) {
-            return array_fill(0, $periods, 0.0);
+            return array_fill(0, $periods, ['forecast' => 0.0, 'lower' => 0.0, 'upper' => 0.0]);
         }
 
-        // Fallback for flat series
+        // Fallback for single data point
         if ($count === 1) {
-            return array_fill(0, $periods, $this->roundCurrency($historicalValues[0]));
+            $value = $historicalValues[0];
+            return array_fill(0, $periods, [
+                'forecast' => $this->roundCurrency($value),
+                'lower' => $this->roundCurrency(max(0, $value * 0.7)),
+                'upper' => $this->roundCurrency($value * 1.3),
+            ]);
         }
 
+        // Calculate basic statistics
+        $mean = array_sum($historicalValues) / $count;
+        $variance = 0.0;
+        foreach ($historicalValues as $value) {
+            $variance += pow($value - $mean, 2);
+        }
+        $variance /= $count;
+        $stdDev = sqrt($variance);
+        $coefficientOfVariation = $mean > 0 ? $stdDev / $mean : 0.0;
+
+        // Detect trend using linear regression
         $xValues = range(0, $count - 1);
         $sumX = array_sum($xValues);
         $sumY = array_sum($historicalValues);
@@ -130,47 +154,176 @@ class CashFlowController extends Controller
         }
 
         $denominator = ($count * $sumX2) - ($sumX ** 2);
-
         $slope = $denominator !== 0.0
             ? (($count * $sumXY) - ($sumX * $sumY)) / $denominator
             : 0.0;
-
         $intercept = ($sumY - ($slope * $sumX)) / $count;
 
-        $projections = [];
-        for ($futureIndex = 0; $futureIndex < $periods; $futureIndex += 1) {
-            $x = $count + $futureIndex;
-            $value = $intercept + ($slope * $x);
-            $projections[] = $this->roundCurrency(max(0.0, $value));
+        // Detect seasonality (monthly patterns)
+        $seasonalFactors = $this->detectSeasonality($historicalValues, min(12, $count));
+
+        // Exponential smoothing parameters
+        $alpha = 0.3; // Smoothing factor
+        $beta = 0.1;  // Trend factor
+        $gamma = 0.2; // Seasonality factor
+
+        // Initialize smoothed values
+        $level = $historicalValues[0];
+        $trend = $slope;
+        $lastSeasonal = $seasonalFactors[0] ?? 1.0;
+
+        // Apply exponential smoothing to historical data
+        for ($i = 1; $i < $count; $i++) {
+            $prevLevel = $level;
+            $seasonalIndex = $i % count($seasonalFactors);
+            $currentSeasonal = $seasonalFactors[$seasonalIndex] ?? 1.0;
+            
+            $level = $alpha * ($historicalValues[$i] / $currentSeasonal) + (1 - $alpha) * ($prevLevel + $trend);
+            $trend = $beta * ($level - $prevLevel) + (1 - $beta) * $trend;
+            $lastSeasonal = $gamma * ($historicalValues[$i] / $prevLevel) + (1 - $gamma) * $currentSeasonal;
         }
 
-        return $projections;
+        // Generate forecasts with confidence intervals
+        $forecasts = [];
+        for ($futureIndex = 0; $futureIndex < $periods; $futureIndex++) {
+            $seasonalIndex = ($count + $futureIndex) % count($seasonalFactors);
+            $seasonalFactor = $seasonalFactors[$seasonalIndex] ?? 1.0;
+            
+            // Forecast value
+            $forecastValue = ($level + ($trend * ($futureIndex + 1))) * $seasonalFactor;
+            
+            // Calculate confidence intervals
+            // Uncertainty increases with forecast horizon (wider intervals for further forecasts)
+            $horizonMultiplier = 1 + ($futureIndex * 0.15); // 15% increase per period
+            $uncertainty = $stdDev * $horizonMultiplier;
+            
+            // Use t-distribution approximation (95% confidence interval, ~1.96 standard deviations)
+            $confidenceMultiplier = 1.96; // 95% confidence
+            $lowerBound = $forecastValue - ($confidenceMultiplier * $uncertainty);
+            $upperBound = $forecastValue + ($confidenceMultiplier * $uncertainty);
+            
+            // Ensure reasonable bounds
+            // For positive values, ensure lower bound is at least 10% of forecast or 0
+            if ($forecastValue > 0) {
+                $lowerBound = max(0, $lowerBound, $forecastValue * 0.1);
+            } else {
+                // For negative values (net cash flow), allow negative bounds
+                $lowerBound = min($lowerBound, $forecastValue * 1.5);
+            }
+            
+            $forecasts[] = [
+                'forecast' => $this->roundCurrency($forecastValue),
+                'lower' => $this->roundCurrency($lowerBound),
+                'upper' => $this->roundCurrency($upperBound),
+            ];
+        }
+
+        return $forecasts;
     }
 
     /**
-     * @param list<float> $incomeForecast
-     * @param list<float> $expenseForecast
+     * Detect seasonal patterns in the data
+     * 
+     * @param list<float> $values
+     * @param int $seasonLength
+     * @return list<float>
+     */
+    private function detectSeasonality(array $values, int $seasonLength): array
+    {
+        $count = count($values);
+        if ($count < $seasonLength * 2) {
+            // Not enough data for seasonality, return neutral factors
+            return array_fill(0, $seasonLength, 1.0);
+        }
+
+        // Calculate average for each seasonal position
+        $seasonalSums = array_fill(0, $seasonLength, 0.0);
+        $seasonalCounts = array_fill(0, $seasonLength, 0);
+
+        for ($i = 0; $i < $count; $i++) {
+            $position = $i % $seasonLength;
+            $seasonalSums[$position] += $values[$i];
+            $seasonalCounts[$position]++;
+        }
+
+        // Calculate seasonal averages
+        $seasonalAverages = [];
+        for ($i = 0; $i < $seasonLength; $i++) {
+            $seasonalAverages[$i] = $seasonalCounts[$i] > 0 
+                ? $seasonalSums[$i] / $seasonalCounts[$i] 
+                : 1.0;
+        }
+
+        // Calculate overall average
+        $overallAverage = array_sum($seasonalAverages) / $seasonLength;
+        if ($overallAverage == 0) {
+            return array_fill(0, $seasonLength, 1.0);
+        }
+
+        // Normalize to get seasonal factors
+        $seasonalFactors = [];
+        for ($i = 0; $i < $seasonLength; $i++) {
+            $seasonalFactors[$i] = $overallAverage > 0 
+                ? $seasonalAverages[$i] / $overallAverage 
+                : 1.0;
+        }
+
+        return $seasonalFactors;
+    }
+
+    /**
+     * @param list<array{forecast: float, lower: float, upper: float}> $incomeForecast
+     * @param list<array{forecast: float, lower: float, upper: float}> $expenseForecast
+     * @param list<array{forecast: float, lower: float, upper: float}> $netForecast
      * @return list<array{
      *     month: string,
      *     label: string,
      *     income: float,
      *     expenses: float,
      *     net: float,
-     *     running_balance: float
+     *     running_balance: float,
+     *     income_lower: float,
+     *     income_upper: float,
+     *     expenses_lower: float,
+     *     expenses_upper: float,
+     *     net_lower: float,
+     *     net_upper: float,
+     *     running_balance_lower: float,
+     *     running_balance_upper: float
      * }>
      */
-    private function buildProjectionSeries(Carbon $lastHistoricalMonth, float $startingBalance, array $incomeForecast, array $expenseForecast): array
-    {
+    private function buildProjectionSeries(
+        Carbon $lastHistoricalMonth, 
+        float $startingBalance, 
+        array $incomeForecast, 
+        array $expenseForecast,
+        array $netForecast
+    ): array {
         $series = [];
         $balance = $startingBalance;
-        $monthsToProject = max(count($incomeForecast), count($expenseForecast));
+        $balanceLower = $startingBalance;
+        $balanceUpper = $startingBalance;
+        $monthsToProject = max(count($incomeForecast), count($expenseForecast), count($netForecast));
 
         for ($index = 0; $index < $monthsToProject; $index += 1) {
             $month = $lastHistoricalMonth->copy()->addMonths($index + 1);
-            $income = $incomeForecast[$index] ?? 0.0;
-            $expenses = $expenseForecast[$index] ?? 0.0;
-            $net = $income - $expenses;
+            
+            $incomeData = $incomeForecast[$index] ?? ['forecast' => 0.0, 'lower' => 0.0, 'upper' => 0.0];
+            $expenseData = $expenseForecast[$index] ?? ['forecast' => 0.0, 'lower' => 0.0, 'upper' => 0.0];
+            $netData = $netForecast[$index] ?? ['forecast' => 0.0, 'lower' => 0.0, 'upper' => 0.0];
+            
+            // Ensure income and expenses are non-negative
+            $income = max(0, $incomeData['forecast']);
+            $expenses = max(0, $expenseData['forecast']);
+            // Use the direct net forecast (which can be negative)
+            $net = $netData['forecast'];
+            
+            // Calculate running balance for forecast
             $balance += $net;
+            
+            // Calculate running balance bounds (worst case: lower income, upper expenses)
+            $balanceLower += $netData['lower'];
+            $balanceUpper += $netData['upper'];
 
             $series[] = [
                 'month' => $month->format('Y-m-01'),
@@ -179,6 +332,14 @@ class CashFlowController extends Controller
                 'expenses' => $this->roundCurrency($expenses),
                 'net' => $this->roundCurrency($net),
                 'running_balance' => $this->roundCurrency($balance),
+                'income_lower' => $this->roundCurrency($incomeData['lower']),
+                'income_upper' => $this->roundCurrency($incomeData['upper']),
+                'expenses_lower' => $this->roundCurrency($expenseData['lower']),
+                'expenses_upper' => $this->roundCurrency($expenseData['upper']),
+                'net_lower' => $this->roundCurrency($netData['lower']),
+                'net_upper' => $this->roundCurrency($netData['upper']),
+                'running_balance_lower' => $this->roundCurrency($balanceLower),
+                'running_balance_upper' => $this->roundCurrency($balanceUpper),
             ];
         }
 

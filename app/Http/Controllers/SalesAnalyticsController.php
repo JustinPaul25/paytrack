@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Reminder;
+use App\Models\Delivery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -284,6 +285,13 @@ class SalesAnalyticsController extends Controller
                 ->toArray();
         }
 
+        // Get today's deliveries for Admin/Staff users
+        $todayDeliveries = [];
+        if ($request->user() && method_exists($request->user(), 'hasRole') && 
+            ($request->user()->hasRole('Admin') || $request->user()->hasRole('Staff'))) {
+            $todayDeliveries = $this->getTodayDeliveries();
+        }
+
         return inertia('Dashboard', [
             'salesData' => $salesData,
             'topProducts' => $topProducts,
@@ -292,6 +300,7 @@ class SalesAnalyticsController extends Controller
             'recentInvoices' => $recentInvoices,
             'churnMetrics' => $churnMetrics,
             'lowStockProducts' => $lowStockProducts,
+            'todayDeliveries' => $todayDeliveries,
             'filters' => [
                 'period' => $period,
                 'start_date' => $startDate->format('Y-m-d'),
@@ -550,6 +559,31 @@ class SalesAnalyticsController extends Controller
             });
 
         return $recentInvoices;
+    }
+
+    private function getTodayDeliveries()
+    {
+        $today = Carbon::today();
+        
+        $deliveries = Delivery::with(['customer', 'invoice'])
+            ->whereDate('delivery_date', $today)
+            ->orderBy('delivery_time', 'asc')
+            ->get()
+            ->map(function ($delivery) {
+                return [
+                    'id' => $delivery->id,
+                    'customer_name' => $delivery->customer ? $delivery->customer->name : 'N/A',
+                    'delivery_address' => $delivery->delivery_address,
+                    'delivery_time' => $delivery->delivery_time,
+                    'status' => $delivery->status,
+                    'contact_person' => $delivery->contact_person,
+                    'contact_phone' => $delivery->contact_phone,
+                    'type' => $delivery->type ?? 'order',
+                    'invoice_id' => $delivery->invoice_id,
+                ];
+            });
+
+        return $deliveries;
     }
 
     // Dummy data methods

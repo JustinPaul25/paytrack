@@ -185,6 +185,7 @@ Route::middleware(['auth'])->group(function () {
         // Accept update via POST for compatibility, and PUT/PATCH for RESTful clients
         Route::post('deliveries/{delivery}', [DeliveryController::class, 'update'])->name('deliveries.update');
         Route::match(['put', 'patch'], 'deliveries/{delivery}', [DeliveryController::class, 'update']);
+        Route::post('deliveries/{delivery}/reschedule', [DeliveryController::class, 'reschedule'])->name('deliveries.reschedule');
     });
 
     // Sales Analytics routes (Admin|Staff)

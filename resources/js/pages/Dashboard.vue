@@ -69,6 +69,18 @@ interface LowStockProduct {
     category: string;
 }
 
+interface TodayDelivery {
+    id: number;
+    customer_name: string;
+    delivery_address: string;
+    delivery_time: string;
+    status: 'pending' | 'completed' | 'cancelled';
+    contact_person: string;
+    contact_phone: string;
+    type?: string;
+    invoice_id?: number;
+}
+
 const props = defineProps<{
     salesData: SalesData;
     topProducts: TopProduct[];
@@ -77,6 +89,7 @@ const props = defineProps<{
     recentInvoices: RecentInvoice[];
     filters: Filters;
     lowStockProducts?: LowStockProduct[];
+    todayDeliveries?: TodayDelivery[];
 }>();
 
 const period = ref(props.filters.period);
@@ -719,6 +732,23 @@ const markAsRead = (id: number) => {
 const closeNotifications = () => {
     showNotifications.value = false;
 };
+
+// Computed property to sort today's deliveries: pending first, then by time
+const sortedTodayDeliveries = computed(() => {
+    if (!props.todayDeliveries || props.todayDeliveries.length === 0) {
+        return [];
+    }
+    
+    return [...props.todayDeliveries].sort((a, b) => {
+        // First, sort by status: pending first, then completed, then cancelled
+        const statusOrder = { 'pending': 0, 'completed': 1, 'cancelled': 2 };
+        const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+        if (statusDiff !== 0) return statusDiff;
+        
+        // If same status, sort by time (ascending)
+        return a.delivery_time.localeCompare(b.delivery_time);
+    });
+});
 </script>
 
 <template>
@@ -874,6 +904,153 @@ const closeNotifications = () => {
                                 </div>
                                 <div class="metric-icon-wrapper metric-icon-purple">
                                     <ShoppingCart class="metric-icon" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <!-- Deliveries Checklist Section (Admin/Staff only) -->
+                <div v-if="todayDeliveries && todayDeliveries.length > 0" class="deliveries-checklist-section" style="margin-top: 2rem; margin-bottom: 2rem;">
+                    <div class="section-header">
+                        <h2 class="section-title">Today's Deliveries Checklist</h2>
+                        <p class="section-description">Monitor and track deliveries scheduled for today</p>
+                    </div>
+                    <Card class="deliveries-checklist-card">
+                        <CardContent style="padding: 1.5rem;">
+                            <div class="deliveries-stats" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #f59e0b;"></div>
+                                    <span style="font-size: 0.875rem; color: #6b7280;">
+                                        <strong style="color: #1f2937;">{{ todayDeliveries.filter(d => d.status === 'pending').length }}</strong> Pending
+                                    </span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #10b981;"></div>
+                                    <span style="font-size: 0.875rem; color: #6b7280;">
+                                        <strong style="color: #1f2937;">{{ todayDeliveries.filter(d => d.status === 'completed').length }}</strong> Completed
+                                    </span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div style="width: 12px; height: 12px; border-radius: 50%; background-color: #ef4444;"></div>
+                                    <span style="font-size: 0.875rem; color: #6b7280;">
+                                        <strong style="color: #1f2937;">{{ todayDeliveries.filter(d => d.status === 'cancelled').length }}</strong> Cancelled
+                                    </span>
+                                </div>
+                                <div style="margin-left: auto;">
+                                    <Button 
+                                        @click="router.visit('/deliveries')" 
+                                        variant="outline" 
+                                        size="sm"
+                                        style="font-size: 0.875rem;"
+                                    >
+                                        View All Deliveries
+                                    </Button>
+                                </div>
+                            </div>
+                            <div class="deliveries-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                <div 
+                                    v-for="delivery in sortedTodayDeliveries" 
+                                    :key="delivery.id"
+                                    :class="{
+                                        'delivery-item': true,
+                                        'delivery-pending': delivery.status === 'pending',
+                                        'delivery-completed': delivery.status === 'completed',
+                                        'delivery-cancelled': delivery.status === 'cancelled'
+                                    }"
+                                    style="
+                                        padding: 1rem;
+                                        border-radius: 0.5rem;
+                                        border: 1px solid #e5e7eb;
+                                        background-color: #ffffff;
+                                        transition: all 0.2s;
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 1rem;
+                                    "
+                                    :style="{
+                                        'border-left': delivery.status === 'pending' ? '4px solid #f59e0b' : 
+                                                      delivery.status === 'completed' ? '4px solid #10b981' : 
+                                                      '4px solid #ef4444',
+                                        'opacity': delivery.status === 'cancelled' ? '0.6' : '1'
+                                    }"
+                                >
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                            <h3 style="font-size: 1rem; font-weight: 600; color: #1f2937; margin: 0;">
+                                                {{ delivery.customer_name }}
+                                            </h3>
+                                            <span 
+                                                :class="{
+                                                    'status-badge': true,
+                                                    'status-pending': delivery.status === 'pending',
+                                                    'status-completed': delivery.status === 'completed',
+                                                    'status-cancelled': delivery.status === 'cancelled'
+                                                }"
+                                                style="
+                                                    padding: 0.25rem 0.75rem;
+                                                    border-radius: 9999px;
+                                                    font-size: 0.75rem;
+                                                    font-weight: 500;
+                                                    text-transform: capitalize;
+                                                "
+                                                :style="{
+                                                    'background-color': delivery.status === 'pending' ? '#fef3c7' : 
+                                                                      delivery.status === 'completed' ? '#d1fae5' : 
+                                                                      '#fee2e2',
+                                                    'color': delivery.status === 'pending' ? '#92400e' : 
+                                                            delivery.status === 'completed' ? '#065f46' : 
+                                                            '#991b1b'
+                                                }"
+                                            >
+                                                {{ delivery.status }}
+                                            </span>
+                                            <span 
+                                                v-if="delivery.type === 'return'"
+                                                style="
+                                                    padding: 0.25rem 0.75rem;
+                                                    border-radius: 9999px;
+                                                    font-size: 0.75rem;
+                                                    font-weight: 500;
+                                                    background-color: #e0e7ff;
+                                                    color: #3730a3;
+                                                "
+                                            >
+                                                Return
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: #6b7280;">
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <Clock class="w-4 h-4" />
+                                                <span><strong>Time:</strong> {{ delivery.delivery_time }}</span>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                </svg>
+                                                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                    {{ delivery.delivery_address }}
+                                                </span>
+                                            </div>
+                                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                </svg>
+                                                <span>{{ delivery.contact_person }} • {{ delivery.contact_phone }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <Button 
+                                            @click="router.visit(`/deliveries/${delivery.id}`)" 
+                                            variant="outline" 
+                                            size="sm"
+                                            style="font-size: 0.875rem;"
+                                        >
+                                            View Details
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>

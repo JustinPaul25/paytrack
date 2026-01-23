@@ -454,6 +454,49 @@ class DeliveryController extends Controller
         $delivery->delete();
     }
 
+    public function reschedule(Request $request, Delivery $delivery)
+    {
+        // Only allow rescheduling pending deliveries
+        if ($delivery->status !== 'pending') {
+            return redirect()->route('deliveries.index')
+                ->with('error', 'Only pending deliveries can be rescheduled.');
+        }
+
+        $validated = $request->validate([
+            'delivery_date' => 'required|date|after_or_equal:today',
+            'delivery_time' => 'required|string|max:50',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $oldDate = $delivery->delivery_date;
+            $oldTime = $delivery->delivery_time;
+            
+            // Update delivery date and time
+            $delivery->delivery_date = $validated['delivery_date'];
+            $delivery->delivery_time = $validated['delivery_time'];
+            
+            // Add reschedule reason to notes if provided
+            if (!empty($validated['reason'])) {
+                $rescheduleNote = "\n[Rescheduled on " . now()->format('Y-m-d H:i:s') . " from {$oldDate->format('Y-m-d')} {$oldTime} to {$validated['delivery_date']} {$validated['delivery_time']}. Reason: {$validated['reason']}]";
+                $delivery->notes = ($delivery->notes ?? '') . $rescheduleNote;
+            } else {
+                $rescheduleNote = "\n[Rescheduled on " . now()->format('Y-m-d H:i:s') . " from {$oldDate->format('Y-m-d')} {$oldTime} to {$validated['delivery_date']} {$validated['delivery_time']}]";
+                $delivery->notes = ($delivery->notes ?? '') . $rescheduleNote;
+            }
+            
+            $delivery->save();
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+        
+        return redirect()->route('deliveries.index')->with('success', 'Delivery rescheduled successfully.');
+    }
+
     public function customerDeliveries(Request $request)
     {
         // Find customer by matching user's email
@@ -519,8 +562,6 @@ class DeliveryController extends Controller
                 'date_period' => $datePeriod,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
-            ],
-                'search' => $search,
             ],
             'stats' => [
                 'totalDeliveries' => $totalDeliveries,

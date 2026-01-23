@@ -285,6 +285,10 @@ watch(() => form.customer_id, (newCustomerId) => {
 // Image preview state
 const imagePreview = ref<string | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const cameraInputRef = ref<HTMLInputElement | null>(null);
+const showCameraModal = ref(false);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const streamRef = ref<MediaStream | null>(null);
 
 // Handle file selection
 const handleFileSelect = (event: Event) => {
@@ -292,55 +296,132 @@ const handleFileSelect = (event: Event) => {
     const file = target.files?.[0];
     
     if (file) {
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid File Type',
-                text: 'Please select an image file (JPEG, PNG, GIF, etc.)',
-            });
-            // Reset file input
-            if (fileInputRef.value) {
-                fileInputRef.value.value = '';
-            }
-            return;
-        }
-        
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            Swal.fire({
-                icon: 'error',
-                title: 'File Too Large',
-                text: 'Please select an image smaller than 5MB',
-            });
-            // Reset file input
-            if (fileInputRef.value) {
-                fileInputRef.value.value = '';
-            }
-            return;
-        }
-        
-        form.proof_of_delivery = file;
-        
-        // Clear any existing errors when file is selected
-        form.clearErrors();
-        
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imagePreview.value = e.target?.result as string;
-        };
-        reader.readAsDataURL(file);
+        processImageFile(file);
     }
+};
+
+// Process image file (validation and preview)
+const processImageFile = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid File Type',
+            text: 'Please select an image file (JPEG, PNG, GIF, etc.)',
+        });
+        return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        Swal.fire({
+            icon: 'error',
+            title: 'File Too Large',
+            text: 'Please select an image smaller than 5MB',
+        });
+        return;
+    }
+    
+    form.proof_of_delivery = file;
+    
+    // Clear any existing errors when file is selected
+    form.clearErrors();
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        imagePreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+};
+
+// Open camera
+const openCamera = async () => {
+    try {
+        // Check if camera is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            // Fallback to file input with capture attribute for mobile
+            if (cameraInputRef.value) {
+                cameraInputRef.value.click();
+            }
+            return;
+        }
+
+        // Request camera access
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' } // Use back camera on mobile
+        });
+        
+        streamRef.value = stream;
+        showCameraModal.value = true;
+        
+        // Wait for modal to be rendered
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (videoRef.value) {
+            videoRef.value.srcObject = stream;
+            videoRef.value.play();
+        }
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Camera Access Denied',
+            text: 'Please allow camera access or use the "Choose Image" option instead.',
+        });
+    }
+};
+
+// Capture photo from camera
+const capturePhoto = () => {
+    if (!videoRef.value) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.value.videoWidth;
+    canvas.height = videoRef.value.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+        ctx.drawImage(videoRef.value, 0, 0);
+        
+        // Convert canvas to blob
+        canvas.toBlob((blob) => {
+            if (blob) {
+                // Create a File object from the blob
+                const file = new File([blob], `proof-of-delivery-${Date.now()}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                
+                processImageFile(file);
+                closeCamera();
+            }
+        }, 'image/jpeg', 0.9);
+    }
+};
+
+// Close camera modal
+const closeCamera = () => {
+    if (streamRef.value) {
+        streamRef.value.getTracks().forEach(track => track.stop());
+        streamRef.value = null;
+    }
+    if (videoRef.value) {
+        videoRef.value.srcObject = null;
+    }
+    showCameraModal.value = false;
 };
 
 // Remove image
 const removeImage = () => {
     form.proof_of_delivery = null;
     imagePreview.value = null;
-    // Reset the file input
+    // Reset the file inputs
     if (fileInputRef.value) {
         fileInputRef.value.value = '';
+    }
+    if (cameraInputRef.value) {
+        cameraInputRef.value.value = '';
     }
 };
 </script>
@@ -497,8 +578,8 @@ const removeImage = () => {
                     <div>
                         <Label for="proof_of_delivery">Proof of Delivery</Label>
                         <div class="mt-1 space-y-4">
-                            <!-- File Input -->
-                            <div class="flex items-center gap-4">
+                            <!-- File Input Options -->
+                            <div class="flex flex-wrap items-center gap-3">
                                 <input
                                     ref="fileInputRef"
                                     type="file"
@@ -507,6 +588,26 @@ const removeImage = () => {
                                     @change="handleFileSelect"
                                     class="hidden"
                                 />
+                                <input
+                                    ref="cameraInputRef"
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    @change="handleFileSelect"
+                                    class="hidden"
+                                />
+                                <Button 
+                                    type="button" 
+                                    variant="default" 
+                                    @click="openCamera"
+                                    class="flex items-center gap-2"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                    Take a Picture
+                                </Button>
                                 <Button 
                                     type="button" 
                                     variant="outline" 
@@ -514,11 +615,47 @@ const removeImage = () => {
                                     class="flex items-center gap-2"
                                 >
                                     <Icon name="upload" class="h-4 w-4" />
-                                    Choose Image
+                                    Choose/Upload Image
                                 </Button>
                                 <span class="text-sm text-muted-foreground">
                                     Accepted formats: JPEG, PNG, GIF (Max 5MB)
                                 </span>
+                            </div>
+                            
+                            <!-- Camera Modal -->
+                            <div v-if="showCameraModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75" @click.self="closeCamera">
+                                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                                    <div class="mb-4">
+                                        <h3 class="text-lg font-semibold">Take a Picture</h3>
+                                        <p class="text-sm text-gray-600">Position the proof of delivery in the frame</p>
+                                    </div>
+                                    <div class="relative bg-black rounded-lg overflow-hidden mb-4" style="aspect-ratio: 4/3;">
+                                        <video
+                                            ref="videoRef"
+                                            autoplay
+                                            playsinline
+                                            class="w-full h-full object-cover"
+                                        ></video>
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            @click="closeCamera"
+                                            class="flex-1"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant="default" 
+                                            @click="capturePhoto"
+                                            class="flex-1"
+                                        >
+                                            Capture
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Image Preview -->

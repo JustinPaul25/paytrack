@@ -355,8 +355,21 @@ class OrderController extends Controller
             // Deduct stock and create stock movements
             foreach ($orderItems as $orderItem) {
                 $product = $orderItem->product;
+                
+                // Refresh product to get latest stock value
+                $product->refresh();
+                
                 $beforeStock = (int) $product->stock;
-                $product->stock = $beforeStock - (int) $orderItem->quantity;
+                $quantityToDeduct = (int) $orderItem->quantity;
+                $afterStock = $beforeStock - $quantityToDeduct;
+                
+                // Ensure stock doesn't go negative (shouldn't happen due to validation above, but safety check)
+                if ($afterStock < 0) {
+                    throw new \Exception("Insufficient stock for product {$product->name}. Available: {$beforeStock}, Required: {$quantityToDeduct}");
+                }
+                
+                // Update stock
+                $product->stock = $afterStock;
                 $product->save();
 
                 // Record stock movement
@@ -365,9 +378,9 @@ class OrderController extends Controller
                     'invoice_id' => null, // Will be updated after invoice creation
                     'user_id' => auth()->id(),
                     'type' => 'sale',
-                    'quantity' => -1 * (int) $orderItem->quantity, // negative for outbound
+                    'quantity' => -1 * $quantityToDeduct, // negative for outbound
                     'quantity_before' => $beforeStock,
-                    'quantity_after' => $product->stock,
+                    'quantity_after' => $afterStock,
                     'notes' => "Order {$order->reference_number} approved",
                 ]);
             }
@@ -449,26 +462,40 @@ class OrderController extends Controller
             abort(403);
         }
 
-        if ($order->status !== 'pending') {
-            return redirect()->back()->with('error', 'Only pending orders can be rejected.');
+        // Allow rejecting both pending and approved orders
+        if (!in_array($order->status, ['pending', 'approved'])) {
+            return redirect()->back()->with('error', 'Only pending or approved orders can be rejected.');
         }
 
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
         ]);
 
-        $order->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason'],
-        ]);
+        DB::beginTransaction();
+        try {
+            // If order was approved, restore stock
+            if ($order->status === 'approved') {
+                $this->restoreStockForOrder($order);
+            }
 
-        // Reload order
-        $order->refresh();
+            $order->update([
+                'status' => 'rejected',
+                'rejection_reason' => $validated['rejection_reason'],
+            ]);
 
-        // Broadcast order update for real-time updates
-        broadcast(new OrderUpdated($order))->toOthers();
+            // Reload order
+            $order->refresh();
 
-        return redirect()->route('orders.show', $order)->with('success', 'Order rejected successfully.');
+            DB::commit();
+
+            // Broadcast order update for real-time updates
+            broadcast(new OrderUpdated($order))->toOthers();
+
+            return redirect()->route('orders.show', $order)->with('success', 'Order rejected successfully. Stock has been restored if it was previously deducted.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     /**
@@ -554,5 +581,83 @@ class OrderController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Comment added successfully.');
+    }
+
+    /**
+     * Restore stock for all items in an order (when order is rejected after approval).
+     */
+    private function restoreStockForOrder(Order $order)
+    {
+        // Get stock movements created when this order was approved
+        // Stock movements for approved orders have notes like "Order {reference_number} approved"
+        $stockMovements = StockMovement::where('notes', "Order {$order->reference_number} approved")
+            ->where('type', 'sale')
+            ->get();
+
+        if ($stockMovements->isEmpty()) {
+            // No stock movements found - stock might not have been deducted yet
+            // Try to restore based on order items instead
+            $orderItems = $order->orderItems()->with('product')->get();
+            
+            foreach ($orderItems as $orderItem) {
+                $product = $orderItem->product;
+                if (!$product) {
+                    continue;
+                }
+
+                // Refresh product to get latest stock value
+                $product->refresh();
+
+                // Restore the stock
+                $beforeStock = (int) $product->stock;
+                $quantityToRestore = (int) $orderItem->quantity;
+                $afterStock = $beforeStock + $quantityToRestore;
+                $product->stock = $afterStock;
+                $product->save();
+
+                // Create a reversal movement for traceability
+                StockMovement::create([
+                    'product_id' => $product->id,
+                    'invoice_id' => $order->invoice_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'adjustment',
+                    'quantity' => $quantityToRestore, // positive for inbound
+                    'quantity_before' => $beforeStock,
+                    'quantity_after' => $afterStock,
+                    'notes' => "Stock restored - Order {$order->reference_number} rejected",
+                ]);
+            }
+            return;
+        }
+
+        // Restore stock based on existing stock movements
+        foreach ($stockMovements as $movement) {
+            $product = Product::find($movement->product_id);
+            if (!$product) {
+                continue;
+            }
+
+            // Refresh product to get latest stock value
+            $product->refresh();
+
+            // Restore the stock
+            $beforeStock = (int) $product->stock;
+            $quantityToRestore = abs($movement->quantity); // Make it positive
+            $afterStock = $beforeStock + $quantityToRestore;
+            $product->stock = $afterStock;
+            $product->save();
+
+            // Create a reversal movement for traceability
+            StockMovement::create([
+                'product_id' => $product->id,
+                'invoice_id' => $movement->invoice_id,
+                'user_id' => auth()->id(),
+                'type' => 'adjustment',
+                'quantity' => $quantityToRestore, // positive for inbound
+                'quantity_before' => $beforeStock,
+                'quantity_after' => $afterStock,
+                'notes' => "Stock restored - Order {$order->reference_number} rejected",
+            ]);
+        }
     }
 }

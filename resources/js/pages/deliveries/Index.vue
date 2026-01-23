@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage, useForm } from '@inertiajs/vue3';
 import { ref, watch, watchEffect } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -10,6 +10,9 @@ import CardTitle from '@/components/ui/card/CardTitle.vue';
 import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
+import { Select } from '@/components/ui/select';
+import Label from '@/components/ui/label/Label.vue';
+import InputError from '@/components/InputError.vue';
 
 interface Delivery {
     id: number;
@@ -55,6 +58,8 @@ const classificationFilter = ref(typeof filters.value.classification === 'string
 const dateFrom = ref(typeof filters.value.date_from === 'string' ? filters.value.date_from : '');
 const dateTo = ref(typeof filters.value.date_to === 'string' ? filters.value.date_to : '');
 const showStats = ref(false);
+const showRescheduleModal = ref(false);
+const selectedDelivery = ref<Delivery | null>(null);
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Deliveries', href: '/deliveries' },
@@ -184,6 +189,89 @@ async function deleteDelivery(id: number) {
             },
         });
     }
+}
+
+function openRescheduleModal(delivery: Delivery) {
+    selectedDelivery.value = delivery;
+    rescheduleForm.delivery_date = formatDateForInput(delivery.delivery_date);
+    rescheduleForm.delivery_time = delivery.delivery_time;
+    rescheduleForm.reason = '';
+    showRescheduleModal.value = true;
+}
+
+function closeRescheduleModal() {
+    showRescheduleModal.value = false;
+    selectedDelivery.value = null;
+    rescheduleForm.reset();
+}
+
+// Format date for HTML date input (YYYY-MM-DD)
+function formatDateForInput(date: string | null | undefined): string {
+    if (!date) return '';
+    
+    // If already in YYYY-MM-DD format, return as is
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return date;
+    }
+    
+    // Try to parse and format the date
+    try {
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) {
+            return '';
+        }
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    } catch (e) {
+        return '';
+    }
+}
+
+// Delivery time options
+const deliveryTimeOptions = [
+    { value: '09:00 AM - 12:00 PM', label: '09:00 AM - 12:00 PM' },
+    { value: '12:00 PM - 03:00 PM', label: '12:00 PM - 03:00 PM' },
+    { value: '03:00 PM - 06:00 PM', label: '03:00 PM - 06:00 PM' },
+    { value: '06:00 PM - 09:00 PM', label: '06:00 PM - 09:00 PM' },
+    { value: 'Custom', label: 'Custom' }
+];
+
+// Set minimum date to today
+const today = new Date().toISOString().split('T')[0];
+
+const rescheduleForm = useForm({
+    delivery_date: '',
+    delivery_time: '',
+    reason: '',
+});
+
+function submitReschedule() {
+    if (!selectedDelivery.value) return;
+    
+    rescheduleForm.post(route('deliveries.reschedule', selectedDelivery.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Delivery rescheduled successfully',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+            });
+            closeRescheduleModal();
+        },
+        onError: () => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to reschedule delivery. Please check the form for errors.',
+            });
+        },
+    });
 }
 </script>
 
@@ -374,6 +462,17 @@ async function deleteDelivery(id: number) {
                                             <Icon name="eye" class="h-4 w-4" />
                                         </Link>
                                     </Button>
+                                    <Button 
+                                        v-if="delivery.status === 'pending'" 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        @click="openRescheduleModal(delivery)"
+                                        title="Reschedule Delivery"
+                                    >
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    </Button>
                                     <Button variant="ghost" size="sm" as-child>
                                         <Link :href="route('deliveries.edit', delivery.id)">
                                             <Icon name="edit" class="h-4 w-4" />
@@ -444,6 +543,70 @@ async function deleteDelivery(id: number) {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
+        </div>
+
+        <!-- Reschedule Modal -->
+        <div v-if="showRescheduleModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" @click.self="closeRescheduleModal">
+            <Card class="w-full max-w-md mx-4">
+                <CardHeader>
+                    <CardTitle>Reschedule Delivery</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <form @submit.prevent="submitReschedule" class="space-y-4">
+                        <div v-if="selectedDelivery">
+                            <p class="text-sm text-muted-foreground mb-4">
+                                Rescheduling delivery for <strong>{{ selectedDelivery.customer.name }}</strong>
+                                <br>
+                                Current schedule: <strong>{{ formatDate(selectedDelivery.delivery_date) }} • {{ selectedDelivery.delivery_time }}</strong>
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <Label for="reschedule_delivery_date">New Delivery Date *</Label>
+                            <input
+                                v-model="rescheduleForm.delivery_date"
+                                type="date"
+                                id="reschedule_delivery_date"
+                                :min="today"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                required
+                            />
+                            <InputError :message="rescheduleForm.errors.delivery_date" />
+                        </div>
+                        
+                        <div>
+                            <Label for="reschedule_delivery_time">New Delivery Time *</Label>
+                            <Select
+                                v-model="rescheduleForm.delivery_time"
+                                :options="deliveryTimeOptions"
+                                placeholder="Select delivery time"
+                                class="mt-1"
+                                required
+                            />
+                            <InputError :message="rescheduleForm.errors.delivery_time" />
+                        </div>
+                        
+                        <div>
+                            <Label for="reschedule_reason">Reason for Rescheduling (Optional)</Label>
+                            <textarea
+                                v-model="rescheduleForm.reason"
+                                id="reschedule_reason"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                rows="3"
+                                placeholder="e.g., Vehicle breakdown, driver unavailable, etc."
+                            />
+                            <InputError :message="rescheduleForm.errors.reason" />
+                        </div>
+                        
+                        <div class="flex gap-2 justify-end pt-4">
+                            <Button type="button" variant="ghost" @click="closeRescheduleModal">Cancel</Button>
+                            <Button type="submit" variant="default" :disabled="rescheduleForm.processing">
+                                {{ rescheduleForm.processing ? 'Rescheduling...' : 'Reschedule Delivery' }}
+                            </Button>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     </AppLayout>
 </template> 

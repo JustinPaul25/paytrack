@@ -18,6 +18,14 @@ interface CashFlowPoint {
     expenses: number;
     net: number;
     running_balance: number;
+    income_lower?: number;
+    income_upper?: number;
+    expenses_lower?: number;
+    expenses_upper?: number;
+    net_lower?: number;
+    net_upper?: number;
+    running_balance_lower?: number;
+    running_balance_upper?: number;
 }
 
 interface CashFlowSummaries {
@@ -89,51 +97,147 @@ const forecastNetSeries = computed(() => combinedSeries.value.map((point, index)
     index >= historical.value.length ? point.net : null
 )));
 
+const forecastNetLowerSeries = computed(() => combinedSeries.value.map((point, index) => (
+    index >= historical.value.length && point.net_lower !== undefined ? point.net_lower : null
+)));
+
+const forecastNetUpperSeries = computed(() => combinedSeries.value.map((point, index) => (
+    index >= historical.value.length && point.net_upper !== undefined ? point.net_upper : null
+)));
+
 const runningBalanceSeries = computed(() => combinedSeries.value.map((point) => point.running_balance));
 
-const cashFlowChartData = computed(() => ({
-    labels: chartLabels.value,
-    datasets: [
-        {
-            label: 'Net Cash Flow',
-            data: [
-                ...actualNetSeries.value,
-                ...projections.value.map(() => null),
-            ],
-            borderColor: 'rgb(34, 197, 94)',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            tension: 0.35,
-            fill: true,
-        },
-        {
-            label: 'Projected Net Cash Flow',
-            data: forecastNetSeries.value,
-            borderColor: 'rgb(234, 179, 8)',
-            backgroundColor: 'rgba(234, 179, 8, 0.1)',
-            tension: 0.35,
-            borderDash: [6, 6],
-            fill: false,
-        },
-        {
-            label: 'Running Cash Position',
-            data: runningBalanceSeries.value,
-            borderColor: 'rgb(59, 130, 246)',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            yAxisID: 'y1',
-            tension: 0.3,
-            fill: false,
-        },
-    ],
-}));
+const cashFlowChartData = computed(() => {
+    const historicalLength = historical.value.length;
+    
+    // Create combined data arrays with nulls for proper alignment
+    const historicalNetData = [
+        ...actualNetSeries.value,
+        ...projections.value.map(() => null),
+    ];
+    
+    const forecastNetData = combinedSeries.value.map((point, index) => 
+        index >= historicalLength ? point.net : null
+    );
+    
+    // Confidence interval data - only for forecast period
+    const forecastUpperData = combinedSeries.value.map((point, index) => 
+        index >= historicalLength && point.net_upper !== undefined ? point.net_upper : null
+    );
+    
+    const forecastLowerData = combinedSeries.value.map((point, index) => 
+        index >= historicalLength && point.net_lower !== undefined ? point.net_lower : null
+    );
+    
+    return {
+        labels: chartLabels.value,
+        datasets: [
+            // Upper bound of confidence interval (forecast only) - fills to lower bound
+            {
+                label: '',
+                data: forecastUpperData,
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                tension: 0.4,
+                fill: '-1',
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                borderWidth: 0,
+                order: 0,
+                showLine: true,
+            },
+            // Lower bound of confidence interval (forecast only)
+            {
+                label: 'Forecast Confidence Interval',
+                data: forecastLowerData,
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                tension: 0.4,
+                fill: false,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                borderWidth: 1,
+                borderDash: [2, 2],
+                order: 0,
+                showLine: true,
+            },
+            // Historical Net Cash Flow (solid line)
+            {
+                label: 'Net Cash Flow',
+                data: historicalNetData,
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                fill: false,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                borderWidth: 2,
+                order: 2,
+            },
+            // Forecasted Net Cash Flow (dashed line)
+            {
+                label: 'Net Cash Flow, Forecast',
+                data: forecastNetData,
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                tension: 0.4,
+                borderDash: [5, 5],
+                fill: false,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                borderWidth: 2,
+                order: 1,
+            },
+            // Running Cash Position
+            {
+                label: 'Running Cash Position',
+                data: runningBalanceSeries.value,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                yAxisID: 'y1',
+                tension: 0.3,
+                fill: false,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                borderWidth: 2,
+                order: 3,
+            },
+        ],
+    };
+});
 
 const cashFlowChartOptions = computed(() => ({
     plugins: {
         legend: {
             position: 'top' as const,
+            display: true,
+            labels: {
+                filter: (item: any) => {
+                    // Hide empty labels and confidence interval from legend
+                    return item.text !== '' && !item.text?.includes('Confidence Interval');
+                },
+                usePointStyle: true,
+            },
         },
         tooltip: {
             mode: 'index' as const,
             intersect: false,
+            callbacks: {
+                label: (context: any) => {
+                    const label = context.dataset.label || '';
+                    const value = context.parsed.y;
+                    if (value === null) return '';
+                    
+                    // For forecast points, show confidence interval in tooltip
+                    if (label.includes('Forecast') && context.dataIndex >= historical.value.length) {
+                        const point = projections.value[context.dataIndex - historical.value.length];
+                        if (point && point.net_lower !== undefined && point.net_upper !== undefined) {
+                            return `${label}: ${formatCurrency(value)} (Range: ${formatCurrency(point.net_lower)} - ${formatCurrency(point.net_upper)})`;
+                        }
+                    }
+                    return `${label}: ${formatCurrency(value)}`;
+                },
+            },
         },
     },
     interaction: {
@@ -141,11 +245,18 @@ const cashFlowChartOptions = computed(() => ({
         intersect: false,
     },
     scales: {
+        x: {
+            title: {
+                display: true,
+                text: 'Month & Year of Date',
+            },
+        },
         y: {
             title: {
                 display: true,
                 text: 'Net Cash Flow (₱)',
             },
+            beginAtZero: false,
         },
         y1: {
             position: 'right' as const,
@@ -156,6 +267,7 @@ const cashFlowChartOptions = computed(() => ({
             grid: {
                 drawOnChartArea: false,
             },
+            beginAtZero: false,
         },
     },
 }));
@@ -282,7 +394,7 @@ const forecastOptions = [
 
         <Card class="mb-8">
             <CardHeader>
-                <CardTitle>Net Cash Flow & Runway</CardTitle>
+                <CardTitle>Forecasted Cash Flow</CardTitle>
             </CardHeader>
             <CardContent>
                 <BaseChart

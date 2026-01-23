@@ -124,6 +124,10 @@ const isSendingReminder = ref(false);
 const isUploadingProof = ref(false);
 const paymentProofFile = ref<File | null>(null);
 const paymentProofPreview = ref<string | null>(null);
+const showCameraModal = ref(false);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const streamRef = ref<MediaStream | null>(null);
+const cameraInputRef = ref<HTMLInputElement | null>(null);
 
 // Calculate net balance if not provided
 const netBalance = computed(() => {
@@ -360,52 +364,125 @@ function sendPaymentReminder() {
     });
 }
 
+function processPaymentProofFile(file: File) {
+    // Validate file size (10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+        Swal.fire({
+            icon: 'error',
+            title: 'File too large',
+            text: 'Payment proof file size must not exceed 10MB.',
+        });
+        return;
+    }
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid file type',
+            text: 'Please upload a valid image (JPEG, PNG, GIF, WEBP) or PDF file.',
+        });
+        return;
+    }
+    
+    paymentProofFile.value = file;
+    
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            paymentProofPreview.value = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        paymentProofPreview.value = null;
+    }
+}
+
 function handlePaymentProofFileChange(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Validate file size (10MB)
-        const maxSize = 10 * 1024 * 1024;
-        if (file.size > maxSize) {
-            Swal.fire({
-                icon: 'error',
-                title: 'File too large',
-                text: 'Payment proof file size must not exceed 10MB.',
-            });
-            input.value = '';
-            paymentProofFile.value = null;
-            paymentProofPreview.value = null;
-            return;
-        }
-        
-        // Validate file type
-        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-        if (!validTypes.includes(file.type)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid file type',
-                text: 'Please upload a valid image (JPEG, PNG, GIF, WEBP) or PDF file.',
-            });
-            input.value = '';
-            paymentProofFile.value = null;
-            paymentProofPreview.value = null;
-            return;
-        }
-        
-        paymentProofFile.value = file;
-        
-        // Create preview for images
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                paymentProofPreview.value = e.target?.result as string;
-            };
-            reader.readAsDataURL(file);
-        } else {
-            paymentProofPreview.value = null;
-        }
+        processPaymentProofFile(input.files[0]);
     }
+}
+
+// Open camera
+async function openCamera() {
+    try {
+        // Check if camera is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            // Fallback to file input with capture attribute for mobile
+            if (cameraInputRef.value) {
+                cameraInputRef.value.click();
+            }
+            return;
+        }
+
+        // Request camera access
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' } // Use back camera on mobile
+        });
+        
+        streamRef.value = stream;
+        showCameraModal.value = true;
+        
+        // Wait for modal to be rendered
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (videoRef.value) {
+            videoRef.value.srcObject = stream;
+            videoRef.value.play();
+        }
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Camera Access Denied',
+            text: 'Please allow camera access or use the "Choose/Upload Image" option instead.',
+        });
+    }
+}
+
+// Capture photo from camera
+function capturePhoto() {
+    if (!videoRef.value) return;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.value.videoWidth;
+    canvas.height = videoRef.value.videoHeight;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+        ctx.drawImage(videoRef.value, 0, 0);
+        
+        // Convert canvas to blob
+        canvas.toBlob((blob) => {
+            if (blob) {
+                // Create a File object from the blob
+                const file = new File([blob], `payment-proof-${Date.now()}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                
+                processPaymentProofFile(file);
+                closeCamera();
+            }
+        }, 'image/jpeg', 0.9);
+    }
+}
+
+// Close camera modal
+function closeCamera() {
+    if (streamRef.value) {
+        streamRef.value.getTracks().forEach(track => track.stop());
+        streamRef.value = null;
+    }
+    if (videoRef.value) {
+        videoRef.value.srcObject = null;
+    }
+    showCameraModal.value = false;
 }
 
 function uploadPaymentProof() {
@@ -599,17 +676,86 @@ watch(() => (page.props as any).flash, (flash) => {
                             <!-- Upload Form -->
                             <div class="space-y-3">
                                 <div>
-                                    <label for="payment_proof_file" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
                                         {{ props.invoice.payment_proof_url ? 'Replace Payment Proof' : 'Upload Payment Proof' }}
                                     </label>
-                                    <input 
-                                        id="payment_proof_file"
-                                        type="file" 
-                                        accept="image/*,.pdf" 
-                                        @change="handlePaymentProofFileChange"
-                                        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                    />
-                                    <p class="mt-1 text-xs text-gray-500">Accepted formats: JPEG, PNG, GIF, WEBP, PDF (Max 10MB)</p>
+                                    <div class="flex flex-wrap gap-3 mb-2">
+                                        <input 
+                                            id="payment_proof_file"
+                                            type="file" 
+                                            accept="image/*,.pdf" 
+                                            @change="handlePaymentProofFileChange"
+                                            class="hidden"
+                                        />
+                                        <input
+                                            ref="cameraInputRef"
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            @change="handlePaymentProofFileChange"
+                                            class="hidden"
+                                        />
+                                        <Button 
+                                            type="button" 
+                                            variant="default" 
+                                            @click="openCamera"
+                                            class="flex items-center gap-2"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            </svg>
+                                            Take a Picture
+                                        </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            @click="document.getElementById('payment_proof_file')?.click()"
+                                            class="flex items-center gap-2"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                            </svg>
+                                            Choose/Upload Image
+                                        </Button>
+                                    </div>
+                                    <p class="text-xs text-gray-500">Accepted formats: JPEG, PNG, GIF, WEBP, PDF (Max 10MB)</p>
+                                </div>
+                                
+                                <!-- Camera Modal -->
+                                <div v-if="showCameraModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75" @click.self="closeCamera">
+                                    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                                        <div class="mb-4">
+                                            <h3 class="text-lg font-semibold">Take a Picture</h3>
+                                            <p class="text-sm text-gray-600">Position the payment proof in the frame</p>
+                                        </div>
+                                        <div class="relative bg-black rounded-lg overflow-hidden mb-4" style="aspect-ratio: 4/3;">
+                                            <video
+                                                ref="videoRef"
+                                                autoplay
+                                                playsinline
+                                                class="w-full h-full object-cover"
+                                            ></video>
+                                        </div>
+                                        <div class="flex gap-3">
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                @click="closeCamera"
+                                                class="flex-1"
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button 
+                                                type="button" 
+                                                variant="default" 
+                                                @click="capturePhoto"
+                                                class="flex-1"
+                                            >
+                                                Capture
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <!-- Preview -->
