@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch, onMounted } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
+import CardDescription from '@/components/ui/card/CardDescription.vue';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Calendar } from 'lucide-vue-next';
+import { Select } from '@/components/ui/select';
+import { AlertCircle, Calendar, BarChart3 } from 'lucide-vue-next';
 
 interface MonthlyPoint { month: string; total: number }
 interface AovPoint { month: string; aov: number }
@@ -34,7 +37,218 @@ const props = defineProps<{
     categorySpend: { category: string, total: number }[],
     aovTrend: AovPoint[],
     reminders?: Reminder[],
+    filters?: {
+        start_date?: string;
+        end_date?: string;
+    };
 }>();
+
+// Filter state
+const monthlySpendFilterPeriod = ref('year');
+const monthlySpendFilterStartDate = ref(props.filters?.start_date || '');
+const monthlySpendFilterEndDate = ref(props.filters?.end_date || '');
+
+const topProductsFilterPeriod = ref('year');
+const topProductsFilterStartDate = ref(props.filters?.start_date || '');
+const topProductsFilterEndDate = ref(props.filters?.end_date || '');
+
+const categorySpendFilterPeriod = ref('year');
+const categorySpendFilterStartDate = ref(props.filters?.start_date || '');
+const categorySpendFilterEndDate = ref(props.filters?.end_date || '');
+
+const aovTrendFilterPeriod = ref('year');
+const aovTrendFilterStartDate = ref(props.filters?.start_date || '');
+const aovTrendFilterEndDate = ref(props.filters?.end_date || '');
+
+const periodOptions = [
+    { value: 'week', label: 'Last 7 Days' },
+    { value: 'month', label: 'Last 30 Days' },
+    { value: 'quarter', label: 'Last 3 Months' },
+    { value: 'year', label: 'Last 12 Months' },
+    { value: 'custom', label: 'Choose Dates' },
+];
+
+// Helper function to calculate date range from period
+function getDateRangeFromPeriod(periodValue: string, fallbackStart?: string, fallbackEnd?: string): { start: string; end: string } {
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    let start = new Date();
+    
+    switch (periodValue) {
+        case 'week':
+            start.setDate(start.getDate() - 7);
+            break;
+        case 'month':
+            start.setMonth(start.getMonth() - 1);
+            break;
+        case 'quarter':
+            start.setMonth(start.getMonth() - 3);
+            break;
+        case 'year':
+            start.setFullYear(start.getFullYear() - 1);
+            break;
+        case 'custom':
+            if (fallbackStart && fallbackEnd) {
+                return { start: fallbackStart, end: fallbackEnd };
+            }
+            break;
+        default:
+            start.setFullYear(start.getFullYear() - 1);
+    }
+    
+    start.setHours(0, 0, 0, 0);
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+    };
+}
+
+// Flags to prevent initial watcher triggers
+const isMonthlySpendFilterInitialized = ref(false);
+const isTopProductsFilterInitialized = ref(false);
+const isCategorySpendFilterInitialized = ref(false);
+const isAovTrendFilterInitialized = ref(false);
+
+// Watch filter period changes to update dates
+watch(monthlySpendFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        monthlySpendFilterStartDate.value = range.start;
+        monthlySpendFilterEndDate.value = range.end;
+    }
+});
+
+watch(topProductsFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        topProductsFilterStartDate.value = range.start;
+        topProductsFilterEndDate.value = range.end;
+    }
+});
+
+watch(categorySpendFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        categorySpendFilterStartDate.value = range.start;
+        categorySpendFilterEndDate.value = range.end;
+    }
+});
+
+watch(aovTrendFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        aovTrendFilterStartDate.value = range.start;
+        aovTrendFilterEndDate.value = range.end;
+    }
+});
+
+// Watch filter changes and update data
+watch([monthlySpendFilterPeriod, monthlySpendFilterStartDate, monthlySpendFilterEndDate], () => {
+    if (!isMonthlySpendFilterInitialized.value) {
+        isMonthlySpendFilterInitialized.value = true;
+        return;
+    }
+    
+    const range = getDateRangeFromPeriod(monthlySpendFilterPeriod.value, monthlySpendFilterStartDate.value, monthlySpendFilterEndDate.value);
+    router.get('/dashboard', {
+        monthly_spend_start_date: range.start,
+        monthly_spend_end_date: range.end,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['monthlySpend'],
+    });
+});
+
+watch([topProductsFilterPeriod, topProductsFilterStartDate, topProductsFilterEndDate], () => {
+    if (!isTopProductsFilterInitialized.value) {
+        isTopProductsFilterInitialized.value = true;
+        return;
+    }
+    
+    const range = getDateRangeFromPeriod(topProductsFilterPeriod.value, topProductsFilterStartDate.value, topProductsFilterEndDate.value);
+    router.get('/dashboard', {
+        top_products_start_date: range.start,
+        top_products_end_date: range.end,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['topProducts'],
+    });
+});
+
+watch([categorySpendFilterPeriod, categorySpendFilterStartDate, categorySpendFilterEndDate], () => {
+    if (!isCategorySpendFilterInitialized.value) {
+        isCategorySpendFilterInitialized.value = true;
+        return;
+    }
+    
+    const range = getDateRangeFromPeriod(categorySpendFilterPeriod.value, categorySpendFilterStartDate.value, categorySpendFilterEndDate.value);
+    router.get('/dashboard', {
+        category_spend_start_date: range.start,
+        category_spend_end_date: range.end,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['categorySpend'],
+    });
+});
+
+watch([aovTrendFilterPeriod, aovTrendFilterStartDate, aovTrendFilterEndDate], () => {
+    if (!isAovTrendFilterInitialized.value) {
+        isAovTrendFilterInitialized.value = true;
+        return;
+    }
+    
+    const range = getDateRangeFromPeriod(aovTrendFilterPeriod.value, aovTrendFilterStartDate.value, aovTrendFilterEndDate.value);
+    router.get('/dashboard', {
+        aov_trend_start_date: range.start,
+        aov_trend_end_date: range.end,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['aovTrend'],
+    });
+});
+
+onMounted(() => {
+    // Initialize filter dates based on period
+    if (monthlySpendFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(monthlySpendFilterPeriod.value);
+        monthlySpendFilterStartDate.value = range.start;
+        monthlySpendFilterEndDate.value = range.end;
+    }
+    
+    if (topProductsFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(topProductsFilterPeriod.value);
+        topProductsFilterStartDate.value = range.start;
+        topProductsFilterEndDate.value = range.end;
+    }
+    
+    if (categorySpendFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(categorySpendFilterPeriod.value);
+        categorySpendFilterStartDate.value = range.start;
+        categorySpendFilterEndDate.value = range.end;
+    }
+    
+    if (aovTrendFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(aovTrendFilterPeriod.value);
+        aovTrendFilterStartDate.value = range.start;
+        aovTrendFilterEndDate.value = range.end;
+    }
+    
+    // Mark as initialized after a short delay
+    setTimeout(() => {
+        isMonthlySpendFilterInitialized.value = true;
+        isTopProductsFilterInitialized.value = true;
+        isCategorySpendFilterInitialized.value = true;
+        isAovTrendFilterInitialized.value = true;
+    }, 100);
+});
 
 function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
@@ -162,7 +376,36 @@ function getStatusClass(daysUntilDue: number): string {
             <!-- Monthly Spend Trend -->
             <Card>
                 <CardHeader>
-                    <CardTitle>Monthly spend (last 12 months)</CardTitle>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <CardTitle>Monthly spend</CardTitle>
+                            <CardDescription>Your spending over time</CardDescription>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <Calendar class="w-4 h-4" />
+                            <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                        </div>
+                        <Select
+                            v-model="monthlySpendFilterPeriod"
+                            :options="periodOptions"
+                            placeholder="Choose time period"
+                            class="period-select"
+                        />
+                        <div v-if="monthlySpendFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                            <input
+                                v-model="monthlySpendFilterStartDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                            <input
+                                v-model="monthlySpendFilterEndDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div class="space-y-2">
@@ -206,7 +449,36 @@ function getStatusClass(daysUntilDue: number): string {
             <!-- Top Products -->
             <Card>
                 <CardHeader>
-                    <CardTitle>Top products purchased</CardTitle>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <CardTitle>Top products purchased</CardTitle>
+                            <CardDescription>Your most purchased products</CardDescription>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <Calendar class="w-4 h-4" />
+                            <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                        </div>
+                        <Select
+                            v-model="topProductsFilterPeriod"
+                            :options="periodOptions"
+                            placeholder="Choose time period"
+                            class="period-select"
+                        />
+                        <div v-if="topProductsFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                            <input
+                                v-model="topProductsFilterStartDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                            <input
+                                v-model="topProductsFilterEndDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <table class="min-w-full divide-y divide-border">
@@ -232,7 +504,36 @@ function getStatusClass(daysUntilDue: number): string {
             <!-- Category Spend -->
             <Card>
                 <CardHeader>
-                    <CardTitle>Spend by category</CardTitle>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <CardTitle>Spend by category</CardTitle>
+                            <CardDescription>Your spending by product category</CardDescription>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <Calendar class="w-4 h-4" />
+                            <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                        </div>
+                        <Select
+                            v-model="categorySpendFilterPeriod"
+                            :options="periodOptions"
+                            placeholder="Choose time period"
+                            class="period-select"
+                        />
+                        <div v-if="categorySpendFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                            <input
+                                v-model="categorySpendFilterStartDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                            <input
+                                v-model="categorySpendFilterEndDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div class="space-y-2">
@@ -253,7 +554,36 @@ function getStatusClass(daysUntilDue: number): string {
             <!-- AOV Trend -->
             <Card class="lg:col-span-2">
                 <CardHeader>
-                    <CardTitle>Average order value (monthly)</CardTitle>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <CardTitle>Average order value (monthly)</CardTitle>
+                            <CardDescription>Your average order value over time</CardDescription>
+                        </div>
+                    </div>
+                    <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <Calendar class="w-4 h-4" />
+                            <label style="font-size: 0.875rem; font-weight: 500;">Date Filter</label>
+                        </div>
+                        <Select
+                            v-model="aovTrendFilterPeriod"
+                            :options="periodOptions"
+                            placeholder="Choose time period"
+                            class="period-select"
+                        />
+                        <div v-if="aovTrendFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                            <input
+                                v-model="aovTrendFilterStartDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                            <input
+                                v-model="aovTrendFilterEndDate"
+                                type="date"
+                                style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                            />
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div class="space-y-2">

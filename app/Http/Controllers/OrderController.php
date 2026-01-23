@@ -18,6 +18,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class OrderController extends Controller
 {
@@ -40,6 +41,9 @@ class OrderController extends Controller
 
         $search = $request->input('search');
         $status = $request->input('status');
+        $datePeriod = $request->input('date_period');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -52,6 +56,20 @@ class OrderController extends Controller
 
         if ($status) {
             $query->where('status', $status);
+        }
+
+        // Apply date filter
+        if ($datePeriod && ($startDate || $endDate)) {
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } elseif ($startDate) {
+                $query->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+            } elseif ($endDate) {
+                $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            }
         }
 
         $orders = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
@@ -77,6 +95,9 @@ class OrderController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
+                'date_period' => $datePeriod,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
             ],
             'stats' => [
                 'totalOrders' => $totalOrders,

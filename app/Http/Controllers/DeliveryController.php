@@ -10,6 +10,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class DeliveryController extends Controller
 {
@@ -479,12 +480,30 @@ class DeliveryController extends Controller
         }
         
         $search = $request->input('search');
+        $datePeriod = $request->input('date_period');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('delivery_address', 'like', "%{$search}%")
                   ->orWhere('contact_person', 'like', "%{$search}%")
                   ->orWhere('contact_phone', 'like', "%{$search}%");
             });
+        }
+
+        // Apply date filter
+        if ($datePeriod && ($startDate || $endDate)) {
+            if ($startDate && $endDate) {
+                $query->whereBetween('delivery_date', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } elseif ($startDate) {
+                $query->where('delivery_date', '>=', Carbon::parse($startDate)->startOfDay());
+            } elseif ($endDate) {
+                $query->where('delivery_date', '<=', Carbon::parse($endDate)->endOfDay());
+            }
         }
 
         // Order by delivery_date descending (latest first), then delivery_time descending
@@ -496,6 +515,11 @@ class DeliveryController extends Controller
         return inertia('deliveries/CustomerIndex', [
             'deliveries' => $deliveries,
             'filters' => [
+                'search' => $search,
+                'date_period' => $datePeriod,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
                 'search' => $search,
             ],
             'stats' => [

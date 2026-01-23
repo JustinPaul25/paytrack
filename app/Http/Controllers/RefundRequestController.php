@@ -15,12 +15,16 @@ use App\Models\Refund;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class RefundRequestController extends Controller
 {
     public function index(Request $request)
     {
         $status = $request->get('status', ''); // pending, approved, rejected, or empty for all
+        $datePeriod = $request->get('date_period');
+        $startDate = $request->get('start_date');
+        $endDate = $request->get('end_date');
         $query = RefundRequest::query()->with(['invoice', 'product', 'media']);
 
         // Customer role: restrict to own refund requests only
@@ -40,6 +44,21 @@ class RefundRequestController extends Controller
         if ($status && $status !== 'all') {
             $query->where('status', $status);
         }
+
+        // Apply date filter
+        if ($datePeriod && ($startDate || $endDate)) {
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } elseif ($startDate) {
+                $query->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+            } elseif ($endDate) {
+                $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            }
+        }
+        
         $refundRequests = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
         
         // Transform refund requests to ensure proof_images are properly formatted with URLs
@@ -79,6 +98,12 @@ class RefundRequestController extends Controller
 
         return inertia('refunds/Index', [
             'refundRequests' => $refundRequests,
+            'filters' => [
+                'status' => $status,
+                'date_period' => $datePeriod,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
             'refunds' => $refunds,
             'filters' => [
                 'status' => $status,

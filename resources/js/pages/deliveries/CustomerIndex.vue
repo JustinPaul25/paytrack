@@ -2,6 +2,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, watch, watchEffect } from 'vue';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
@@ -9,6 +10,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import Icon from '@/components/Icon.vue';
 import { type BreadcrumbItem } from '@/types';
+import { Calendar } from 'lucide-vue-next';
 
 interface Delivery {
     id: number;
@@ -46,9 +48,77 @@ interface DeliveryStats {
 }
 
 const page = usePage();
-const filters = ref<{ search?: string }>(page.props.filters ? (page.props.filters as { search?: string }) : {});
+const filters = ref<{ search?: string; date_period?: string; start_date?: string; end_date?: string }>(
+    page.props.filters ? (page.props.filters as { search?: string; date_period?: string; start_date?: string; end_date?: string }) : {}
+);
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
+const datePeriod = ref(typeof filters.value.date_period === 'string' ? filters.value.date_period : '');
+const startDate = ref(typeof filters.value.start_date === 'string' ? filters.value.start_date : '');
+const endDate = ref(typeof filters.value.end_date === 'string' ? filters.value.end_date : '');
 const showStats = ref(false);
+
+const periodOptions = [
+    { value: '', label: 'All Time' },
+    { value: 'week', label: 'Last 7 Days' },
+    { value: 'month', label: 'Last 30 Days' },
+    { value: 'quarter', label: 'Last 3 Months' },
+    { value: 'year', label: 'Last 12 Months' },
+    { value: 'custom', label: 'Choose Dates' },
+];
+
+// Helper function to calculate date range from period
+function getDateRangeFromPeriod(periodValue: string, fallbackStart?: string, fallbackEnd?: string): { start: string; end: string } | null {
+    if (!periodValue || periodValue === '') {
+        return null;
+    }
+    
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+    let start = new Date();
+    
+    switch (periodValue) {
+        case 'week':
+            start.setDate(start.getDate() - 7);
+            break;
+        case 'month':
+            start.setMonth(start.getMonth() - 1);
+            break;
+        case 'quarter':
+            start.setMonth(start.getMonth() - 3);
+            break;
+        case 'year':
+            start.setFullYear(start.getFullYear() - 1);
+            break;
+        case 'custom':
+            if (fallbackStart && fallbackEnd) {
+                return { start: fallbackStart, end: fallbackEnd };
+            }
+            return null;
+        default:
+            return null;
+    }
+    
+    start.setHours(0, 0, 0, 0);
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+    };
+}
+
+// Function to update filters
+function updateFilters() {
+    const range = getDateRangeFromPeriod(datePeriod.value, startDate.value, endDate.value);
+    router.get('/my-deliveries', {
+        search: search.value || undefined,
+        date_period: datePeriod.value || undefined,
+        start_date: range ? range.start : undefined,
+        end_date: range ? range.end : undefined,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'My Deliveries', href: '/my-deliveries' },
@@ -58,18 +128,53 @@ watchEffect(() => {
     search.value = (page.props.filters && typeof (page.props.filters as { search?: string }).search === 'string')
         ? (page.props.filters as { search?: string }).search!
         : '';
+    datePeriod.value = (page.props.filters && typeof (page.props.filters as { date_period?: string }).date_period === 'string')
+        ? (page.props.filters as { date_period?: string }).date_period!
+        : '';
+    startDate.value = (page.props.filters && typeof (page.props.filters as { start_date?: string }).start_date === 'string')
+        ? (page.props.filters as { start_date?: string }).start_date!
+        : '';
+    endDate.value = (page.props.filters && typeof (page.props.filters as { end_date?: string }).end_date === 'string')
+        ? (page.props.filters as { end_date?: string }).end_date!
+        : '';
 });
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(search, (val) => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/my-deliveries', { search: val }, { preserveState: true, replace: true });
+        updateFilters();
     }, 400);
 });
 
+// Watch date period changes to update dates
+watch(datePeriod, (newPeriod) => {
+    if (newPeriod !== 'custom' && newPeriod !== '') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        if (range) {
+            startDate.value = range.start;
+            endDate.value = range.end;
+        }
+    }
+    updateFilters();
+});
+
+// Watch date inputs
+watch([startDate, endDate], () => {
+    if (datePeriod.value === 'custom') {
+        updateFilters();
+    }
+});
+
 function goToPage(pageNum: number) {
-    router.get('/my-deliveries', { search: search.value, page: pageNum }, { preserveState: true, replace: true });
+    const range = getDateRangeFromPeriod(datePeriod.value, startDate.value, endDate.value);
+    router.get('/my-deliveries', {
+        search: search.value || undefined,
+        date_period: datePeriod.value || undefined,
+        start_date: range ? range.start : undefined,
+        end_date: range ? range.end : undefined,
+        page: pageNum,
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
 
 function getStatusBadgeClass(status: string) {
@@ -189,13 +294,37 @@ function formatDate(dateString: string) {
 
         <!-- Search -->
         <div class="flex items-center justify-between mt-4 mb-2">
-            <div class="flex gap-2 items-center">
+            <div class="flex gap-2 items-center flex-wrap">
                 <input 
                     v-model="search" 
                     type="text" 
                     placeholder="Search by address, contact person, or phone..." 
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
+                        <Calendar class="w-4 h-4 text-gray-500" />
+                        <label class="text-sm font-medium">Date:</label>
+                    </div>
+                    <Select
+                        v-model="datePeriod"
+                        :options="periodOptions"
+                        placeholder="All Time"
+                        class="w-40"
+                    />
+                    <div v-if="datePeriod === 'custom'" class="flex gap-1">
+                        <input
+                            v-model="startDate"
+                            type="date"
+                            class="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        />
+                        <input
+                            v-model="endDate"
+                            type="date"
+                            class="rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -257,8 +386,8 @@ function formatDate(dateString: string) {
                         <tr>
                             <td colspan="7" class="px-4 py-10 text-center text-sm text-gray-500">
                                 No deliveries found.
-                                <button v-if="(search && search.toString().trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''">
-                                    Clear search
+                                <button v-if="(search && search.toString().trim().length) || (datePeriod && datePeriod.trim().length)" type="button" class="underline underline-offset-4 ml-1" @click="search = ''; datePeriod = ''; startDate = ''; endDate = ''; updateFilters()">
+                                    Clear filters
                                 </button>
                             </td>
                         </tr>

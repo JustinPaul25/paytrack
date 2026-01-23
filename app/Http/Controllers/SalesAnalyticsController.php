@@ -21,6 +21,8 @@ class SalesAnalyticsController extends Controller
             $customerId = Customer::where('email', $request->user()->email)->value('id');
             if (!$customerId) {
                 // If no matching customer record, render an empty dashboard
+                $defaultStart = Carbon::now()->subMonths(11)->startOfMonth();
+                $defaultEnd = Carbon::now()->endOfMonth();
                 return inertia('CustomerDashboard', [
                     'customer' => ['id' => null, 'name' => $request->user()->name, 'email' => $request->user()->email],
                     'monthlySpend' => [],
@@ -29,18 +31,46 @@ class SalesAnalyticsController extends Controller
                     'categorySpend' => [],
                     'aovTrend' => [],
                     'reminders' => [],
+                    'filters' => [
+                        'start_date' => $defaultStart->format('Y-m-d'),
+                        'end_date' => $defaultEnd->format('Y-m-d'),
+                    ],
                 ]);
             }
 
-            $start = Carbon::now()->subMonths(11)->startOfMonth();
-            $end = Carbon::now()->endOfMonth();
+            // Get filter parameters
+            $monthlySpendStart = $request->get('monthly_spend_start_date');
+            $monthlySpendEnd = $request->get('monthly_spend_end_date');
+            $topProductsStart = $request->get('top_products_start_date');
+            $topProductsEnd = $request->get('top_products_end_date');
+            $categorySpendStart = $request->get('category_spend_start_date');
+            $categorySpendEnd = $request->get('category_spend_end_date');
+            $aovTrendStart = $request->get('aov_trend_start_date');
+            $aovTrendEnd = $request->get('aov_trend_end_date');
+            
+            // Default date range (last 12 months)
+            $defaultStart = Carbon::now()->subMonths(11)->startOfMonth();
+            $defaultEnd = Carbon::now()->endOfMonth();
+            
+            // Use filter dates if provided, otherwise use defaults
+            $monthlySpendFilterStart = $monthlySpendStart ? Carbon::parse($monthlySpendStart)->startOfDay() : $defaultStart;
+            $monthlySpendFilterEnd = $monthlySpendEnd ? Carbon::parse($monthlySpendEnd)->endOfDay() : $defaultEnd;
+            
+            $topProductsFilterStart = $topProductsStart ? Carbon::parse($topProductsStart)->startOfDay() : $defaultStart;
+            $topProductsFilterEnd = $topProductsEnd ? Carbon::parse($topProductsEnd)->endOfDay() : $defaultEnd;
+            
+            $categorySpendFilterStart = $categorySpendStart ? Carbon::parse($categorySpendStart)->startOfDay() : $defaultStart;
+            $categorySpendFilterEnd = $categorySpendEnd ? Carbon::parse($categorySpendEnd)->endOfDay() : $defaultEnd;
+            
+            $aovTrendFilterStart = $aovTrendStart ? Carbon::parse($aovTrendStart)->startOfDay() : $defaultStart;
+            $aovTrendFilterEnd = $aovTrendEnd ? Carbon::parse($aovTrendEnd)->endOfDay() : $defaultEnd;
 
-            // Monthly spend (completed invoices only), last 12 months
+            // Monthly spend (completed invoices only)
             $monthlySpend = DB::table('invoices')
                 ->select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('SUM(total_amount) as total'))
                 ->where('customer_id', $customerId)
                 ->where('status', 'completed')
-                ->whereBetween('created_at', [$start, $end])
+                ->whereBetween('created_at', [$monthlySpendFilterStart, $monthlySpendFilterEnd])
                 ->groupBy('ym')
                 ->orderBy('ym')
                 ->get()
@@ -59,7 +89,7 @@ class SalesAnalyticsController extends Controller
                 ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
                 ->join('products', 'invoice_items.product_id', '=', 'products.id')
                 ->where('invoices.customer_id', $customerId)
-                ->whereBetween('invoices.created_at', [$start, $end])
+                ->whereBetween('invoices.created_at', [$topProductsFilterStart, $topProductsFilterEnd])
                 ->where('invoices.status', 'completed')
                 ->groupBy('products.id', 'products.name')
                 ->select('products.id', 'products.name', DB::raw('SUM(invoice_items.quantity) as total_quantity'))
@@ -73,7 +103,7 @@ class SalesAnalyticsController extends Controller
                 ->join('products', 'invoice_items.product_id', '=', 'products.id')
                 ->join('categories', 'products.category_id', '=', 'categories.id')
                 ->where('invoices.customer_id', $customerId)
-                ->whereBetween('invoices.created_at', [$start, $end])
+                ->whereBetween('invoices.created_at', [$categorySpendFilterStart, $categorySpendFilterEnd])
                 ->where('invoices.status', 'completed')
                 ->groupBy('categories.id', 'categories.name')
                 ->select('categories.name as category', DB::raw('SUM(invoice_items.total) as total'))
@@ -86,7 +116,7 @@ class SalesAnalyticsController extends Controller
                 ->select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('SUM(total_amount) as total'), DB::raw('COUNT(*) as cnt'))
                 ->where('customer_id', $customerId)
                 ->where('status', 'completed')
-                ->whereBetween('created_at', [$start, $end])
+                ->whereBetween('created_at', [$aovTrendFilterStart, $aovTrendFilterEnd])
                 ->groupBy('ym')
                 ->orderBy('ym')
                 ->get()
@@ -147,8 +177,8 @@ class SalesAnalyticsController extends Controller
                 'aovTrend' => $aovTrend,
                 'reminders' => $reminders,
                 'filters' => [
-                    'start_date' => $start->format('Y-m-d'),
-                    'end_date' => $end->format('Y-m-d'),
+                    'start_date' => $defaultStart->format('Y-m-d'),
+                    'end_date' => $defaultEnd->format('Y-m-d'),
                 ],
             ]);
         }
@@ -156,6 +186,23 @@ class SalesAnalyticsController extends Controller
         $period = $request->get('period', 'month'); // month, quarter, year
         $startDate = $request->get('start_date');
         $endDate = $request->get('end_date');
+        $categoryStartDate = $request->get('category_start_date');
+        $categoryEndDate = $request->get('category_end_date');
+        
+        // Products table filters
+        $productsStartDate = $request->get('products_start_date');
+        $productsEndDate = $request->get('products_end_date');
+        $productsSearch = $request->get('products_search');
+        $productsSortBy = $request->get('products_sort_by', 'revenue');
+        $productsSortOrder = $request->get('products_sort_order', 'desc');
+        
+        // Transactions table filters
+        $transactionsStartDate = $request->get('transactions_start_date');
+        $transactionsEndDate = $request->get('transactions_end_date');
+        $transactionsStatus = $request->get('transactions_status', 'all');
+        $transactionsSortBy = $request->get('transactions_sort_by', 'date');
+        $transactionsSortOrder = $request->get('transactions_sort_order', 'desc');
+        
         $useDummyData = $request->get('dummy', false); // Force dummy data for testing
 
         // Set default date range if not provided
@@ -185,22 +232,34 @@ class SalesAnalyticsController extends Controller
             $endDate = Carbon::parse($endDate)->endOfDay();
         }
 
+        // Use category-specific dates if provided, otherwise use main filter dates
+        $categoryFilterStart = $categoryStartDate ? Carbon::parse($categoryStartDate)->startOfDay() : $startDate;
+        $categoryFilterEnd = $categoryEndDate ? Carbon::parse($categoryEndDate)->endOfDay() : $endDate;
+        
+        // Use products-specific dates if provided, otherwise use main filter dates
+        $productsFilterStart = $productsStartDate ? Carbon::parse($productsStartDate)->startOfDay() : $startDate;
+        $productsFilterEnd = $productsEndDate ? Carbon::parse($productsEndDate)->endOfDay() : $endDate;
+        
+        // Use transactions-specific dates if provided, otherwise use main filter dates
+        $transactionsFilterStart = $transactionsStartDate ? Carbon::parse($transactionsStartDate)->startOfDay() : $startDate;
+        $transactionsFilterEnd = $transactionsEndDate ? Carbon::parse($transactionsEndDate)->endOfDay() : $endDate;
+
         // Get sales data
         if ($useDummyData) {
             // Use real datasets for all dashboard visuals even when dummy flag is present
             $salesData = $this->getSalesData($startDate, $endDate);
-            $topProducts = $this->getTopProducts($startDate, $endDate);
+            $topProducts = $this->getTopProducts($productsFilterStart, $productsFilterEnd, $productsSearch, $productsSortBy, $productsSortOrder);
             $salesByDate = $this->getSalesByDate($startDate, $endDate);
-            $salesByCategory = $this->getSalesByCategory($startDate, $endDate);
-            $recentInvoices = $this->getRecentInvoices($startDate, $endDate);
+            $salesByCategory = $this->getSalesByCategory($categoryFilterStart, $categoryFilterEnd);
+            $recentInvoices = $this->getRecentInvoices($transactionsFilterStart, $transactionsFilterEnd, $transactionsStatus, $transactionsSortBy, $transactionsSortOrder);
             // Churn metrics can still fall back if needed
             $churnMetrics = $this->getChurnMetrics();
         } else {
             $salesData = $this->getSalesData($startDate, $endDate);
-            $topProducts = $this->getTopProducts($startDate, $endDate);
+            $topProducts = $this->getTopProducts($productsFilterStart, $productsFilterEnd, $productsSearch, $productsSortBy, $productsSortOrder);
             $salesByDate = $this->getSalesByDate($startDate, $endDate);
-            $salesByCategory = $this->getSalesByCategory($startDate, $endDate);
-            $recentInvoices = $this->getRecentInvoices($startDate, $endDate);
+            $salesByCategory = $this->getSalesByCategory($categoryFilterStart, $categoryFilterEnd);
+            $recentInvoices = $this->getRecentInvoices($transactionsFilterStart, $transactionsFilterEnd, $transactionsStatus, $transactionsSortBy, $transactionsSortOrder);
             $churnMetrics = $this->getChurnMetrics();
         }
 
@@ -367,9 +426,9 @@ class SalesAnalyticsController extends Controller
         ];
     }
 
-    private function getTopProducts($startDate, $endDate)
+    private function getTopProducts($startDate, $endDate, $search = null, $sortBy = 'revenue', $sortOrder = 'desc')
     {
-        $products = InvoiceItem::select(
+        $query = InvoiceItem::select(
                 'products.name',
                 'products.id',
                 DB::raw('SUM(invoice_items.quantity) as total_quantity'),
@@ -378,11 +437,27 @@ class SalesAnalyticsController extends Controller
             ->join('products', 'invoice_items.product_id', '=', 'products.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->whereBetween('invoices.created_at', [$startDate, $endDate])
-            ->where('invoices.status', 'completed')
-            ->groupBy('products.id', 'products.name')
-            ->orderBy('total_revenue', 'desc')
-            ->limit(10)
-            ->get();
+            ->where('invoices.status', 'completed');
+        
+        // Apply search filter
+        if ($search) {
+            $query->where('products.name', 'like', '%' . $search . '%');
+        }
+        
+        $query->groupBy('products.id', 'products.name');
+        
+        // Apply sorting
+        $orderByColumn = 'total_revenue';
+        if ($sortBy === 'quantity') {
+            $orderByColumn = 'total_quantity';
+        } elseif ($sortBy === 'name') {
+            $orderByColumn = 'products.name';
+        }
+        
+        $query->orderBy($orderByColumn, $sortOrder);
+        $query->limit(10);
+        
+        $products = $query->get();
 
         // Normalize revenue to currency
         return $products->map(function ($p) {
@@ -437,14 +512,32 @@ class SalesAnalyticsController extends Controller
         });
     }
 
-    private function getRecentInvoices($startDate, $endDate)
+    private function getRecentInvoices($startDate, $endDate, $status = 'all', $sortBy = 'date', $sortOrder = 'desc')
     {
-        $recentInvoices = Invoice::with(['customer', 'invoiceItems.product'])
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->where('status', 'completed')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get()
+        $query = Invoice::with(['customer', 'invoiceItems.product'])
+            ->join('customers', 'invoices.customer_id', '=', 'customers.id')
+            ->whereBetween('invoices.created_at', [$startDate, $endDate]);
+        
+        // Apply status filter
+        if ($status !== 'all') {
+            $query->where('invoices.status', $status);
+        }
+        // If status is 'all', show all statuses
+        
+        // Apply sorting
+        if ($sortBy === 'amount') {
+            $query->orderBy('invoices.total_amount', $sortOrder);
+        } elseif ($sortBy === 'customer') {
+            $query->orderBy('customers.name', $sortOrder);
+        } else {
+            // Default to date
+            $query->orderBy('invoices.created_at', $sortOrder);
+        }
+        
+        $query->select('invoices.*');
+        $query->limit(10);
+        
+        $recentInvoices = $query->get()
             ->map(function ($invoice) {
                 return [
                     'id' => $invoice->id,

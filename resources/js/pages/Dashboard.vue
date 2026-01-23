@@ -15,7 +15,8 @@ import ProductSalesTrendWidget from '@/components/ProductSalesTrendWidget.vue';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { type BreadcrumbItem } from '@/types';
-import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, BarChart3, ShoppingCart } from 'lucide-vue-next';
+import { TrendingUp, TrendingDown, FileText, Clock, Package, HelpCircle, Calendar, BarChart3, ShoppingCart, Search } from 'lucide-vue-next';
+import { Input } from '@/components/ui/input';
 import Swal from 'sweetalert2';
 
 interface SalesData {
@@ -92,6 +93,22 @@ const categoryChartFilterPeriod = ref('month');
 const categoryChartFilterStartDate = ref(props.filters.start_date);
 const categoryChartFilterEndDate = ref(props.filters.end_date);
 
+// Filters for Best-Selling Products table
+const productsFilterPeriod = ref('month');
+const productsFilterStartDate = ref(props.filters.start_date);
+const productsFilterEndDate = ref(props.filters.end_date);
+const productsSearch = ref('');
+const productsSortBy = ref<'revenue' | 'quantity' | 'name'>('revenue');
+const productsSortOrder = ref<'asc' | 'desc'>('desc');
+
+// Filters for Recent Transactions table
+const transactionsFilterPeriod = ref('month');
+const transactionsFilterStartDate = ref(props.filters.start_date);
+const transactionsFilterEndDate = ref(props.filters.end_date);
+const transactionsStatus = ref<string>('all');
+const transactionsSortBy = ref<'date' | 'amount' | 'customer'>('date');
+const transactionsSortOrder = ref<'asc' | 'desc'>('desc');
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -114,6 +131,7 @@ function updateFilters() {
         end_date: endDate.value,
     }, {
         preserveState: true,
+        preserveScroll: true,
         replace: true,
     });
 }
@@ -130,6 +148,34 @@ const isStaff = Array.isArray((page.props as any).auth?.userRoles) &&
     (page.props as any).auth.userRoles.includes('Staff') && !isAdmin;
 
 onMounted(() => {
+    // Initialize category filter dates based on period
+    if (categoryChartFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(categoryChartFilterPeriod.value);
+        categoryChartFilterStartDate.value = range.start;
+        categoryChartFilterEndDate.value = range.end;
+    }
+    
+    // Initialize products filter dates based on period
+    if (productsFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(productsFilterPeriod.value);
+        productsFilterStartDate.value = range.start;
+        productsFilterEndDate.value = range.end;
+    }
+    
+    // Initialize transactions filter dates based on period
+    if (transactionsFilterPeriod.value !== 'custom') {
+        const range = getDateRangeFromPeriod(transactionsFilterPeriod.value);
+        transactionsFilterStartDate.value = range.start;
+        transactionsFilterEndDate.value = range.end;
+    }
+    
+    // Mark as initialized after a short delay to allow initial values to settle
+    setTimeout(() => {
+        isCategoryFilterInitialized.value = true;
+        isProductsFilterInitialized.value = true;
+        isTransactionsFilterInitialized.value = true;
+    }, 100);
+    
     // Show low stock alert for staff users only (not admin)
     // Check if alert was already shown today
     const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
@@ -258,6 +304,134 @@ const filteredSalesByDateForTrend = computed(() => {
 const filteredSalesByDateForCategory = computed(() => {
     const range = getDateRangeFromPeriod(categoryChartFilterPeriod.value, categoryChartFilterStartDate.value, categoryChartFilterEndDate.value);
     return filterByDateRange(props.salesByDate, range.start, range.end);
+});
+
+// Flag to prevent initial watcher trigger
+const isCategoryFilterInitialized = ref(false);
+
+// Watch category chart filter period changes to update dates
+watch(categoryChartFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        categoryChartFilterStartDate.value = range.start;
+        categoryChartFilterEndDate.value = range.end;
+    }
+});
+
+// Watch products filter period changes to update dates
+watch(productsFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        productsFilterStartDate.value = range.start;
+        productsFilterEndDate.value = range.end;
+    }
+});
+
+// Watch transactions filter period changes to update dates
+watch(transactionsFilterPeriod, (newPeriod) => {
+    if (newPeriod !== 'custom') {
+        const range = getDateRangeFromPeriod(newPeriod);
+        transactionsFilterStartDate.value = range.start;
+        transactionsFilterEndDate.value = range.end;
+    }
+});
+
+// Watch category chart filter changes and update data
+watch([categoryChartFilterPeriod, categoryChartFilterStartDate, categoryChartFilterEndDate], () => {
+    // Skip initial trigger
+    if (!isCategoryFilterInitialized.value) {
+        isCategoryFilterInitialized.value = true;
+        return;
+    }
+    
+    const range = getDateRangeFromPeriod(categoryChartFilterPeriod.value, categoryChartFilterStartDate.value, categoryChartFilterEndDate.value);
+    router.get('/dashboard', {
+        period: period.value,
+        start_date: startDate.value,
+        end_date: endDate.value,
+        category_start_date: range.start,
+        category_end_date: range.end,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['salesByCategory'], // Only refetch category data
+    });
+});
+
+// Flag to prevent initial watcher triggers for table filters
+const isProductsFilterInitialized = ref(false);
+const isTransactionsFilterInitialized = ref(false);
+
+// Debounced search for products
+let productsSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(productsSearch, () => {
+    if (productsSearchTimeout) clearTimeout(productsSearchTimeout);
+    productsSearchTimeout = setTimeout(() => {
+        if (!isProductsFilterInitialized.value) {
+            isProductsFilterInitialized.value = true;
+            return;
+        }
+        updateProductsFilters();
+    }, 400);
+});
+
+// Function to update products filters
+function updateProductsFilters() {
+    const range = getDateRangeFromPeriod(productsFilterPeriod.value, productsFilterStartDate.value, productsFilterEndDate.value);
+    router.get('/dashboard', {
+        period: period.value,
+        start_date: startDate.value,
+        end_date: endDate.value,
+        category_start_date: categoryChartFilterStartDate.value,
+        category_end_date: categoryChartFilterEndDate.value,
+        products_start_date: range.start,
+        products_end_date: range.end,
+        products_search: productsSearch.value,
+        products_sort_by: productsSortBy.value,
+        products_sort_order: productsSortOrder.value,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['topProducts'],
+    });
+}
+
+// Watch products table filter changes (excluding search which is debounced)
+watch([productsFilterPeriod, productsFilterStartDate, productsFilterEndDate, productsSortBy, productsSortOrder], () => {
+    if (!isProductsFilterInitialized.value) {
+        isProductsFilterInitialized.value = true;
+        return;
+    }
+    updateProductsFilters();
+});
+
+// Watch transactions table filter changes
+watch([transactionsFilterPeriod, transactionsFilterStartDate, transactionsFilterEndDate, transactionsStatus, transactionsSortBy, transactionsSortOrder], () => {
+    if (!isTransactionsFilterInitialized.value) {
+        isTransactionsFilterInitialized.value = true;
+        return;
+    }
+    
+    const range = getDateRangeFromPeriod(transactionsFilterPeriod.value, transactionsFilterStartDate.value, transactionsFilterEndDate.value);
+    router.get('/dashboard', {
+        period: period.value,
+        start_date: startDate.value,
+        end_date: endDate.value,
+        category_start_date: categoryChartFilterStartDate.value,
+        category_end_date: categoryChartFilterEndDate.value,
+        transactions_start_date: range.start,
+        transactions_end_date: range.end,
+        transactions_status: transactionsStatus.value,
+        transactions_sort_by: transactionsSortBy.value,
+        transactions_sort_order: transactionsSortOrder.value,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        only: ['recentInvoices'],
+    });
 });
 
 // Group sales data by month or year based on trendPeriod
@@ -393,12 +567,8 @@ const salesChartOptions = computed(() => ({
 }));
 
 // Filter category data based on category chart date filter
-// Note: We filter the salesByDate to get the date range, but category data needs to come from backend
-// For now, we'll use the filtered date range to show which categories were active in that period
-// Since we can't recalculate categories client-side, we'll use all category data but note the filter
+// Category data is now filtered by the backend based on categoryChartFilterPeriod
 const top5Categories = computed(() => {
-    // Use all categories since we can't recalculate client-side
-    // In a real scenario, you'd want to pass filtered data from backend
     return [...props.salesByCategory]
         .sort((a, b) => b.total_revenue - a.total_revenue)
         .slice(0, 5);
@@ -781,13 +951,92 @@ const closeNotifications = () => {
                     <!-- Top Products Table -->
                     <Card class="table-card">
                         <CardHeader>
-                            <CardTitle class="table-title">
-                                <Package class="table-title-icon" />
-                                Best-Selling Products
-                            </CardTitle>
-                            <CardDescription>
-                                Products that have generated the most revenue
-                            </CardDescription>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div>
+                                    <CardTitle class="table-title">
+                                        <Package class="table-title-icon" />
+                                        Best-Selling Products
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Products that have generated the most revenue
+                                    </CardDescription>
+                                </div>
+                            </div>
+                            <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <!-- Search -->
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <Search class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Search Product</label>
+                                        </div>
+                                        <Input
+                                            v-model="productsSearch"
+                                            placeholder="Search by product name..."
+                                            style="width: 100%;"
+                                        />
+                                    </div>
+                                    <!-- Date Period -->
+                                    <div style="min-width: 180px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <Calendar class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Date Period</label>
+                                        </div>
+                                        <Select
+                                            v-model="productsFilterPeriod"
+                                            :options="periodOptions"
+                                            placeholder="Choose period"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                    <!-- Sort By -->
+                                    <div style="min-width: 150px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <BarChart3 class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Sort By</label>
+                                        </div>
+                                        <Select
+                                            v-model="productsSortBy"
+                                            :options="[
+                                                { value: 'revenue', label: 'Revenue' },
+                                                { value: 'quantity', label: 'Units Sold' },
+                                                { value: 'name', label: 'Product Name' }
+                                            ]"
+                                            placeholder="Sort by"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                    <!-- Sort Order -->
+                                    <div style="min-width: 130px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <TrendingUp class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Order</label>
+                                        </div>
+                                        <Select
+                                            v-model="productsSortOrder"
+                                            :options="[
+                                                { value: 'desc', label: 'Descending' },
+                                                { value: 'asc', label: 'Ascending' }
+                                            ]"
+                                            placeholder="Order"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                </div>
+                                <!-- Custom Date Range -->
+                                <div v-if="productsFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                                    <input
+                                        v-model="productsFilterStartDate"
+                                        type="date"
+                                        style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                    />
+                                    <input
+                                        v-model="productsFilterEndDate"
+                                        type="date"
+                                        style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                    />
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div class="table-wrapper">
@@ -814,13 +1063,98 @@ const closeNotifications = () => {
                     <!-- Recent Invoices Table -->
                     <Card class="table-card">
                         <CardHeader>
-                            <CardTitle class="table-title">
-                                <FileText class="table-title-icon" />
-                                Recent Transactions
-                            </CardTitle>
-                            <CardDescription>
-                                Your most recent sales and invoices
-                            </CardDescription>
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div>
+                                    <CardTitle class="table-title">
+                                        <FileText class="table-title-icon" />
+                                        Recent Transactions
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Your most recent sales and invoices
+                                    </CardDescription>
+                                </div>
+                            </div>
+                            <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+                                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <!-- Date Period -->
+                                    <div style="min-width: 180px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <Calendar class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Date Period</label>
+                                        </div>
+                                        <Select
+                                            v-model="transactionsFilterPeriod"
+                                            :options="periodOptions"
+                                            placeholder="Choose period"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                    <!-- Status Filter -->
+                                    <div style="min-width: 150px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <FileText class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Status</label>
+                                        </div>
+                                        <Select
+                                            v-model="transactionsStatus"
+                                            :options="[
+                                                { value: 'all', label: 'All Status' },
+                                                { value: 'completed', label: 'Completed' },
+                                                { value: 'pending', label: 'Pending' },
+                                                { value: 'cancelled', label: 'Cancelled' }
+                                            ]"
+                                            placeholder="Filter by status"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                    <!-- Sort By -->
+                                    <div style="min-width: 150px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <BarChart3 class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Sort By</label>
+                                        </div>
+                                        <Select
+                                            v-model="transactionsSortBy"
+                                            :options="[
+                                                { value: 'date', label: 'Date' },
+                                                { value: 'amount', label: 'Amount' },
+                                                { value: 'customer', label: 'Customer' }
+                                            ]"
+                                            placeholder="Sort by"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                    <!-- Sort Order -->
+                                    <div style="min-width: 130px;">
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <TrendingUp class="w-4 h-4" />
+                                            <label style="font-size: 0.875rem; font-weight: 500;">Order</label>
+                                        </div>
+                                        <Select
+                                            v-model="transactionsSortOrder"
+                                            :options="[
+                                                { value: 'desc', label: 'Descending' },
+                                                { value: 'asc', label: 'Ascending' }
+                                            ]"
+                                            placeholder="Order"
+                                            class="period-select"
+                                        />
+                                    </div>
+                                </div>
+                                <!-- Custom Date Range -->
+                                <div v-if="transactionsFilterPeriod === 'custom'" style="display: flex; gap: 0.5rem;">
+                                    <input
+                                        v-model="transactionsFilterStartDate"
+                                        type="date"
+                                        style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                    />
+                                    <input
+                                        v-model="transactionsFilterEndDate"
+                                        type="date"
+                                        style="flex: 1; padding: 0.375rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; font-size: 0.875rem;"
+                                    />
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div class="table-wrapper">

@@ -36,6 +36,9 @@ class InvoiceController extends Controller
         $search = $request->input('search');
         $status = $request->input('status');
         $paymentStatus = $request->input('payment_status');
+        $datePeriod = $request->input('date_period');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
 
         if ($search) {
             $query->whereHas('customer', function ($q) use ($search) {
@@ -49,6 +52,20 @@ class InvoiceController extends Controller
 
         if ($paymentStatus) {
             $query->where('payment_status', $paymentStatus);
+        }
+
+        // Apply date filter
+        if ($datePeriod && ($startDate || $endDate)) {
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [
+                    Carbon::parse($startDate)->startOfDay(),
+                    Carbon::parse($endDate)->endOfDay()
+                ]);
+            } elseif ($startDate) {
+                $query->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+            } elseif ($endDate) {
+                $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            }
         }
 
         // Always sort by created_at descending (newest first), then by id descending for consistent ordering
@@ -80,6 +97,9 @@ class InvoiceController extends Controller
                 'search' => $search,
                 'status' => $status,
                 'payment_status' => $paymentStatus,
+                'date_period' => $datePeriod,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
             ],
             'stats' => [
                 'totalInvoices' => $totalInvoices,
