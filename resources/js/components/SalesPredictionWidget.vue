@@ -4,7 +4,7 @@
             <div class="flex items-center justify-between">
                 <CardTitle class="flex items-center gap-2">
                     <TrendingUp class="w-5 h-5 text-blue-600" />
-                    Sales Prediction
+                    Sales Forecasting
                 </CardTitle>
                 <div class="flex gap-4">
                     <div class="flex flex-col gap-2" style="min-width: 160px;">

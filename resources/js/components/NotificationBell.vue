@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { Bell } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
@@ -154,6 +154,21 @@ const handleNotificationClick = async (event: Event, notification: Notification)
         isOpen.value = false;
     }
 };
+
+// Watch for when the notification panel opens and mark all visible notifications as read
+watch(isOpen, async (newValue) => {
+    if (newValue) {
+        // When panel opens, mark all unread notifications as read
+        const unreadNotifications = notifications.value.filter(n => !n.read);
+        
+        if (unreadNotifications.length > 0) {
+            // Mark all unread notifications as read in parallel for better performance
+            await Promise.all(
+                unreadNotifications.map(notification => markAsRead(notification))
+            );
+        }
+    }
+});
 
 const formatTime = (dateString: string) => {
     try {

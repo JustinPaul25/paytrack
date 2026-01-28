@@ -178,9 +178,17 @@ class CashFlowController extends Controller
             $seasonalIndex = $i % count($seasonalFactors);
             $currentSeasonal = $seasonalFactors[$seasonalIndex] ?? 1.0;
             
+            // Prevent division by zero: ensure currentSeasonal is never zero
+            if ($currentSeasonal == 0.0) {
+                $currentSeasonal = 1.0;
+            }
+            
             $level = $alpha * ($historicalValues[$i] / $currentSeasonal) + (1 - $alpha) * ($prevLevel + $trend);
             $trend = $beta * ($level - $prevLevel) + (1 - $beta) * $trend;
-            $lastSeasonal = $gamma * ($historicalValues[$i] / $prevLevel) + (1 - $gamma) * $currentSeasonal;
+            // Prevent division by zero: if prevLevel is zero, use currentSeasonal as fallback
+            $lastSeasonal = $prevLevel != 0.0
+                ? $gamma * ($historicalValues[$i] / $prevLevel) + (1 - $gamma) * $currentSeasonal
+                : $currentSeasonal;
         }
 
         // Generate forecasts with confidence intervals

@@ -1391,7 +1391,7 @@ const sortedTodayDeliveries = computed(() => {
                             </TabsTrigger>
                             <TabsTrigger value="sales-prediction" class="tab-trigger-full">
                                 <TrendingUp class="tab-icon" />
-                                Sales Prediction
+                                Sales Forecasting
                             </TabsTrigger>
                             <TabsTrigger value="product-trend" class="tab-trigger-full">
                                 <BarChart3 class="tab-icon" />
