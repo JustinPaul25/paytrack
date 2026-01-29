@@ -88,6 +88,17 @@ const fetchNotifications = async () => {
 const markAsRead = async (notification: Notification) => {
     if (notification.read) return;
     
+    // Optimistically update the UI first for immediate feedback
+    const index = notifications.value.findIndex(n => n.id === notification.id);
+    const wasUnread = index !== -1 && !notifications.value[index].read;
+    
+    if (wasUnread) {
+        notifications.value[index].read = true;
+        notifications.value[index].read_at = new Date().toISOString();
+        // Decrement unread count immediately
+        unreadCount.value = Math.max(0, unreadCount.value - 1);
+    }
+    
     try {
         const response = await fetch(`/notifications/${notification.id}/read`, {
             method: 'POST',
@@ -98,22 +109,23 @@ const markAsRead = async (notification: Notification) => {
             },
         });
         
-        if (response.ok) {
-            // Find and update the notification in the array to ensure reactivity
-            const index = notifications.value.findIndex(n => n.id === notification.id);
-            if (index !== -1) {
-                notifications.value[index].read = true;
-                notifications.value[index].read_at = new Date().toISOString();
-            } else {
-                // Fallback: update the notification object directly
-                notification.read = true;
-                notification.read_at = new Date().toISOString();
+        if (!response.ok) {
+            // If server call failed, revert the optimistic update
+            if (wasUnread && index !== -1) {
+                notifications.value[index].read = false;
+                notifications.value[index].read_at = null;
+                unreadCount.value++;
             }
-            unreadCount.value = Math.max(0, unreadCount.value - 1);
-        } else {
             console.error('Failed to mark notification as read:', response.statusText);
         }
+        // If successful, the optimistic update remains - no need to do anything
     } catch (error) {
+        // If error occurred, revert the optimistic update
+        if (wasUnread && index !== -1) {
+            notifications.value[index].read = false;
+            notifications.value[index].read_at = null;
+            unreadCount.value++;
+        }
         console.error('Error marking notification as read:', error);
     }
 };
@@ -155,20 +167,6 @@ const handleNotificationClick = async (event: Event, notification: Notification)
     }
 };
 
-// Watch for when the notification panel opens and mark all visible notifications as read
-watch(isOpen, async (newValue) => {
-    if (newValue) {
-        // When panel opens, mark all unread notifications as read
-        const unreadNotifications = notifications.value.filter(n => !n.read);
-        
-        if (unreadNotifications.length > 0) {
-            // Mark all unread notifications as read in parallel for better performance
-            await Promise.all(
-                unreadNotifications.map(notification => markAsRead(notification))
-            );
-        }
-    }
-});
 
 const formatTime = (dateString: string) => {
     try {
