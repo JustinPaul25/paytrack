@@ -111,6 +111,16 @@ const getNotificationIcon = (type: string) => {
 const markAsRead = async (notification: Notification) => {
     if (notification.read) return;
     
+    // Find the notification index
+    const index = allNotifications.value.findIndex(n => n.id === notification.id);
+    const wasUnread = index !== -1 && !allNotifications.value[index].read;
+    
+    // Optimistically update UI
+    if (wasUnread && index !== -1) {
+        allNotifications.value[index].read = true;
+        allNotifications.value[index].read_at = new Date().toISOString();
+    }
+    
     try {
         const response = await fetch(`/notifications/${notification.id}/read`, {
             method: 'POST',
@@ -121,19 +131,20 @@ const markAsRead = async (notification: Notification) => {
             },
         });
         
-        if (response.ok) {
-            // Find and update the notification in the array to ensure reactivity
-            const index = allNotifications.value.findIndex(n => n.id === notification.id);
-            if (index !== -1) {
-                allNotifications.value[index].read = true;
-                allNotifications.value[index].read_at = new Date().toISOString();
-            } else {
-                // Fallback: update the notification object directly
-                notification.read = true;
-                notification.read_at = new Date().toISOString();
+        if (!response.ok) {
+            // Revert optimistic update on failure
+            if (wasUnread && index !== -1) {
+                allNotifications.value[index].read = false;
+                allNotifications.value[index].read_at = null;
             }
+            console.error('Error marking notification as read:', response.statusText);
         }
     } catch (error) {
+        // Revert optimistic update on error
+        if (wasUnread && index !== -1) {
+            allNotifications.value[index].read = false;
+            allNotifications.value[index].read_at = null;
+        }
         console.error('Error marking notification as read:', error);
     }
 };
@@ -162,7 +173,7 @@ const markAllAsRead = async () => {
 };
 
 const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read and wait for it to complete
+    // Mark as read first
     await markAsRead(notification);
     
     // Wait a tick to ensure UI updates before navigation

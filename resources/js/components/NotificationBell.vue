@@ -157,13 +157,19 @@ const handleNotificationClick = async (event: Event, notification: Notification)
     event.preventDefault();
     event.stopPropagation();
     
-    // Mark as read and wait for it to complete
+    // Mark as read first
     await markAsRead(notification);
     
     // Then navigate if there's an action URL
     if (notification.action_url) {
-        router.visit(notification.action_url);
+        // Close dropdown before navigation
         isOpen.value = false;
+        // Small delay to ensure dropdown closes smoothly
+        await new Promise(resolve => setTimeout(resolve, 100));
+        router.visit(notification.action_url);
+    } else {
+        // If no action URL, just mark as read (already done above)
+        // You could add a visual feedback here if needed
     }
 };
 
