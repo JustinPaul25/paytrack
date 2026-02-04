@@ -110,54 +110,66 @@ const runningBalanceSeries = computed(() => combinedSeries.value.map((point) => 
 const cashFlowChartData = computed(() => {
     const historicalLength = historical.value.length;
     
-    // Create combined data arrays with nulls for proper alignment
+    // Historical data (solid line)
     const historicalNetData = [
         ...actualNetSeries.value,
         ...projections.value.map(() => null),
     ];
     
-    const forecastNetData = combinedSeries.value.map((point, index) => 
-        index >= historicalLength ? point.net : null
-    );
+    // Forecast data (dotted line) - include the last historical point to connect
+    const forecastNetData = combinedSeries.value.map((point, index) => {
+        if (index === historicalLength - 1) {
+            // Include the last historical point to connect the lines
+            return historical.value[historicalLength - 1].net;
+        }
+        return index >= historicalLength ? point.net : null;
+    });
     
     // Confidence interval data - only for forecast period
-    const forecastUpperData = combinedSeries.value.map((point, index) => 
-        index >= historicalLength && point.net_upper !== undefined ? point.net_upper : null
-    );
+    const forecastUpperData = combinedSeries.value.map((point, index) => {
+        if (index === historicalLength - 1) {
+            // Include the last historical point to connect
+            return historical.value[historicalLength - 1].net;
+        }
+        return index >= historicalLength && point.net_upper !== undefined ? point.net_upper : null;
+    });
     
-    const forecastLowerData = combinedSeries.value.map((point, index) => 
-        index >= historicalLength && point.net_lower !== undefined ? point.net_lower : null
-    );
+    const forecastLowerData = combinedSeries.value.map((point, index) => {
+        if (index === historicalLength - 1) {
+            // Include the last historical point to connect
+            return historical.value[historicalLength - 1].net;
+        }
+        return index >= historicalLength && point.net_lower !== undefined ? point.net_lower : null;
+    });
     
     return {
         labels: chartLabels.value,
         datasets: [
-            // Upper bound of confidence interval (forecast only) - fills to lower bound
+            // Lower bound of confidence interval (forecast only) - invisible line
             {
                 label: '',
-                data: forecastUpperData,
+                data: forecastLowerData,
                 borderColor: 'transparent',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                backgroundColor: 'transparent',
                 tension: 0.4,
-                fill: '-1',
+                fill: false,
                 pointRadius: 0,
                 pointHoverRadius: 0,
                 borderWidth: 0,
                 order: 0,
                 showLine: true,
             },
-            // Lower bound of confidence interval (forecast only)
+            // Upper bound of confidence interval (forecast only) - fills to lower bound creating shadow
             {
-                label: 'Forecast Confidence Interval',
-                data: forecastLowerData,
-                borderColor: 'rgba(239, 68, 68, 0.3)',
-                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                label: '',
+                data: forecastUpperData,
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
                 tension: 0.4,
-                fill: false,
+                fill: '-1',
                 pointRadius: 0,
                 pointHoverRadius: 0,
-                borderWidth: 1,
-                borderDash: [2, 2],
+                borderWidth: 0,
                 order: 0,
                 showLine: true,
             },
@@ -174,33 +186,20 @@ const cashFlowChartData = computed(() => {
                 borderWidth: 2,
                 order: 2,
             },
-            // Forecasted Net Cash Flow (dashed line)
+            // Forecasted Net Cash Flow (dotted line with shadow)
             {
                 label: 'Net Cash Flow, Forecast',
                 data: forecastNetData,
                 borderColor: 'rgb(239, 68, 68)',
                 backgroundColor: 'rgba(239, 68, 68, 0.05)',
                 tension: 0.4,
-                borderDash: [5, 5],
+                borderDash: [2, 2],
                 fill: false,
                 pointRadius: 5,
                 pointHoverRadius: 7,
                 borderWidth: 2,
                 order: 1,
-            },
-            // Running Cash Position
-            {
-                label: 'Running Cash Position',
-                data: runningBalanceSeries.value,
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                yAxisID: 'y1',
-                tension: 0.3,
-                fill: false,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                borderWidth: 2,
-                order: 3,
+                spanGaps: false,
             },
         ],
     };
@@ -213,8 +212,8 @@ const cashFlowChartOptions = computed(() => ({
             display: true,
             labels: {
                 filter: (item: any) => {
-                    // Hide empty labels and confidence interval from legend
-                    return item.text !== '' && !item.text?.includes('Confidence Interval');
+                    // Hide empty labels
+                    return item.text !== '';
                 },
                 usePointStyle: true,
             },
@@ -255,17 +254,6 @@ const cashFlowChartOptions = computed(() => ({
             title: {
                 display: true,
                 text: 'Net Cash Flow (₱)',
-            },
-            beginAtZero: false,
-        },
-        y1: {
-            position: 'right' as const,
-            title: {
-                display: true,
-                text: 'Cash Position (₱)',
-            },
-            grid: {
-                drawOnChartArea: false,
             },
             beginAtZero: false,
         },
