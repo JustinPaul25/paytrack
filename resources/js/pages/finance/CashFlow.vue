@@ -164,7 +164,7 @@ const cashFlowChartData = computed(() => {
                 label: '',
                 data: forecastUpperData,
                 borderColor: 'transparent',
-                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                backgroundColor: 'rgba(59, 130, 246, 0.2)',
                 tension: 0.4,
                 fill: '-1',
                 pointRadius: 0,
@@ -188,10 +188,10 @@ const cashFlowChartData = computed(() => {
             },
             // Forecasted Net Cash Flow (dotted line with shadow)
             {
-                label: 'Net Cash Flow, Forecast',
+                label: 'Forecast',
                 data: forecastNetData,
-                borderColor: 'rgb(239, 68, 68)',
-                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.05)',
                 tension: 0.4,
                 borderDash: [2, 2],
                 fill: false,
