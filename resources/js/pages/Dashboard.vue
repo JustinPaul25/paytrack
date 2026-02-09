@@ -910,7 +910,7 @@ const sortedTodayDeliveries = computed(() => {
                     </Card>
                 </div>
 
-                <!-- Deliveries Checklist Section (Admin/Staff only) -->
+                <!-- Deliveries Checklist Section (Admin and Staff: data passed from backend for both roles) -->
                 <div v-if="todayDeliveries && todayDeliveries.length > 0" class="deliveries-checklist-section" style="margin-top: 2rem; margin-bottom: 2rem;">
                     <div class="section-header">
                         <h2 class="section-title">Today's Deliveries Checklist</h2>
