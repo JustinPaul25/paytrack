@@ -69,8 +69,12 @@ class DeliveryController extends Controller
         $completedDeliveries = Delivery::where('status', 'completed')->count();
         $cancelledDeliveries = Delivery::where('status', 'cancelled')->count();
 
+        // Today's deliveries for the checklist popup
+        $todayDeliveries = $this->getTodayDeliveries();
+
         return inertia('deliveries/Index', [
             'deliveries' => $deliveries,
+            'todayDeliveries' => $todayDeliveries,
             'filters' => [
                 'search' => $search,
                 'customer_id' => $customerId,
@@ -86,6 +90,33 @@ class DeliveryController extends Controller
                 'cancelledDeliveries' => $cancelledDeliveries,
             ],
         ]);
+    }
+
+    /**
+     * Get today's deliveries for the checklist (same shape as dashboard).
+     */
+    private function getTodayDeliveries(): array
+    {
+        $today = Carbon::today();
+
+        return Delivery::with(['customer', 'invoice'])
+            ->whereDate('delivery_date', $today)
+            ->orderBy('delivery_time', 'asc')
+            ->get()
+            ->map(function ($delivery) {
+                return [
+                    'id' => $delivery->id,
+                    'customer_name' => $delivery->customer ? $delivery->customer->name : 'N/A',
+                    'delivery_address' => $delivery->delivery_address,
+                    'delivery_time' => $delivery->delivery_time,
+                    'status' => $delivery->status,
+                    'contact_person' => $delivery->contact_person,
+                    'contact_phone' => $delivery->contact_phone,
+                    'type' => $delivery->type ?? 'order',
+                    'invoice_id' => $delivery->invoice_id,
+                ];
+            })
+            ->all();
     }
 
     public function create(Request $request)

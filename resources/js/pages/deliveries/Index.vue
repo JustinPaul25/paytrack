@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage, useForm } from '@inertiajs/vue3';
-import { ref, watch, watchEffect } from 'vue';
+import { ref, watch, watchEffect, computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
@@ -13,6 +13,16 @@ import { type BreadcrumbItem } from '@/types';
 import { Select } from '@/components/ui/select';
 import Label from '@/components/ui/label/Label.vue';
 import InputError from '@/components/InputError.vue';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogClose,
+} from '@/components/ui/dialog';
+import { Clock, ClipboardList } from 'lucide-vue-next';
 
 interface Delivery {
     id: number;
@@ -50,6 +60,18 @@ interface DeliveryStats {
     cancelledDeliveries: number;
 }
 
+interface TodayDelivery {
+    id: number;
+    customer_name: string;
+    delivery_address: string;
+    delivery_time: string;
+    status: 'pending' | 'completed' | 'cancelled';
+    contact_person: string;
+    contact_phone: string;
+    type?: string;
+    invoice_id?: number;
+}
+
 const page = usePage();
 const filters = ref<{ search?: string; type?: string; classification?: string; date_from?: string; date_to?: string }>(page.props.filters ? (page.props.filters as { search?: string; type?: string; classification?: string; date_from?: string; date_to?: string }) : {});
 const search = ref(typeof filters.value.search === 'string' ? filters.value.search : '');
@@ -59,7 +81,19 @@ const dateFrom = ref(typeof filters.value.date_from === 'string' ? filters.value
 const dateTo = ref(typeof filters.value.date_to === 'string' ? filters.value.date_to : '');
 const showStats = ref(false);
 const showRescheduleModal = ref(false);
+const showChecklistModal = ref(false);
 const selectedDelivery = ref<Delivery | null>(null);
+
+const todayDeliveries = computed(() => (page.props.todayDeliveries as TodayDelivery[] | undefined) ?? []);
+const sortedTodayDeliveries = computed(() => {
+    if (!todayDeliveries.value.length) return [];
+    const statusOrder: Record<string, number> = { pending: 0, completed: 1, cancelled: 2 };
+    return [...todayDeliveries.value].sort((a, b) => {
+        const statusDiff = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3);
+        if (statusDiff !== 0) return statusDiff;
+        return (a.delivery_time || '').localeCompare(b.delivery_time || '');
+    });
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Deliveries', href: '/deliveries' },
@@ -401,6 +435,11 @@ function submitReschedule() {
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" 
                 />
             </label>
+            <Button variant="outline" size="sm" class="gap-2" @click="showChecklistModal = true">
+                <ClipboardList class="h-4 w-4" />
+                Today's Checklist
+                <span v-if="todayDeliveries.length" class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{{ todayDeliveries.length }}</span>
+            </Button>
         </div>
 
         <Card>
@@ -608,5 +647,81 @@ function submitReschedule() {
                 </CardContent>
             </Card>
         </div>
+
+        <!-- Today's Deliveries Checklist Modal -->
+        <Dialog :open="showChecklistModal" @update:open="showChecklistModal = $event">
+            <DialogContent class="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Today's Deliveries Checklist</DialogTitle>
+                    <DialogDescription>Deliveries scheduled for today. Pending first, then by time.</DialogDescription>
+                </DialogHeader>
+                <div class="flex-1 overflow-y-auto space-y-4 pr-2">
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-amber-500" />
+                            <span class="text-sm text-muted-foreground"><strong class="text-foreground">{{ todayDeliveries.filter(d => d.status === 'pending').length }}</strong> Pending</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500" />
+                            <span class="text-sm text-muted-foreground"><strong class="text-foreground">{{ todayDeliveries.filter(d => d.status === 'completed').length }}</strong> Completed</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-3 h-3 rounded-full bg-red-500" />
+                            <span class="text-sm text-muted-foreground"><strong class="text-foreground">{{ todayDeliveries.filter(d => d.status === 'cancelled').length }}</strong> Cancelled</span>
+                        </div>
+                    </div>
+                    <div v-if="sortedTodayDeliveries.length" class="space-y-2">
+                        <div
+                            v-for="delivery in sortedTodayDeliveries"
+                            :key="delivery.id"
+                            class="rounded-lg border bg-card p-3 flex items-center gap-3 transition-all"
+                            :class="delivery.status === 'cancelled' ? 'opacity-60' : ''"
+                            :style="{ borderLeftWidth: '4px', borderLeftColor: delivery.status === 'pending' ? '#f59e0b' : delivery.status === 'completed' ? '#10b981' : '#ef4444' }"
+                        >
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap mb-1">
+                                    <span class="font-semibold text-foreground">{{ delivery.customer_name }}</span>
+                                    <span
+                                        class="rounded-full px-2 py-0.5 text-xs font-medium capitalize"
+                                        :class="delivery.status === 'pending' ? 'bg-amber-100 text-amber-800' : delivery.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'"
+                                    >
+                                        {{ delivery.status }}
+                                    </span>
+                                    <span v-if="delivery.type === 'return'" class="rounded-full px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800">Return</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5 text-sm text-muted-foreground">
+                                    <div class="flex items-center gap-2">
+                                        <Clock class="h-4 w-4 shrink-0" />
+                                        <span>Time: {{ delivery.delivery_time }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 truncate">
+                                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span class="truncate">{{ delivery.delivery_address }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span>{{ delivery.contact_person }} • {{ delivery.contact_phone }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <Button variant="outline" size="sm" @click="router.visit(`/deliveries/${delivery.id}`); showChecklistModal = false;">
+                                View Details
+                            </Button>
+                        </div>
+                    </div>
+                    <p v-else class="text-sm text-muted-foreground text-center py-6">No deliveries scheduled for today.</p>
+                </div>
+                <DialogFooter>
+                    <DialogClose as-child>
+                        <Button variant="outline">Close</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </AppLayout>
 </template> 
