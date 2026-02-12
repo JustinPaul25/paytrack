@@ -24,7 +24,7 @@ class CustomerRegistrationRequest extends FormRequest
                 'unique:customers,email',
                 'unique:users,email',
             ],
-            'phone' => ['nullable', 'string', 'max:50', 'regex:/^(?:\+?63|0)9\d{9}$/'],
+            'phone' => ['required', 'string', 'max:50', 'regex:/^(?:\+?63|0)9\d{9}$/'],
             'address' => ['nullable', 'string'],
             'barangay' => ['nullable', 'string', 'max:255'],
             'city_municipality' => ['nullable', 'string', 'max:255'],
@@ -32,7 +32,14 @@ class CustomerRegistrationRequest extends FormRequest
             'location' => ['nullable', 'array'],
             'location.lat' => ['nullable', 'numeric', 'between:-90,90'],
             'location.lng' => ['nullable', 'numeric', 'between:-180,180'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
+            ],
         ];
     }
 
@@ -64,8 +71,9 @@ class CustomerRegistrationRequest extends FormRequest
             'email.max' => 'Email is too long (max 255 characters).',
             'email.unique' => 'This email is already in use.',
 
+            'phone.required' => 'Phone number is required.',
             'phone.max' => 'Phone number is too long (max 50 characters).',
-            'phone.regex' => 'Please enter a valid Philippine mobile number (09XXXXXXXXX or +639XXXXXXXXX).',
+            'phone.regex' => 'Please enter a valid 10-digit Philippine mobile number (must start with 9).',
 
             'location.array' => 'Location must be a valid location.',
             'location.lat.numeric' => 'Latitude must be a number between -90 and 90.',
@@ -75,6 +83,10 @@ class CustomerRegistrationRequest extends FormRequest
 
             'password.required' => 'Please enter a password.',
             'password.confirmed' => 'The password confirmation does not match.',
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.mixed' => 'Password must contain both uppercase and lowercase letters.',
+            'password.numbers' => 'Password must contain at least one number.',
+            'password.symbols' => 'Password must contain at least one special character.',
         ];
     }
 }

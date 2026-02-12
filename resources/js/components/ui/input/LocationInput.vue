@@ -30,9 +30,13 @@ const emits = defineEmits<{
   (e: 'update:modelValue', value: { lat: number; lng: number } | null): void
 }>()
 
+// Panabo City, Philippines coordinates (default initial location)
+const PANABO_CITY_COORDS: [number, number] = [7.3081, 125.6833]
+const DEFAULT_CITY_ZOOM = 13
+
 const selected = ref<{ lat: number; lng: number } | null>(null)
-const mapCenter = ref<[number, number]>([0, 0])
-const zoom = ref(props.mapZoom ?? (props.modelValue ? 13 : 2))
+const mapCenter = ref<[number, number]>(PANABO_CITY_COORDS)
+const zoom = ref(props.mapZoom ?? (props.modelValue ? DEFAULT_CITY_ZOOM : DEFAULT_CITY_ZOOM))
 const isMounted = ref(false)
 
 // Ensure map only renders after component is mounted
@@ -104,11 +108,12 @@ watch(
     if (val && typeof val.lat === 'number' && typeof val.lng === 'number' && !isNaN(val.lat) && !isNaN(val.lng)) {
       selected.value = val
       mapCenter.value = [val.lat, val.lng]
-      zoom.value = props.mapZoom ?? 13
+      zoom.value = props.mapZoom ?? DEFAULT_CITY_ZOOM
     } else {
       selected.value = null
-      mapCenter.value = [0, 0]
-      zoom.value = props.mapZoom ?? 2
+      // Reset to Panabo City, Philippines when no value is provided
+      mapCenter.value = PANABO_CITY_COORDS
+      zoom.value = props.mapZoom ?? DEFAULT_CITY_ZOOM
     }
   },
   { immediate: true }

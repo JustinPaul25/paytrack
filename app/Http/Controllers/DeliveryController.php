@@ -7,12 +7,15 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\StockMovement;
 use App\Models\Setting;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
 class DeliveryController extends Controller
+{
+    use HandlesDeletionRequests;
 {
     public function index(Request $request)
     {
@@ -482,7 +485,11 @@ class DeliveryController extends Controller
 
     public function destroy(Delivery $delivery)
     {
-        $delivery->delete();
+        return $this->handleDeletion(
+            $delivery,
+            'delivery',
+            request()->input('reason')
+        );
     }
 
     public function reschedule(Request $request, Delivery $delivery)

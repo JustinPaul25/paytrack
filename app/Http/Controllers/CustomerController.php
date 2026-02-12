@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerLog;
 use App\Models\Notification;
 use App\Models\User;
+use App\Models\DeletionRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Requests\CustomerRequest;
@@ -191,8 +192,24 @@ class CustomerController extends Controller
 
     public function destroy(Customer $customer)
     {
-        // Only admins can delete customers
-        if (!auth()->user()->hasRole('Admin')) {
+        $user = auth()->user();
+
+        // Staff needs to request permission
+        if ($user->hasRole('Staff')) {
+            DeletionRequest::create([
+                'requested_by' => $user->id,
+                'deletable_type' => get_class($customer),
+                'deletable_id' => $customer->id,
+                'deletable_name' => "Customer: {$customer->name}",
+                'reason' => request()->input('reason') ?? 'Deletion requested by staff member.',
+                'status' => 'pending',
+            ]);
+
+            return redirect()->back()->with('info', 'Deletion request submitted. Waiting for owner/admin approval.');
+        }
+
+        // Only Owner and Admin can delete customers directly
+        if (!$user->hasAnyRole(['Owner', 'Admin'])) {
             return redirect()->route('customers.index')
                 ->with('error', 'You do not have permission to delete customer data.');
         }
@@ -202,7 +219,7 @@ class CustomerController extends Controller
         $hasDeliveries = \App\Models\Delivery::where('customer_id', $customer->id)->exists();
 
         // Log the customer deletion before deleting
-        $this->logCustomerActivity($customer, 'deleted', "Customer {$customer->name} was deleted by admin.");
+        $this->logCustomerActivity($customer, 'deleted', "Customer {$customer->name} was deleted by " . ($user->hasRole('Owner') ? 'owner' : 'admin') . ".");
 
         // Remove profile image if present
         $customer->clearMediaCollection('profile_image');
@@ -211,10 +228,10 @@ class CustomerController extends Controller
         // This allows the customer to appear in archived when filtering
         // The customer record itself is kept for historical data (invoices/deliveries)
         // Find user by email, including trashed users (in case it was already soft deleted)
-        $user = User::withTrashed()->where('email', $customer->email)->first();
-        if ($user && !$user->trashed()) {
-            $user->delete(); // Soft delete the user (archives the customer)
-        } elseif ($user && $user->trashed()) {
+        $customerUser = User::withTrashed()->where('email', $customer->email)->first();
+        if ($customerUser && !$customerUser->trashed()) {
+            $customerUser->delete(); // Soft delete the user (archives the customer)
+        } elseif ($customerUser && $customerUser->trashed()) {
             // User is already soft deleted, nothing to do
         } else {
             // If no user exists and no related records, we can safely delete the customer

@@ -162,6 +162,13 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:Admin|Staff')
         ->name('refundRequests.reject');
 
+    // Deletion Requests (Owner and Admin only)
+    Route::middleware('role:Owner|Admin')->group(function () {
+        Route::get('deletion-requests', [\App\Http\Controllers\DeletionRequestController::class, 'index'])->name('deletionRequests.index');
+        Route::post('deletion-requests/{deletionRequest}/approve', [\App\Http\Controllers\DeletionRequestController::class, 'approve'])->name('deletionRequests.approve');
+        Route::post('deletion-requests/{deletionRequest}/reject', [\App\Http\Controllers\DeletionRequestController::class, 'reject'])->name('deletionRequests.reject');
+    });
+
     // Refunds (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::get('refunds', [\App\Http\Controllers\RefundController::class, 'index'])->name('refunds.index');

@@ -153,7 +153,7 @@ onUnmounted(() => {
         <div
             v-if="isOpen"
             ref="dropdownRef"
-            class="absolute top-full left-0 right-0 z-50 mt-1 bg-popover text-popover-foreground border border-border rounded-md shadow-lg p-0"
+            class="absolute top-full left-0 right-0 z-[2000] mt-1 bg-popover text-popover-foreground border border-border rounded-md shadow-lg p-0"
         >
             <!-- Search Input -->
             <div class="p-2 border-b border-border">

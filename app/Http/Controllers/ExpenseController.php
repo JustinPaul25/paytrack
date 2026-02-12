@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Expense;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,6 +12,7 @@ use Inertia\Response;
 
 class ExpenseController extends Controller
 {
+    use HandlesDeletionRequests;
     /**
      * Display a listing of the resource.
      */
@@ -115,9 +117,13 @@ class ExpenseController extends Controller
      */
     public function destroy(Expense $expense): RedirectResponse
     {
-        $expense->delete();
-
-        return redirect()->route('expenses.index')
+        return $this->handleDeletion(
+            $expense,
+            'expense',
+            request()->input('reason'),
+            route('expenses.index')
+        );
+    }
             ->with('success', 'Expense deleted successfully');
     }
 } 

@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Http\Requests\BranchRequest;
 
 class BranchController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $query = Branch::query();
@@ -98,11 +100,11 @@ class BranchController extends Controller
 
     public function destroy(Branch $branch)
     {
-        try {
-            $branch->delete();
-            return redirect()->route('branches.index')->with('success', 'Branch deleted successfully.');
-        } catch (\Exception $e) {
-            return redirect()->route('branches.index')->with('error', 'Failed to delete branch. Please try again.');
-        }
+        return $this->handleDeletion(
+            $branch,
+            'branch',
+            request()->input('reason'),
+            route('branches.index')
+        );
     }
 } 

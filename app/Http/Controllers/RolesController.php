@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -10,6 +11,7 @@ use Illuminate\Support\Str;
 
 class RolesController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $query = Role::with('permissions');
@@ -113,7 +115,11 @@ class RolesController extends Controller
 
     public function destroy(Role $role)
     {
-        $role->delete();
-        // return redirect()->route('roles.index')->with('success', 'Role deleted successfully!');
+        return $this->handleDeletion(
+            $role,
+            'role',
+            request()->input('reason'),
+            route('roles.index')
+        );
     }
 } 

@@ -6,15 +6,17 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download, AlertTriangle } from 'lucide-vue-next';
+import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download, AlertTriangle, Trash2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
 const page = usePage();
 const isCustomer = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Customer'));
 const isAdmin = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Admin'));
+const isOwner = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Owner'));
+const isAdminOrOwner = isAdmin || isOwner;
 const isStaff = !!((page.props.auth as any)?.userRoles && (page.props.auth as any).userRoles.includes('Staff'));
-const isStaffOnly = isStaff && !isAdmin; // Staff but not Admin
+const isStaffOnly = isStaff && !isAdmin && !isOwner; // Staff but not Admin or Owner
 const pendingOrderCount = (page.props.pendingOrderCount as number) || 0;
 const pendingRefundCount = (page.props.pendingRefundCount as number) || 0;
 
@@ -212,8 +214,8 @@ const isActiveRoute = (path: string): boolean => {
                 </SidebarMenuItem>
             </SidebarMenu>
             
-            <!-- Users Group (Admin only) -->
-            <SidebarMenu v-if="isAdmin" class="px-2">
+            <!-- Users Group (Admin/Owner only) -->
+            <SidebarMenu v-if="isAdminOrOwner" class="px-2">
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child :is-active="isActiveRoute('/users')">
                         <Link href="/users">
@@ -224,8 +226,20 @@ const isActiveRoute = (path: string): boolean => {
                 </SidebarMenuItem>
             </SidebarMenu>
 
-            <!-- Financial Group (Admin only) -->
-            <SidebarMenu v-if="isAdmin" class="px-2">
+            <!-- Deletion Requests (Admin/Owner only) -->
+            <SidebarMenu v-if="isAdminOrOwner" class="px-2">
+                <SidebarMenuItem>
+                    <SidebarMenuButton as-child :is-active="isActiveRoute('/deletion-requests')">
+                        <Link href="/deletion-requests">
+                            <Trash2 class="h-4 w-4" />
+                            <span>Deletion Requests</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+
+            <!-- Financial Group (Admin/Owner only) -->
+            <SidebarMenu v-if="isAdminOrOwner" class="px-2">
                 <SidebarMenuItem>
                     <Collapsible v-model:open="isFinancialOpen">
                         <CollapsibleTrigger as-child>
@@ -283,8 +297,8 @@ const isActiveRoute = (path: string): boolean => {
                 </SidebarMenuItem>
             </SidebarMenu>
 
-            <!-- Data Export (Admin only) -->
-            <SidebarMenu v-if="isAdmin" class="px-2">
+            <!-- Data Export (Admin/Owner only) -->
+            <SidebarMenu v-if="isAdminOrOwner" class="px-2">
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child :is-active="isActiveRoute('/admin/export')">
                         <Link href="/admin/export">
@@ -295,8 +309,8 @@ const isActiveRoute = (path: string): boolean => {
                 </SidebarMenuItem>
             </SidebarMenu>
 
-            <!-- Store Settings (Admin only) -->
-            <SidebarMenu v-if="isAdmin" class="px-2">
+            <!-- Store Settings (Admin/Owner only) -->
+            <SidebarMenu v-if="isAdminOrOwner" class="px-2">
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child :is-active="isActiveRoute('/admin/settings')">
                         <Link href="/admin/settings">
@@ -310,7 +324,7 @@ const isActiveRoute = (path: string): boolean => {
 
         <SidebarFooter>
             <!-- Quick Deliveries Shortcut -->
-            <SidebarMenu v-if="!isCustomer && !isAdmin" class="px-2">
+            <SidebarMenu v-if="!isCustomer && !isAdminOrOwner" class="px-2">
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child :is-active="isActiveRoute(route('deliveries.shortcut'))" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200">
                         <Link href="/deliveries/shortcut">

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $query = Category::query()->withCount('products');
@@ -72,13 +74,10 @@ class CategoryController extends Controller
             ], 422);
         }
 
-        try {
-            $category->delete();
-            return response()->noContent();
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to delete category: ' . $e->getMessage()
-            ], 500);
-        }
+        return $this->handleDeletion(
+            $category,
+            'category',
+            request()->input('reason')
+        );
     }
 } 

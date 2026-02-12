@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class UsersController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         // Unified user management table
@@ -316,8 +318,17 @@ class UsersController extends Controller
 
     public function destroy(User $user)
     {
-        $user->delete();
-        return redirect()->route('users.index')->with('success', 'User deleted successfully!');
+        // Prevent self-deletion
+        if ($user->id === auth()->id()) {
+            return redirect()->route('users.index')->with('error', 'You cannot delete your own account.');
+        }
+
+        return $this->handleDeletion(
+            $user,
+            'user',
+            request()->input('reason'),
+            route('users.index')
+        );
     }
 
     public function archives(Request $request)

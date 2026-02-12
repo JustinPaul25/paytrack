@@ -62,12 +62,44 @@ const steps = [
     { number: 3, title: 'Location & Address' },
 ];
 
+// Password validation functions
+const hasMinLength = computed(() => form.password.length >= 8);
+const hasUppercase = computed(() => /[A-Z]/.test(form.password));
+const hasLowercase = computed(() => /[a-z]/.test(form.password));
+const hasNumber = computed(() => /[0-9]/.test(form.password));
+const hasSpecialChar = computed(() => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(form.password));
+
+const isPasswordValid = computed(() => {
+    return hasMinLength.value && 
+           hasUppercase.value && 
+           hasLowercase.value && 
+           hasNumber.value && 
+           hasSpecialChar.value &&
+           form.password === form.password_confirmation;
+});
+
+// Phone number validation
+const isPhoneValid = computed(() => {
+    if (!form.phone || form.phone.trim() === '') {
+        return false; // Phone is required
+    }
+    // Phone number must be exactly 10 digits starting with 9 (stored as +63XXXXXXXXXX = 13 chars)
+    // Philippine mobile numbers format: +639XXXXXXXXX (where first X is 0-9, but typically 9)
+    const phMobileRegex = /^\+639\d{9}$/;
+    return phMobileRegex.test(form.phone);
+});
+
 const canGoNext = () => {
     if (currentStep.value === 1) {
-        return form.name && form.email && form.password && form.password_confirmation;
+        return form.name && 
+               form.email && 
+               form.password && 
+               form.password_confirmation &&
+               isPasswordValid.value;
     }
     if (currentStep.value === 2) {
-        return true; // All fields optional in step 2
+        // Phone number is required and must be valid
+        return isPhoneValid.value;
     }
     if (currentStep.value === 3) {
         return form.address && form.province && form.city_municipality && form.barangay && form.location;
@@ -77,18 +109,43 @@ const canGoNext = () => {
 
 const nextStep = () => {
     if (currentStep.value < totalSteps && canGoNext()) {
-        // Validate phone number when leaving step 2 (Contact Information)
-        if (currentStep.value === 2 && form.phone) {
-            // Phone number must be exactly 10 digits (stored as +63XXXXXXXXXX = 13 chars)
-            const phMobileRegex = /^\+63\d{10}$/;
-            if (!phMobileRegex.test(form.phone)) {
-                form.setError('phone', 'Please enter a valid 10-digit Philippine mobile number.');
-                // Don't show dialog, just show inline error
+        // Validate password when leaving step 1 (Basic Information)
+        if (currentStep.value === 1) {
+            if (!isPasswordValid.value) {
+                // Set specific error messages based on what's missing
+                if (!hasMinLength.value) {
+                    form.setError('password', 'Password must be at least 8 characters long.');
+                } else if (!hasUppercase.value) {
+                    form.setError('password', 'Password must contain at least one uppercase letter.');
+                } else if (!hasLowercase.value) {
+                    form.setError('password', 'Password must contain at least one lowercase letter.');
+                } else if (!hasNumber.value) {
+                    form.setError('password', 'Password must contain at least one number.');
+                } else if (!hasSpecialChar.value) {
+                    form.setError('password', 'Password must contain at least one special character.');
+                } else if (form.password !== form.password_confirmation) {
+                    form.setError('password_confirmation', 'The password confirmation does not match.');
+                }
                 return;
             }
+            // Clear password errors if validation passed
+            form.clearErrors('password', 'password_confirmation');
         }
-        // Clear phone error if validation passed
-        form.clearErrors('phone');
+        
+        // Validate phone number when leaving step 2 (Contact Information)
+        if (currentStep.value === 2) {
+            if (!isPhoneValid.value) {
+                if (!form.phone || form.phone.trim() === '') {
+                    form.setError('phone', 'Phone number is required.');
+                } else {
+                    form.setError('phone', 'Please enter a valid 10-digit Philippine mobile number (must start with 9).');
+                }
+                // Don't proceed if phone is invalid
+                return;
+            }
+            // Clear phone error if validation passed
+            form.clearErrors('phone');
+        }
         currentStep.value++;
     }
 };
@@ -245,7 +302,10 @@ watch(() => form.city_municipality, () => {
                                     autocomplete="new-password"
                                     v-model="form.password"
                                     placeholder="Enter your password"
-                                    class="w-full pr-12"
+                                    :class="[
+                                        'w-full pr-12',
+                                        form.password && !isPasswordValid && 'border-destructive focus-visible:ring-destructive'
+                                    ]"
                                 />
                                 <button
                                     type="button"
@@ -257,6 +317,41 @@ watch(() => form.city_municipality, () => {
                                 </button>
                             </div>
                             <InputError :message="form.errors.password" />
+                            
+                            <!-- Password Requirements -->
+                            <div v-if="form.password" class="mt-2 space-y-1">
+                                <p class="text-xs font-medium text-foreground mb-1">Password requirements:</p>
+                                <ul class="space-y-1 text-xs">
+                                    <li :class="hasMinLength ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
+                                        <Check v-if="hasMinLength" class="h-3 w-3 flex-shrink-0" />
+                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
+                                        Minimum 8 characters
+                                    </li>
+                                    <li :class="hasUppercase ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
+                                        <Check v-if="hasUppercase" class="h-3 w-3 flex-shrink-0" />
+                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
+                                        At least one uppercase letter
+                                    </li>
+                                    <li :class="hasLowercase ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
+                                        <Check v-if="hasLowercase" class="h-3 w-3 flex-shrink-0" />
+                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
+                                        At least one lowercase letter
+                                    </li>
+                                    <li :class="hasNumber ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
+                                        <Check v-if="hasNumber" class="h-3 w-3 flex-shrink-0" />
+                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
+                                        At least one number
+                                    </li>
+                                    <li :class="hasSpecialChar ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
+                                        <Check v-if="hasSpecialChar" class="h-3 w-3 flex-shrink-0" />
+                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
+                                        At least one special character (!@#$%^&*...)
+                                    </li>
+                                </ul>
+                            </div>
+                            <p v-else class="text-xs text-muted-foreground mt-1">
+                                8 minimum Char. Numbers / Special Char.
+                            </p>
                         </div>
 
                         <div>
@@ -269,7 +364,10 @@ watch(() => form.city_municipality, () => {
                                     autocomplete="new-password"
                                     v-model="form.password_confirmation"
                                     placeholder="Confirm your password"
-                                    class="w-full pr-12"
+                                    :class="[
+                                        'w-full pr-12',
+                                        form.password_confirmation && form.password !== form.password_confirmation && 'border-destructive focus-visible:ring-destructive'
+                                    ]"
                                 />
                                 <button
                                     type="button"
@@ -281,6 +379,9 @@ watch(() => form.city_municipality, () => {
                                 </button>
                             </div>
                             <InputError :message="form.errors.password_confirmation" />
+                            <p v-if="form.password_confirmation && form.password === form.password_confirmation && isPasswordValid" class="text-xs text-green-600 dark:text-green-400 mt-1">
+                                ✓ Passwords match
+                            </p>
                         </div>
                     </div>
 
@@ -301,15 +402,22 @@ watch(() => form.city_municipality, () => {
                         </div>
 
                         <div>
-                            <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Phone Number</Label>
+                            <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Phone Number *</Label>
                             <PhoneInput
                                 id="phone"
                                 v-model="form.phone"
                                 placeholder="XXXXXXXXXX"
-                                class="w-full"
+                                required
+                                :class="[
+                                    'w-full',
+                                    (!form.phone || !isPhoneValid) && 'border-destructive focus-within:border-destructive focus-within:ring-destructive/50'
+                                ]"
                             />
-                            <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number.</p>
+                            <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number (must start with 9).</p>
                             <InputError :message="form.errors.phone" />
+                            <p v-if="form.phone && isPhoneValid" class="text-xs text-green-600 dark:text-green-400 mt-1">
+                                ✓ Valid phone number
+                            </p>
                         </div>
                     </div>
 

@@ -612,20 +612,38 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
-        // Only Staff can delete (Admin and Customer cannot)
         $user = auth()->user();
-        if (!$user || $user->hasRole('Admin') || $user->hasRole('Customer') || !$user->hasRole('Staff')) {
-            abort(403);
+        
+        // Owner and Admin can delete directly
+        if ($user->hasAnyRole(['Owner', 'Admin'])) {
+            DB::beginTransaction();
+            try {
+                $invoice->invoiceItems()->delete();
+                $invoice->delete();
+                DB::commit();
+                return redirect()->back()->with('success', 'Invoice deleted successfully.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'Failed to delete invoice: ' . $e->getMessage());
+            }
         }
-        DB::beginTransaction();
-        try {
-            $invoice->invoiceItems()->delete();
-            $invoice->delete();
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
+
+        // Staff needs to request permission
+        if ($user->hasRole('Staff')) {
+            \App\Models\DeletionRequest::create([
+                'requested_by' => $user->id,
+                'deletable_type' => get_class($invoice),
+                'deletable_id' => $invoice->id,
+                'deletable_name' => "Invoice: {$invoice->reference_number}",
+                'reason' => request()->input('reason') ?? 'Deletion requested by staff member.',
+                'status' => 'pending',
+            ]);
+
+            return redirect()->back()->with('info', 'Deletion request submitted. Waiting for owner/admin approval.');
         }
+
+        // Customer cannot delete
+        abort(403, 'You do not have permission to delete invoices.');
     }
 
     public function markPaid(Request $request, Invoice $invoice)

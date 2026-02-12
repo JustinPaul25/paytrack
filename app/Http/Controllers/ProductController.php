@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\StockMovement;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $query = Product::with('category');
@@ -162,12 +164,12 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        // Remove media if present
-        $product->clearMediaCollection('images');
-
-        $product->delete();
-
-        return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
+        return $this->handleDeletion(
+            $product,
+            'product',
+            request()->input('reason'),
+            route('products.index')
+        );
     }
 
     /**

@@ -12,6 +12,7 @@ class RolesAndUsersSeeder extends Seeder
     {
         // Ensure roles exist
         $roles = [
+            'Owner',
             'Admin',
             'Staff',
             'Customer',
