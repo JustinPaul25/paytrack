@@ -624,7 +624,7 @@ watch([() => form.status, () => form.payment_method, () => form.invoice_type, is
                     </div>
                     
                     <!-- Add Item Button -->
-                    <div class="mt-4 flex justify-center">
+                    <div class="mt-4 flex justify-end">
                         <Button type="button" variant="outline" size="sm" @click="addInvoiceItem">
                             <span class="mr-2">+</span>
                             Add Item
