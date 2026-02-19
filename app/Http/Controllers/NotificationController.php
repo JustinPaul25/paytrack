@@ -48,7 +48,7 @@ class NotificationController extends Controller
     /**
      * Mark a notification as read
      */
-    public function markAsRead(Notification $notification)
+    public function markAsRead(Request $request, Notification $notification)
     {
         if ($notification->user_id !== auth()->id()) {
             abort(403);
@@ -56,13 +56,17 @@ class NotificationController extends Controller
 
         $notification->markAsRead();
 
+        if ($request->header('X-Inertia')) {
+            return redirect()->back();
+        }
+
         return response()->json(['success' => true]);
     }
 
     /**
      * Mark all notifications as read
      */
-    public function markAllAsRead()
+    public function markAllAsRead(Request $request)
     {
         Notification::where('user_id', auth()->id())
             ->where('read', false)
@@ -70,6 +74,10 @@ class NotificationController extends Controller
                 'read' => true,
                 'read_at' => now(),
             ]);
+
+        if ($request->header('X-Inertia')) {
+            return redirect()->back();
+        }
 
         return response()->json(['success' => true]);
     }

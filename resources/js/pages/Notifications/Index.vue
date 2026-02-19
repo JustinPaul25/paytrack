@@ -108,7 +108,7 @@ const getNotificationIcon = (type: string) => {
     return Bell;
 };
 
-const markAsRead = async (notification: Notification) => {
+const markAsRead = (notification: Notification) => {
     if (notification.read) return;
     
     // Find the notification index
@@ -121,65 +121,33 @@ const markAsRead = async (notification: Notification) => {
         allNotifications.value[index].read_at = new Date().toISOString();
     }
     
-    try {
-        const response = await fetch(`/notifications/${notification.id}/read`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-        });
-        
-        if (!response.ok) {
-            // Revert optimistic update on failure
+    router.post(`/notifications/${notification.id}/read`, {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onError: () => {
             if (wasUnread && index !== -1) {
                 allNotifications.value[index].read = false;
                 allNotifications.value[index].read_at = null;
             }
-            console.error('Error marking notification as read:', response.statusText);
-        }
-    } catch (error) {
-        // Revert optimistic update on error
-        if (wasUnread && index !== -1) {
-            allNotifications.value[index].read = false;
-            allNotifications.value[index].read_at = null;
-        }
-        console.error('Error marking notification as read:', error);
-    }
+        },
+    });
 };
 
-const markAllAsRead = async () => {
-    try {
-        const response = await fetch('/notifications/read-all', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-        });
-        
-        if (response.ok) {
-            // Update all notifications to read
+const markAllAsRead = () => {
+    router.post('/notifications/read-all', {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
             allNotifications.value.forEach(n => {
                 n.read = true;
                 n.read_at = new Date().toISOString();
             });
-        }
-    } catch (error) {
-        console.error('Error marking all notifications as read:', error);
-    }
+        },
+    });
 };
 
-const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read first
-    await markAsRead(notification);
-    
-    // Wait a tick to ensure UI updates before navigation
-    await nextTick();
-    
-    // Then navigate if there's an action URL
+const handleNotificationClick = (notification: Notification) => {
+    markAsRead(notification);
     if (notification.action_url) {
         router.visit(notification.action_url);
     }

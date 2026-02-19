@@ -99,77 +99,43 @@ const markAsRead = async (notification: Notification) => {
         unreadCount.value = Math.max(0, unreadCount.value - 1);
     }
     
-    try {
-        const response = await fetch(`/notifications/${notification.id}/read`, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-        });
-        
-        if (!response.ok) {
-            // If server call failed, revert the optimistic update
+    router.post(`/notifications/${notification.id}/read`, {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onError: () => {
+            // Revert optimistic update on failure
             if (wasUnread && index !== -1) {
                 notifications.value[index].read = false;
                 notifications.value[index].read_at = null;
                 unreadCount.value++;
             }
-            console.error('Failed to mark notification as read:', response.statusText);
-        }
-        // If successful, the optimistic update remains - no need to do anything
-    } catch (error) {
-        // If error occurred, revert the optimistic update
-        if (wasUnread && index !== -1) {
-            notifications.value[index].read = false;
-            notifications.value[index].read_at = null;
-            unreadCount.value++;
-        }
-        console.error('Error marking notification as read:', error);
-    }
+        },
+    });
 };
 
-const markAllAsRead = async () => {
-    try {
-        const response = await fetch('/notifications/read-all', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
-        });
-        
-        if (response.ok) {
+const markAllAsRead = () => {
+    router.post('/notifications/read-all', {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
             notifications.value.forEach(n => {
                 n.read = true;
                 n.read_at = new Date().toISOString();
             });
             unreadCount.value = 0;
-        }
-    } catch (error) {
-        console.error('Error marking all notifications as read:', error);
-    }
+        },
+    });
 };
 
-const handleNotificationClick = async (event: Event, notification: Notification) => {
+const handleNotificationClick = (event: Event, notification: Notification) => {
     event.preventDefault();
     event.stopPropagation();
-    
-    // Mark as read first
-    await markAsRead(notification);
-    
-    // Then navigate if there's an action URL
+
+    markAsRead(notification);
+
     if (notification.action_url) {
-        // Close dropdown before navigation
         isOpen.value = false;
-        // Small delay to ensure dropdown closes smoothly
-        await new Promise(resolve => setTimeout(resolve, 100));
-        router.visit(notification.action_url);
-    } else {
-        // If no action URL, just mark as read (already done above)
-        // You could add a visual feedback here if needed
+        setTimeout(() => router.visit(notification.action_url), 100);
     }
 };
 
