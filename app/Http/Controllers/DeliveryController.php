@@ -16,7 +16,7 @@ use Carbon\Carbon;
 class DeliveryController extends Controller
 {
     use HandlesDeletionRequests;
-{
+
     public function index(Request $request)
     {
         $query = Delivery::with(['customer', 'invoice.refunds']);
