@@ -7,7 +7,7 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select } from '@/components/ui/select';
 import Icon from '@/components/Icon.vue';
 import Swal from 'sweetalert2';
 import { AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-vue-next';
@@ -56,6 +56,12 @@ const props = defineProps<{
 }>();
 
 const statusFilter = ref(props.filters.status || 'all');
+const statusOptions = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'rejected', label: 'Rejected' },
+];
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 watch(statusFilter, (val) => {
@@ -224,17 +230,7 @@ function formatDate(dateString: string): string {
                     <div class="flex gap-4">
                         <div class="w-48">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                            <Select v-model="statusFilter">
-                                <SelectTrigger>
-                                    <SelectValue placeholder="All statuses" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Statuses</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="approved">Approved</SelectItem>
-                                    <SelectItem value="rejected">Rejected</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Select v-model="statusFilter" :options="statusOptions" placeholder="All statuses" />
                         </div>
                     </div>
                 </CardContent>
