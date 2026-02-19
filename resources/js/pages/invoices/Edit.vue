@@ -361,14 +361,12 @@ function getProductOptions() {
 
             <!-- Invoice Items -->
             <Card>
-                <CardHeader>
-                    <div class="flex justify-between items-center">
-                        <CardTitle>Invoice Items</CardTitle>
-                        <Button type="button" variant="outline" @click="addInvoiceItem">
-                            <span class="mr-2">+</span>
-                            Add Item
-                        </Button>
-                    </div>
+                <CardHeader class="flex flex-row items-center justify-between">
+                    <CardTitle>Invoice Items</CardTitle>
+                    <Button type="button" variant="outline" size="sm" @click="addInvoiceItem">
+                        <span class="mr-2">+</span>
+                        Add Item
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div class="space-y-3">

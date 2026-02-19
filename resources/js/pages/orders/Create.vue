@@ -459,14 +459,12 @@ function getItemTotal(index: number): number {
 
             <!-- Order Items -->
             <Card>
-                <CardHeader>
-                    <div class="flex justify-between items-center">
-                        <CardTitle>Order Items</CardTitle>
-                        <Button type="button" variant="outline" @click="addOrderItem">
-                            <span class="mr-2">+</span>
-                            Add Item
-                        </Button>
-                    </div>
+                <CardHeader class="flex flex-row items-center justify-between">
+                    <CardTitle>Order Items</CardTitle>
+                    <Button type="button" variant="outline" size="sm" @click="addOrderItem">
+                        <span class="mr-2">+</span>
+                        Add Item
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div class="space-y-3">
