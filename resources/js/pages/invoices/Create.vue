@@ -533,12 +533,8 @@ watch([() => form.status, () => form.payment_method, () => form.invoice_type, is
 
             <!-- Invoice Items -->
             <Card>
-                <CardHeader class="flex flex-row items-center justify-between">
+                <CardHeader>
                     <CardTitle>Invoice Items</CardTitle>
-                    <Button type="button" variant="outline" size="sm" @click="addInvoiceItem">
-                        <span class="mr-2">+</span>
-                        Add Item
-                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div class="space-y-3">
@@ -625,6 +621,14 @@ watch([() => form.status, () => form.payment_method, () => form.invoice_type, is
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Add Item Button -->
+                    <div class="mt-4 flex justify-center">
+                        <Button type="button" variant="outline" size="sm" @click="addInvoiceItem">
+                            <span class="mr-2">+</span>
+                            Add Item
+                        </Button>
                     </div>
                     
                     <!-- Total Amount Breakdown -->
