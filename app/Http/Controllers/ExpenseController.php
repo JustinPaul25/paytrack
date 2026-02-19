@@ -124,6 +124,4 @@ class ExpenseController extends Controller
             route('expenses.index')
         );
     }
-            ->with('success', 'Expense deleted successfully');
-    }
 } 
