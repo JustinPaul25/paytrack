@@ -128,6 +128,7 @@ const showCameraModal = ref(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const streamRef = ref<MediaStream | null>(null);
 const cameraInputRef = ref<HTMLInputElement | null>(null);
+const paymentProofFileInputRef = ref<HTMLInputElement | null>(null);
 
 // Calculate net balance if not provided
 const netBalance = computed(() => {
@@ -408,6 +409,10 @@ function handlePaymentProofFileChange(event: Event) {
     }
 }
 
+function openFileChooser() {
+    paymentProofFileInputRef.value?.click();
+}
+
 // Open camera
 async function openCamera() {
     try {
@@ -681,6 +686,7 @@ watch(() => (page.props as any).flash, (flash) => {
                                     </label>
                                     <div class="flex flex-wrap gap-3 mb-2">
                                         <input 
+                                            ref="paymentProofFileInputRef"
                                             id="payment_proof_file"
                                             type="file" 
                                             accept="image/*,.pdf" 
@@ -710,7 +716,7 @@ watch(() => (page.props as any).flash, (flash) => {
                                         <Button 
                                             type="button" 
                                             variant="outline" 
-                                            @click="document.getElementById('payment_proof_file')?.click()"
+                                            @click="openFileChooser"
                                             class="flex items-center gap-2"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
