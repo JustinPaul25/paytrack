@@ -97,10 +97,11 @@ class DeliveryController extends Controller
 
     /**
      * Get today's deliveries for the checklist (same shape as dashboard).
+     * Uses app timezone so "today" matches the calendar date users expect.
      */
     private function getTodayDeliveries(): array
     {
-        $today = Carbon::today();
+        $today = Carbon::today(config('app.timezone'));
 
         return Delivery::with(['customer', 'invoice'])
             ->whereDate('delivery_date', $today)
@@ -274,6 +275,9 @@ class DeliveryController extends Controller
             $validated['type'] = $isRefundDelivery ? 'return' : 'order';
         }
         
+        // Normalize delivery_date to a calendar date in app timezone so it never shifts to next/previous day
+        $validated['delivery_date'] = Carbon::parse($validated['delivery_date'], config('app.timezone'))->toDateString();
+
         // Note: Pass delivery_fee as dollars - the Delivery model setter will convert to cents with proper rounding
         // Do NOT convert here, as the model setter will handle the conversion
 
@@ -375,6 +379,9 @@ class DeliveryController extends Controller
             'delivery_fee' => 'required|numeric|min:0',
             'proof_of_delivery' => 'nullable|image|max:5120', // Max 5MB
         ]);
+
+        // Normalize delivery_date to app timezone date string
+        $validated['delivery_date'] = Carbon::parse($validated['delivery_date'], config('app.timezone'))->toDateString();
 
         $oldStatus = $delivery->status;
         $newStatus = $validated['status'];
@@ -505,6 +512,9 @@ class DeliveryController extends Controller
             'delivery_time' => 'required|string|max:50',
             'reason' => 'nullable|string|max:500',
         ]);
+
+        // Normalize delivery_date to app timezone date string
+        $validated['delivery_date'] = Carbon::parse($validated['delivery_date'], config('app.timezone'))->toDateString();
 
         DB::beginTransaction();
         try {

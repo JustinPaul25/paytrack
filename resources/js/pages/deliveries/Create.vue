@@ -347,8 +347,14 @@ const statusOptions = [
     { value: 'cancelled', label: 'Cancelled' }
 ];
 
-// Set minimum date to today
-const today = new Date().toISOString().split('T')[0];
+// Set minimum date to today (use local date to avoid timezone shifting the day)
+function getLocalDateString(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+const today = getLocalDateString(new Date());
 
 // Delivery time options (base options)
 const baseDeliveryTimeOptions = [
@@ -481,19 +487,21 @@ onMounted(() => {
         // Delivery fee is 0 for refund return pickups
         form.delivery_fee = '0';
         
-        // Set default delivery date to tomorrow
+        // Set default delivery date to tomorrow (local)
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        form.delivery_date = tomorrow.toISOString().split('T')[0];
+        form.delivery_date = getLocalDateString(tomorrow);
         
         // Set default delivery time
         form.delivery_time = '09:00 AM - 12:00 PM';
     } else if (props.preselectedInvoiceId) {
-        // Handle regular invoice preselection
+        // Handle regular invoice preselection (e.g. from approve order flow)
         const invoice = props.invoices.find(inv => inv.id === props.preselectedInvoiceId);
         if (invoice) {
             form.invoice_id = invoice.id;
             form.customer_id = invoice.customer_id;
+            // Default delivery date to today (local) so it shows in "Today's" checklist
+            form.delivery_date = getLocalDateString(new Date());
             
             // Auto-fill customer details
             const customer = props.customers.find(c => c.id === invoice.customer_id);

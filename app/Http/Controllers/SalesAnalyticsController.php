@@ -563,7 +563,7 @@ class SalesAnalyticsController extends Controller
 
     private function getTodayDeliveries()
     {
-        $today = Carbon::today();
+        $today = Carbon::today(config('app.timezone'));
         
         $deliveries = Delivery::with(['customer', 'invoice'])
             ->whereDate('delivery_date', $today)

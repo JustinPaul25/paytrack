@@ -539,6 +539,14 @@ function getItemTotal(index: number): number {
                         </div>
                     </div>
                     
+                    <!-- Add Item at bottom -->
+                    <div class="mt-3 flex justify-center">
+                        <Button type="button" variant="outline" size="sm" @click="addOrderItem">
+                            <span class="mr-2">+</span>
+                            Add Item
+                        </Button>
+                    </div>
+                    
                     <!-- Cost Breakdown -->
                     <div class="mt-6 pt-4 border-t">
                         <h3 class="text-sm font-semibold mb-3">Order Summary</h3>
