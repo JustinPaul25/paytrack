@@ -3,7 +3,8 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select, SearchSelect } from '@/components/ui/select';
-import { Trash2 } from 'lucide-vue-next';
+import { Trash2, Info } from 'lucide-vue-next';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/AppLayout.vue';
 import Card from '@/components/ui/card/Card.vue';
 import CardContent from '@/components/ui/card/CardContent.vue';
@@ -577,13 +578,21 @@ function getItemTotal(index: number): number {
                                 <span class="font-medium">₱{{ totalAmountDue.toFixed(2) }}</span>
                             </div>
                             
-                            <!-- Delivery Fee (only if delivery) -->
-                            <div v-if="form.delivery_type === 'delivery'" class="flex justify-between text-sm">
-                                <span class="text-muted-foreground">
-                                    Delivery Fee
+                            <!-- Estimated Delivery Fee (only if delivery) -->
+                            <div v-if="form.delivery_type === 'delivery'" class="flex justify-between text-sm items-center">
+                                <span class="text-muted-foreground flex items-center gap-1.5">
+                                    Estimated Delivery Fee
                                     <span v-if="canCalculateDeliveryFee && deliveryDistance" class="text-xs text-gray-500">
                                         ({{ deliveryDistance.toFixed(2) }} km)
                                     </span>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Info class="w-3.5 h-3.5 text-muted-foreground cursor-help inline-block" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Can be changed depending on road and weather condition</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </span>
                                 <span class="font-medium">₱{{ deliveryFee.toFixed(2) }}</span>
                             </div>
