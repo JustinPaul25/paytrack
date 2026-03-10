@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download, AlertTriangle, Trash2 } from 'lucide-vue-next';
+import { ChevronDown, Folder, LayoutGrid, Package, Shield, ShoppingCart, Tag, Users, Receipt, Truck, BarChart3, CreditCard, RotateCcw, TrendingDown, FileSpreadsheet, FileText, Settings, Download, AlertTriangle, Trash2, ShoppingBag } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -114,6 +114,14 @@ const isActiveRoute = (path: string): boolean => {
                                         <Link href="/invoices">
                                             <Receipt class="h-4 w-4" />
                                             <span>Invoices</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/purchase-records')">
+                                        <Link href="/purchase-records">
+                                            <ShoppingBag class="h-4 w-4" />
+                                            <span>Purchase Records</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
@@ -264,6 +272,14 @@ const isActiveRoute = (path: string): boolean => {
                                         <Link href="/expenses">
                                             <TrendingDown class="h-4 w-4" />
                                             <span>Expenses</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem>
+                                    <SidebarMenuSubButton as-child :is-active="isActiveRoute('/purchase-records')">
+                                        <Link href="/purchase-records">
+                                            <ShoppingBag class="h-4 w-4" />
+                                            <span>Purchase Records</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

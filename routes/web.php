@@ -210,6 +210,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'update'])->name('expenses.update');
     });
 
+    // Purchase Records (Admin|Staff) — store old supplier receipts
+    Route::middleware('role:Admin|Staff')->group(function () {
+        Route::resource('purchase-records', \App\Http\Controllers\PurchaseRecordController::class)->except(['update']);
+        Route::post('purchase-records/{purchaseRecord}', [\App\Http\Controllers\PurchaseRecordController::class, 'update'])->name('purchase-records.update');
+    });
+
     // Cash Flow (Admin|Staff)
     Route::middleware('role:Admin|Staff')->group(function () {
         Route::get('finance/cash-flow', [CashFlowController::class, 'index'])->name('finance.cash-flow');
