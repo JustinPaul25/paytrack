@@ -67,11 +67,15 @@ class PurchaseRecordController extends Controller
         $items     = $validated['items'];
         unset($validated['items']);
 
+        $validated['vatable_sales']   = $validated['vatable_sales'] ?? 0;
+        $validated['vat_amount']      = $validated['vat_amount'] ?? 0;
+        $validated['withholding_tax']  = $validated['withholding_tax'] ?? 0;
+
         $totalDue       = collect($items)->sum('amount');
-        $withholdingTax = $validated['withholding_tax'] ?? 0;
+        $withholdingTax = (float) $validated['withholding_tax'];
 
         $validated['total_due']        = $totalDue;
-        $validated['total_amount_due'] = $totalDue - $withholdingTax;
+        $validated['total_amount_due'] = max(0, $totalDue - $withholdingTax);
         $validated['user_id']          = auth()->id();
 
         $record = PurchaseRecord::create($validated);
@@ -105,11 +109,15 @@ class PurchaseRecordController extends Controller
         $items     = $validated['items'];
         unset($validated['items']);
 
+        $validated['vatable_sales']   = $validated['vatable_sales'] ?? 0;
+        $validated['vat_amount']      = $validated['vat_amount'] ?? 0;
+        $validated['withholding_tax']  = $validated['withholding_tax'] ?? 0;
+
         $totalDue       = collect($items)->sum('amount');
-        $withholdingTax = $validated['withholding_tax'] ?? 0;
+        $withholdingTax = (float) $validated['withholding_tax'];
 
         $validated['total_due']        = $totalDue;
-        $validated['total_amount_due'] = $totalDue - $withholdingTax;
+        $validated['total_amount_due'] = max(0, $totalDue - $withholdingTax);
 
         $purchaseRecord->update($validated);
 

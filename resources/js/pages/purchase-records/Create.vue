@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import Card from '@/components/ui/card/Card.vue';
@@ -51,6 +51,9 @@ function recalcAmount(index: number) {
     item.amount = parseFloat((qty * price).toFixed(2));
 }
 
+const VAT_RATE = 0.12;
+const WITHHOLDING_TAX_RATE = 0.01;
+
 const itemsTotal = computed(() =>
     form.items.reduce((sum, item) => sum + (parseFloat(String(item.amount)) || 0), 0)
 );
@@ -60,7 +63,48 @@ const totalAmountDue = computed(() => {
     return Math.max(0, itemsTotal.value - tax);
 });
 
+const calculatedVatableSales = computed(() => parseFloat((itemsTotal.value || 0).toFixed(2)));
+const calculatedVatAmount = computed(() => parseFloat((calculatedVatableSales.value * VAT_RATE).toFixed(2)));
+const calculatedWithholdingTax = computed(() => parseFloat((calculatedVatableSales.value * WITHHOLDING_TAX_RATE).toFixed(2)));
+
+function isEmpty(val: string | number): boolean {
+    return val === '' || val === undefined;
+}
+function isEmptyOrZero(val: string | number): boolean {
+    if (isEmpty(val)) return true;
+    const n = parseFloat(String(val));
+    return !Number.isFinite(n) || n === 0;
+}
+
+watch(itemsTotal, (total) => {
+    if (total <= 0) return;
+    if (isEmptyOrZero(form.vatable_sales)) {
+        form.vatable_sales = calculatedVatableSales.value;
+    }
+    if (isEmptyOrZero(form.vat_amount)) {
+        form.vat_amount = calculatedVatAmount.value;
+    }
+    if (isEmpty(form.withholding_tax)) {
+        form.withholding_tax = calculatedWithholdingTax.value;
+    }
+}, { immediate: true });
+
+function effectiveNumeric(val: string | number): number {
+    const n = parseFloat(String(val));
+    return Number.isFinite(n) ? n : 0;
+}
+
 function submit() {
+    form.vatable_sales = form.vatable_sales !== '' && form.vatable_sales !== undefined
+        ? effectiveNumeric(form.vatable_sales)
+        : calculatedVatableSales.value;
+    form.vat_amount = form.vat_amount !== '' && form.vat_amount !== undefined
+        ? effectiveNumeric(form.vat_amount)
+        : calculatedVatAmount.value;
+    form.withholding_tax = form.withholding_tax !== '' && form.withholding_tax !== undefined
+        ? effectiveNumeric(form.withholding_tax)
+        : calculatedWithholdingTax.value;
+
     form.post(route('purchase-records.store'), {
         preserveScroll: true,
         onSuccess: () => {

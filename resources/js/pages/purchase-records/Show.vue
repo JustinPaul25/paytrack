@@ -208,13 +208,12 @@ function printRecord() {
                 </div>
             </CardContent>
         </Card>
-
-        <!-- Print Styles -->
-        <style>
-            @media print {
-                .print\:hidden { display: none !important; }
-                body { background: white !important; }
-            }
-        </style>
     </AppLayout>
 </template>
+
+<style>
+@media print {
+    .print\:hidden { display: none !important; }
+    body { background: white !important; }
+}
+</style>
