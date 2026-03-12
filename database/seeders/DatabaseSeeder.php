@@ -2,27 +2,19 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     * For deployment: only roles and admin/staff users are seeded.
+     * Dummy data seeders (categories, products, customers, invoices, deliveries) are not run.
      */
     public function run(): void
     {
-        // Core sample data
         $this->call([
             RolesAndUsersSeeder::class,
-            CategorySeeder::class,
-            ProductSeeder::class,
-            CustomerSeeder::class,
-            CustomerUserSeeder::class,
-            InvoiceSeeder::class,
-            HistoricalInvoicesSeeder::class,
-            DeliverySeeder::class,
         ]);
     }
 }

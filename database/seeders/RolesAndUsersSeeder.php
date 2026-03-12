@@ -22,7 +22,7 @@ class RolesAndUsersSeeder extends Seeder
             Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
-        // Sample users
+        // Admin and Staff users only (for deployment)
         $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
@@ -42,16 +42,6 @@ class RolesAndUsersSeeder extends Seeder
             ]
         );
         $staff->syncRoles(['Staff']);
-
-        $customer = User::firstOrCreate(
-            ['email' => 'customer@example.com'],
-            [
-                'name' => 'Customer User',
-                'password' => 'password',
-                'email_verified_at' => now(),
-            ]
-        );
-        $customer->syncRoles(['Customer']);
     }
 }
 
