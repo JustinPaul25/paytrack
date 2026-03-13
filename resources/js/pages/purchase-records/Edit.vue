@@ -12,6 +12,8 @@ import Label from '@/components/ui/label/Label.vue';
 import InputError from '@/components/InputError.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
+import { SearchSelect } from '@/components/ui/select';
+import { unitOptionsForRow } from '@/lib/productUnits';
 import { PlusCircle, Trash2 } from 'lucide-vue-next';
 
 interface PurchaseRecordItem {
@@ -239,7 +241,13 @@ function formatCurrency(val: number) {
                                         <InputError :message="(form.errors as any)[`items.${i}.qty`]" class="text-[10px]" />
                                     </td>
                                     <td class="px-3 py-2">
-                                        <input v-model="item.unit" type="text" class="w-full rounded border border-input bg-transparent px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                                        <SearchSelect
+                                            v-model="item.unit"
+                                            :options="unitOptionsForRow(item.unit)"
+                                            placeholder="Unit"
+                                            search-placeholder="Search unit..."
+                                            class="h-8 min-w-0 text-sm"
+                                        />
                                     </td>
                                     <td class="px-3 py-2">
                                         <input v-model="item.description" type="text" class="w-full rounded border border-input bg-transparent px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />

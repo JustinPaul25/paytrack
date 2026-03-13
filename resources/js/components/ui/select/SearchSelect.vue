@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 interface SelectOption {
     value: string | number | null;
     label: string;
-    description?: string; // For additional info like price and stock
+    description?: string;
 }
 
 interface Props {
@@ -34,103 +34,108 @@ const emit = defineEmits<{
 
 const isOpen = ref(false);
 const searchQuery = ref('');
+const triggerRef = ref<HTMLDivElement>();
 const searchInputRef = ref<HTMLInputElement>();
-const dropdownRef = ref<HTMLDivElement>();
 
-const selectedOption = computed(() => {
-    return props.options.find(option => option.value === props.modelValue);
-});
+// Teleported dropdown position
+const dropdownStyle = ref({ top: '0px', left: '0px', width: '0px' });
 
-const displayValue = computed(() => {
-    if (selectedOption.value) {
-        // Only show the label (product name), not the description
-        return selectedOption.value.label;
-    }
-    return props.placeholder;
-});
+const selectedOption = computed(() =>
+    props.options.find((o) => o.value === props.modelValue),
+);
+
+const displayValue = computed(() =>
+    selectedOption.value ? selectedOption.value.label : props.placeholder,
+);
 
 const filteredOptions = computed(() => {
-    if (!searchQuery.value) {
-        return props.options;
-    }
-    
-    const query = searchQuery.value.toLowerCase().trim();
-    return props.options.filter(option => {
-        // Skip the "Select invoice" option when searching
-        if (option.value === null && option.label.toLowerCase().includes('select')) {
-            return false;
-        }
-        
-        // Search in the label
-        return option.label.toLowerCase().includes(query);
+    if (!searchQuery.value) return props.options;
+    const q = searchQuery.value.toLowerCase().trim();
+    return props.options.filter((o) => {
+        if (o.value === null && o.label.toLowerCase().includes('select')) return false;
+        return o.label.toLowerCase().includes(q);
     });
 });
 
-function toggleDropdown() {
+function calcPosition() {
+    if (!triggerRef.value) return;
+    const rect = triggerRef.value.getBoundingClientRect();
+    dropdownStyle.value = {
+        top: `${rect.bottom + 4}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+    };
+}
+
+function open() {
     if (props.disabled) return;
-    isOpen.value = !isOpen.value;
+    calcPosition();
+    isOpen.value = true;
+}
+
+function toggleDropdown() {
+    if (isOpen.value) {
+        isOpen.value = false;
+    } else {
+        open();
+    }
 }
 
 function selectOption(option: SelectOption, event?: Event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
+    event?.preventDefault();
+    event?.stopPropagation();
     emit('update:modelValue', option.value);
     isOpen.value = false;
     searchQuery.value = '';
 }
 
 function clearSearch(event?: Event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
+    event?.preventDefault();
+    event?.stopPropagation();
     searchQuery.value = '';
-    nextTick(() => {
-        if (searchInputRef.value && typeof searchInputRef.value.focus === 'function') {
-            searchInputRef.value.focus();
-        }
-    });
+    nextTick(() => searchInputRef.value?.focus());
 }
 
-function handleSearchInput(event: Event) {
-    const target = event.target as HTMLInputElement;
-    searchQuery.value = target.value;
-}
-
-// Close dropdown when clicking outside
-function handleClickOutside(event: Event) {
+function handleClickOutside(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (!target.closest('[data-search-select]')) {
+    if (
+        !target.closest('[data-search-select-trigger]') &&
+        !target.closest('[data-search-select-dropdown]')
+    ) {
         isOpen.value = false;
         searchQuery.value = '';
     }
 }
 
-// Add/remove click outside listener
+function handleScrollOrResize() {
+    if (isOpen.value) calcPosition();
+}
+
 watch(isOpen, (open) => {
     if (open) {
         nextTick(() => {
-            document.addEventListener('click', handleClickOutside);
-            if (searchInputRef.value && typeof searchInputRef.value.focus === 'function') {
-                searchInputRef.value.focus();
-            }
+            document.addEventListener('mousedown', handleClickOutside);
+            window.addEventListener('scroll', handleScrollOrResize, true);
+            window.addEventListener('resize', handleScrollOrResize);
+            searchInputRef.value?.focus();
         });
     } else {
-        document.removeEventListener('click', handleClickOutside);
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('scroll', handleScrollOrResize, true);
+        window.removeEventListener('resize', handleScrollOrResize);
         searchQuery.value = '';
     }
 });
 
-// Cleanup on unmount
 onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
+    document.removeEventListener('mousedown', handleClickOutside);
+    window.removeEventListener('scroll', handleScrollOrResize, true);
+    window.removeEventListener('resize', handleScrollOrResize);
 });
 </script>
 
 <template>
-    <div data-search-select class="relative">
+    <div ref="triggerRef" data-search-select-trigger class="relative">
         <!-- Trigger Button -->
         <Button
             type="button"
@@ -146,65 +151,69 @@ onUnmounted(() => {
             @click="toggleDropdown"
         >
             <span class="truncate">{{ displayValue }}</span>
-            <ChevronDown class="h-4 w-4 opacity-50" />
+            <ChevronDown class="h-4 w-4 shrink-0 opacity-50" />
         </Button>
-        
-        <!-- Dropdown Content -->
-        <div
-            v-if="isOpen"
-            ref="dropdownRef"
-            class="absolute top-full left-0 right-0 z-[2000] mt-1 bg-popover text-popover-foreground border border-border rounded-md shadow-lg p-0"
-        >
-            <!-- Search Input -->
-            <div class="p-2 border-b border-border">
-                <div class="relative">
-                    <Search class="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        ref="searchInputRef"
-                        v-model="searchQuery"
-                        :placeholder="searchPlaceholder"
-                        class="pl-8 pr-8 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                        @input="handleSearchInput"
-                    />
-                    <Button
-                        v-if="searchQuery"
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        class="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                        @click="clearSearch($event)"
-                    >
-                        <X class="h-3 w-3" />
-                    </Button>
-                </div>
-            </div>
-            
-            <!-- Options List -->
-            <div class="max-h-60 overflow-y-auto">
-                <button
-                    v-for="option in filteredOptions"
-                    :key="String(option.value ?? 'null')"
-                    type="button"
-                    @click="selectOption(option, $event)"
-                    :class="[
-                        'w-full px-2 py-1.5 text-left text-sm cursor-pointer transition-colors',
-                        option.value === modelValue 
-                            ? 'bg-accent text-accent-foreground' 
-                            : 'hover:bg-accent hover:text-accent-foreground'
-                    ]"
-                >
-                    <div v-if="option.description" class="flex flex-col">
-                        <span class="font-medium">{{ option.label }}</span>
-                        <span class="text-xs text-muted-foreground mt-0.5">{{ option.description }}</span>
+
+        <!-- Teleported dropdown — escapes overflow:hidden/auto parents -->
+        <Teleport to="body">
+            <div
+                v-if="isOpen"
+                data-search-select-dropdown
+                :style="dropdownStyle"
+                class="fixed z-[9999] min-w-[10rem] bg-popover text-popover-foreground border border-border rounded-md shadow-lg p-0"
+            >
+                <!-- Search -->
+                <div class="p-2 border-b border-border">
+                    <div class="relative">
+                        <Search class="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                            ref="searchInputRef"
+                            v-model="searchQuery"
+                            :placeholder="searchPlaceholder"
+                            class="pl-8 pr-8 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                        <Button
+                            v-if="searchQuery"
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            class="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                            @click="clearSearch($event)"
+                        >
+                            <X class="h-3 w-3" />
+                        </Button>
                     </div>
-                    <span v-else>{{ option.label }}</span>
-                </button>
-                
-                <!-- No results message -->
-                <div v-if="searchQuery && filteredOptions.length === 0" class="px-2 py-3 text-center text-muted-foreground text-sm">
-                    No results found for "{{ searchQuery }}"
+                </div>
+
+                <!-- Options -->
+                <div class="max-h-60 overflow-y-auto">
+                    <button
+                        v-for="option in filteredOptions"
+                        :key="String(option.value ?? 'null')"
+                        type="button"
+                        @mousedown.prevent="selectOption(option, $event)"
+                        :class="[
+                            'w-full px-3 py-1.5 text-left text-sm cursor-pointer transition-colors',
+                            option.value === modelValue
+                                ? 'bg-accent text-accent-foreground'
+                                : 'hover:bg-accent hover:text-accent-foreground',
+                        ]"
+                    >
+                        <div v-if="option.description" class="flex flex-col">
+                            <span class="font-medium">{{ option.label }}</span>
+                            <span class="text-xs text-muted-foreground mt-0.5">{{ option.description }}</span>
+                        </div>
+                        <span v-else>{{ option.label }}</span>
+                    </button>
+
+                    <div
+                        v-if="searchQuery && filteredOptions.length === 0"
+                        class="px-3 py-3 text-center text-muted-foreground text-sm"
+                    >
+                        No results for "{{ searchQuery }}"
+                    </div>
                 </div>
             </div>
-        </div>
+        </Teleport>
     </div>
-</template> 
+</template>
