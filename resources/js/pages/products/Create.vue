@@ -8,11 +8,12 @@ import CardHeader from '@/components/ui/card/CardHeader.vue';
 import CardTitle from '@/components/ui/card/CardTitle.vue';
 import CardFooter from '@/components/ui/card/CardFooter.vue';
 import Label from '@/components/ui/label/Label.vue';
-import { SearchSelect, Select } from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/select';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
 import InputError from '@/components/InputError.vue';
 import { ref, computed } from 'vue';
+import { productUnitOptions } from '@/lib/productUnits';
 
 const props = defineProps<{ categories: Array<{ id: number; name: string }> }>();
 
@@ -32,15 +33,11 @@ const form = useForm({
     purchase_price: '',
     selling_price: '',
     stock: '',
-    unit: 'pcs',
+    unit: 'Pcs',
     image: null as File | null,
 });
 
-const unitOptions = [
-    { value: 'pcs', label: 'Pcs' },
-    { value: 'set', label: 'Set' },
-    { value: 'box', label: 'Box' },
-];
+const unitOptions = productUnitOptions();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -144,10 +141,12 @@ function submit() {
                         </div>
                         <div class="flex-1">
                             <Label for="unit">Unit *</Label>
-                            <Select
+                            <SearchSelect
+                                id="unit"
                                 v-model="form.unit"
                                 :options="unitOptions"
                                 placeholder="Select unit"
+                                search-placeholder="Search unit..."
                                 class="mt-1"
                                 required
                             />
