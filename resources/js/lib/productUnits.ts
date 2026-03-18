@@ -31,10 +31,11 @@ export function productUnitOptions(): { value: string; label: string }[] {
 
 /**
  * Options for a row, including current unit if it's not in the standard list (e.g. legacy data).
+ * Uses case-insensitive match so we don't show both "Pcs" and "pcs" when DB stores lowercase.
  */
 export function unitOptionsForRow(currentUnit: string): { value: string; label: string }[] {
     const options = productUnitOptions();
-    if (currentUnit && !options.some((o) => o.value === currentUnit)) {
+    if (currentUnit && !options.some((o) => o.value.toLowerCase() === currentUnit.toLowerCase())) {
         return [...options, { value: currentUnit, label: currentUnit }];
     }
     return options;

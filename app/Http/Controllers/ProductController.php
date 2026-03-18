@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 class ProductController extends Controller
 {
     use HandlesDeletionRequests;
+
+    /** Allowed product units (lowercase); must match frontend PRODUCT_UNITS. */
+    private const ALLOWED_UNITS = 'bottle,box,pcs,unit,pack,set,kg,gal,roll,can,dozen,pot,ream,pad,meter,bundle,pair,tube,bar';
+
     public function index(Request $request)
     {
         $query = Product::with('category');
@@ -102,6 +106,8 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge(['unit' => strtolower($request->input('unit', ''))]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -109,7 +115,7 @@ class ProductController extends Controller
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'unit' => 'required|string|in:pcs,set,box',
+            'unit' => 'required|string|in:'.self::ALLOWED_UNITS,
             'SKU' => 'nullable|string|max:255|unique:products,SKU,NULL,id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);
@@ -143,6 +149,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        $request->merge(['unit' => strtolower($request->input('unit', ''))]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -150,7 +158,7 @@ class ProductController extends Controller
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'unit' => 'required|string|in:pcs,set,box',
+            'unit' => 'required|string|in:'.self::ALLOWED_UNITS,
             'SKU' => 'nullable|string|max:255|unique:products,SKU,' . $product->id . ',id,deleted_at,NULL',
             'image' => 'nullable|image|max:20048',
         ]);

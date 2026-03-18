@@ -28,6 +28,14 @@ const categoryOptions = computed(() => {
     }));
 });
 
+// Use options for product's unit so we get one canonical option (e.g. "Pcs" not "pcs")
+const unitOptions = unitOptionsForRow(props.product.unit || '');
+const initialUnit = (() => {
+    const u = (props.product.unit || 'Pcs').trim();
+    const found = unitOptions.find((o) => o.value.toLowerCase() === u.toLowerCase());
+    return found ? found.value : (unitOptions[0]?.value ?? 'Pcs');
+})();
+
 const form = useForm({
     name: props.product.name,
     description: props.product.description,
@@ -35,11 +43,9 @@ const form = useForm({
     purchase_price: props.product.purchase_price,
     selling_price: props.product.selling_price,
     stock: props.product.stock,
-    unit: props.product.unit || 'Pcs',
+    unit: initialUnit,
     image: null as File | null,
 });
-
-const unitOptions = unitOptionsForRow(form.unit);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
