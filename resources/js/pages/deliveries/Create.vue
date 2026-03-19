@@ -758,9 +758,7 @@ watch(() => form.delivery_date, () => {
                                 id="delivery_fee"
                                 min="0"
                                 step="0.01"
-                                :readonly="isStaff"
-                                :disabled="isStaff"
-                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                                 placeholder="0.00"
                                 required
                             />

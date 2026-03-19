@@ -316,18 +316,28 @@ class UsersController extends Controller
         }
     }
 
-    public function destroy(User $user)
+    public function destroy($id)
     {
+        // Resolve user including trashed so deleting from "archived" list works
+        $user = User::withTrashed()->findOrFail($id);
+
         // Prevent self-deletion
         if ($user->id === auth()->id()) {
-            return redirect()->route('users.index')->with('error', 'You cannot delete your own account.');
+            return redirect()->back()->with('error', 'You cannot delete your own account.');
         }
 
+        // If already soft-deleted (archived), permanently delete
+        if ($user->trashed()) {
+            $user->forceDelete();
+            return redirect()->back()->with('success', 'User permanently deleted.');
+        }
+
+        // Otherwise soft-delete; redirect back so admin stays on /admin/users if that's where they were
         return $this->handleDeletion(
             $user,
             'user',
             request()->input('reason'),
-            route('users.index')
+            null
         );
     }
 

@@ -33,6 +33,7 @@ const form = useForm({
     // Step 2: Contact Information
     company_name: '',
     phone: '',
+    telephone: '',
     
     // Step 3: Location & Address
     address: '',
@@ -136,7 +137,7 @@ const nextStep = () => {
         if (currentStep.value === 2) {
             if (!isPhoneValid.value) {
                 if (!form.phone || form.phone.trim() === '') {
-                    form.setError('phone', 'Phone number is required.');
+                    form.setError('phone', 'Mobile number is required.');
                 } else {
                     form.setError('phone', 'Please enter a valid 10-digit Philippine mobile number (must start with 9).');
                 }
@@ -402,22 +403,36 @@ watch(() => form.city_municipality, () => {
                         </div>
 
                         <div>
-                            <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Phone Number *</Label>
+                            <Label for="phone" class="text-sm font-medium text-foreground mb-2 block">Mobile Number *</Label>
                             <PhoneInput
                                 id="phone"
                                 v-model="form.phone"
-                                placeholder="XXXXXXXXXX"
+                                placeholder="09XXXXXXXXX"
                                 required
                                 :class="[
                                     'w-full',
                                     (!form.phone || !isPhoneValid) && 'border-destructive focus-within:border-destructive focus-within:ring-destructive/50'
                                 ]"
                             />
-                            <p class="text-xs text-muted-foreground mt-1">Enter 10-digit Philippine mobile number (must start with 9).</p>
+                            <p class="text-xs text-muted-foreground mt-1">Enter your 10-digit Philippine mobile number (must start with 9). Landline numbers are not accepted.</p>
                             <InputError :message="form.errors.phone" />
                             <p v-if="form.phone && isPhoneValid" class="text-xs text-green-600 dark:text-green-400 mt-1">
-                                ✓ Valid phone number
+                                ✓ Valid mobile number
                             </p>
+                        </div>
+
+                        <div>
+                            <Label for="telephone" class="text-sm font-medium text-foreground mb-2 block">Telephone Number</Label>
+                            <Input
+                                id="telephone"
+                                type="text"
+                                autocomplete="tel"
+                                v-model="form.telephone"
+                                placeholder="e.g. (032) 123 4567"
+                                class="w-full"
+                            />
+                            <p class="text-xs text-muted-foreground mt-1">Optional. Landline or office number.</p>
+                            <InputError :message="form.errors.telephone" />
                         </div>
                     </div>
 

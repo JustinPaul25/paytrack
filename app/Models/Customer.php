@@ -21,6 +21,7 @@ class Customer extends Model implements HasMedia
         'company_name',
         'email',
         'phone',
+        'telephone',
         'address',
         'purok',
         'barangay',

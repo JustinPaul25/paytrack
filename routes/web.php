@@ -54,7 +54,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('users', [UsersController::class, 'store'])->name('users.store');
         Route::get('users/{user}/edit', [UsersController::class, 'edit'])->name('users.edit');
         Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update');
-        Route::delete('users/{user}', [UsersController::class, 'destroy'])->name('users.destroy');
+        Route::delete('users/{id}', [UsersController::class, 'destroy'])->name('users.destroy');
         
         // Admin User Management (unified table)
         Route::get('admin/users', [UsersController::class, 'adminManagement'])->name('admin.users');
