@@ -70,6 +70,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('admin/export/invoices', [ExportController::class, 'exportInvoices'])->name('export.invoices');
         Route::get('admin/export/orders', [ExportController::class, 'exportOrders'])->name('export.orders');
         Route::get('admin/export/sales', [ExportController::class, 'exportSales'])->name('export.sales');
+        Route::get('admin/export/database', [ExportController::class, 'exportDatabase'])->name('export.database');
         
         // Customer Verification
         Route::get('users/customer-verification', [CustomerVerificationController::class, 'index'])->name('users.customer-verification');

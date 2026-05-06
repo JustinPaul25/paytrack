@@ -75,6 +75,7 @@ class HandleInertiaRequests extends Middleware
                     : null;
             },
             'deliveryOriginAddress' => fn () => Setting::get('delivery_origin_address', ''),
+            'canEditTimestamps' => fn () => filter_var(Setting::get('can_edit_timestamps', false), FILTER_VALIDATE_BOOL),
         ];
     }
 }

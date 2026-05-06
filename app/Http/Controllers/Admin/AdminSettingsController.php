@@ -20,6 +20,8 @@ class AdminSettingsController extends Controller
         $deliveryOriginLocation = Setting::get('delivery_origin_location', null);
         $baseDeliveryFee = Setting::get('base_delivery_fee', '50.00');
         $ratePerKm = Setting::get('rate_per_km', '10.00');
+        $canEditTimestamps = filter_var(Setting::get('can_edit_timestamps', false), FILTER_VALIDATE_BOOL);
+        $canDownloadDatabase = filter_var(Setting::get('can_download_database', false), FILTER_VALIDATE_BOOL);
         
         // Parse location if it's a JSON string
         if (is_string($deliveryOriginLocation)) {
@@ -31,6 +33,8 @@ class AdminSettingsController extends Controller
             'deliveryOriginLocation' => $deliveryOriginLocation ?: null,
             'baseDeliveryFee' => $baseDeliveryFee,
             'ratePerKm' => $ratePerKm,
+            'canEditTimestamps' => $canEditTimestamps,
+            'canDownloadDatabase' => $canDownloadDatabase,
         ]);
     }
 
@@ -46,6 +50,8 @@ class AdminSettingsController extends Controller
             'delivery_origin_location.lng' => 'nullable|numeric|between:-180,180',
             'base_delivery_fee' => 'nullable|numeric|min:0|max:99999.99',
             'rate_per_km' => 'nullable|numeric|min:0|max:9999.99',
+            'can_edit_timestamps' => 'nullable|boolean',
+            'can_download_database' => 'nullable|boolean',
         ]);
 
         // Store delivery origin address
@@ -63,6 +69,10 @@ class AdminSettingsController extends Controller
         
         // Store rate per km
         Setting::set('rate_per_km', $validated['rate_per_km'] ?? '10.00');
+        
+        // Toggle whether business timestamp fields are editable in forms.
+        Setting::set('can_edit_timestamps', !empty($validated['can_edit_timestamps']) ? '1' : '0');
+        Setting::set('can_download_database', !empty($validated['can_download_database']) ? '1' : '0');
 
         return redirect()->route('admin.settings.edit')->with('success', 'Settings updated successfully!');
     }

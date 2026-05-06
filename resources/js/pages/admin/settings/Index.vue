@@ -17,6 +17,8 @@ interface Props {
     deliveryOriginLocation: { lat: number; lng: number } | null;
     baseDeliveryFee: string | number;
     ratePerKm: string | number;
+    canEditTimestamps: boolean;
+    canDownloadDatabase: boolean;
 }
 
 const props = defineProps<Props>();
@@ -26,6 +28,8 @@ const form = useForm({
     delivery_origin_location: props.deliveryOriginLocation || null,
     base_delivery_fee: props.baseDeliveryFee || '50.00',
     rate_per_km: props.ratePerKm || '10.00',
+    can_edit_timestamps: props.canEditTimestamps ?? false,
+    can_download_database: props.canDownloadDatabase ?? false,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -136,6 +140,56 @@ function submit() {
                             <p class="text-xs text-gray-500 mt-1">
                                 Additional charge per kilometer of delivery distance.
                             </p>
+                        </div>
+                    </div>
+
+                    <div class="rounded border border-input p-4">
+                        <div class="flex items-start gap-3">
+                            <input
+                                id="can_edit_timestamps"
+                                v-model="form.can_edit_timestamps"
+                                type="checkbox"
+                                class="mt-1 h-4 w-4 rounded border-gray-300"
+                            />
+                            <div>
+                                <Label for="can_edit_timestamps">Allow editing of timestamp fields</Label>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    When enabled, users can edit date fields such as expense dates in frontend edit forms.
+                                </p>
+                            </div>
+                        </div>
+                        <div v-if="form.errors.can_edit_timestamps" class="text-red-500 text-xs mt-1">
+                            {{ form.errors.can_edit_timestamps }}
+                        </div>
+                    </div>
+
+                    <div class="rounded border border-input p-4 space-y-3">
+                        <div class="flex items-start gap-3">
+                            <input
+                                id="can_download_database"
+                                v-model="form.can_download_database"
+                                type="checkbox"
+                                class="mt-1 h-4 w-4 rounded border-gray-300"
+                            />
+                            <div>
+                                <Label for="can_download_database">Allow database backup download</Label>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Enables the admin-only endpoint for downloading a full database backup file.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 rounded border border-dashed p-3">
+                            <div class="text-xs text-gray-600">
+                                Download the latest snapshot of all tables and rows.
+                            </div>
+                            <a :href="route('export.database')">
+                                <Button type="button" variant="outline" :disabled="!form.can_download_database">
+                                    Download Database Backup
+                                </Button>
+                            </a>
+                        </div>
+                        <div v-if="form.errors.can_download_database" class="text-red-500 text-xs mt-1">
+                            {{ form.errors.can_download_database }}
                         </div>
                     </div>
                     

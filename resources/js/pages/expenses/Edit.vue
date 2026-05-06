@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -25,6 +25,8 @@ interface Expense {
 const props = defineProps<{
     expense: Expense;
 }>();
+const page = usePage();
+const canEditTimestamps = Boolean((page.props as any).canEditTimestamps);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -133,8 +135,11 @@ function submit() {
                                 id="date"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
                                 required
+                                :disabled="!canEditTimestamps"
                             />
-                            <div class="text-[11px] text-gray-500 mt-1">Pick the date this expense occurred.</div>
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                {{ canEditTimestamps ? 'Pick the date this expense occurred.' : 'Timestamp editing is disabled in admin settings.' }}
+                            </div>
                             <InputError :message="form.errors.date" />
                         </div>
                         
@@ -145,8 +150,11 @@ function submit() {
                                 type="date"
                                 id="due_date"
                                 class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                :disabled="!canEditTimestamps"
                             />
-                            <div class="text-[11px] text-gray-500 mt-1">When is this bill due? (e.g., water, electricity, internet)</div>
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                {{ canEditTimestamps ? 'When is this bill due? (e.g., water, electricity, internet)' : 'Timestamp editing is disabled in admin settings.' }}
+                            </div>
                             <InputError :message="form.errors.due_date" />
                         </div>
                     </div>

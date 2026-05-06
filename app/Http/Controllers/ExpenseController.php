@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Expense;
+use App\Models\Setting;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -105,6 +106,20 @@ class ExpenseController extends Controller
     public function update(StoreExpenseRequest $request, Expense $expense): RedirectResponse
     {
         $validated = $request->validated();
+        $canEditTimestamps = filter_var(Setting::get('can_edit_timestamps', false), FILTER_VALIDATE_BOOL);
+
+        if (! $canEditTimestamps) {
+            $existingDate = optional($expense->date)?->toDateString();
+            $existingDueDate = optional($expense->due_date)?->toDateString();
+            $incomingDate = $validated['date'] ?? $existingDate;
+            $incomingDueDate = $validated['due_date'] ?? null;
+
+            if ($incomingDate !== $existingDate || $incomingDueDate !== $existingDueDate) {
+                return back()->withErrors([
+                    'date' => 'Editing timestamps is currently disabled by admin settings.',
+                ])->withInput();
+            }
+        }
         
         $expense->update($validated);
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, reactive } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -470,6 +470,7 @@ const printTransactions = () => {
                   <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">VAT</th>
                   <th class="text-right py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Running Balance</th>
                   <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Status</th>
+                  <th class="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">Actions</th>
                 </tr>
               </thead>
                                         <tbody>
@@ -513,6 +514,11 @@ const printTransactions = () => {
                     <span :class="getStatusClass(transaction.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
                       {{ transaction.status }}
                     </span>
+                  </td>
+                  <td class="py-3 px-4">
+                    <Link :href="route('invoices.edit', transaction.id)">
+                      <Button variant="outline" size="sm">Edit Timestamp</Button>
+                    </Link>
                   </td>
                 </tr>
               </tbody>

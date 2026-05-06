@@ -43,6 +43,8 @@ interface Invoice {
     customer_id: number;
     status: string;
     payment_method: string;
+    invoice_type?: string;
+    created_at?: string;
     payment_status?: string;
     payment_reference?: string;
     notes?: string;
@@ -54,7 +56,18 @@ const props = defineProps<{
     customers: Customer[];
     products: Product[];
     isPaymentOnlyEdit?: boolean;
+    canEditTimestamps?: boolean;
 }>();
+const canEditTimestamps = Boolean(props.canEditTimestamps);
+
+function toDateTimeLocal(value?: string): string {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 const form = useForm({
     customer_id: props.invoice.customer_id,
@@ -63,6 +76,7 @@ const form = useForm({
     payment_status: props.invoice.payment_status || 'pending',
     invoice_type: props.invoice.invoice_type || 'walk_in',
     notes: props.invoice.notes || '',
+    transaction_date: toDateTimeLocal(props.invoice.created_at),
     invoice_items: props.invoice.invoice_items.map(item => ({
         id: item.id,
         product_id: item.product_id,
@@ -262,6 +276,21 @@ function getProductOptions() {
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
+                            <Label for="transaction_date">Transaction Timestamp</Label>
+                            <input
+                                v-model="form.transaction_date"
+                                type="datetime-local"
+                                id="transaction_date"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                :disabled="!canEditTimestamps"
+                            />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                {{ canEditTimestamps ? 'Controls which day/time this invoice appears in Sales and Prediction analytics.' : 'Timestamp editing is disabled in admin settings.' }}
+                            </div>
+                            <InputError :message="form.errors.transaction_date" />
+                        </div>
+
+                        <div>
                             <Label for="payment_status">Payment Status *</Label>
                             <Select
                                 v-model="form.payment_status"
@@ -315,6 +344,21 @@ function getProductOptions() {
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label for="transaction_date">Transaction Timestamp</Label>
+                            <input
+                                v-model="form.transaction_date"
+                                type="datetime-local"
+                                id="transaction_date"
+                                class="w-full rounded-md border border-input bg-transparent px-3 py-2 mt-1 text-foreground dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
+                                :disabled="!canEditTimestamps"
+                            />
+                            <div class="text-[11px] text-gray-500 mt-1">
+                                {{ canEditTimestamps ? 'Controls which day/time this invoice appears in Sales and Prediction analytics.' : 'Timestamp editing is disabled in admin settings.' }}
+                            </div>
+                            <InputError :message="form.errors.transaction_date" />
+                        </div>
+
                         <div>
                             <Label for="payment_method">Payment Method *</Label>
                             <Select

@@ -6,7 +6,9 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -375,6 +377,97 @@ class ExportController extends Controller
         };
 
         return Response::stream($callback, 200, $headers);
+    }
+
+    public function exportDatabase()
+    {
+        if (! filter_var(Setting::get('can_download_database', false), FILTER_VALIDATE_BOOL)) {
+            abort(403, 'Database download is disabled in admin settings.');
+        }
+
+        $driver = DB::getDriverName();
+        $filename = 'database-backup-' . now()->format('Y-m-d-His') . '.sql';
+
+        $headers = [
+            'Content-Type' => 'application/sql',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($driver) {
+            $stream = fopen('php://output', 'w');
+            $write = function (string $line) use ($stream) {
+                fwrite($stream, $line . PHP_EOL);
+            };
+
+            $write('-- PayTrack database backup');
+            $write('-- Generated at: ' . now()->format('Y-m-d H:i:s'));
+            $write('-- Driver: ' . $driver);
+            $write('');
+
+            $tables = match ($driver) {
+                'mysql' => collect(DB::select('SHOW TABLES'))->map(fn ($row) => (string) array_values((array) $row)[0])->values()->all(),
+                'sqlite' => collect(DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"))
+                    ->pluck('name')
+                    ->values()
+                    ->all(),
+                default => [],
+            };
+
+            foreach ($tables as $table) {
+                $write('-- --------------------------------------------------');
+                $write("-- Table: {$table}");
+                $write('-- --------------------------------------------------');
+
+                if ($driver === 'mysql') {
+                    $create = DB::select("SHOW CREATE TABLE `{$table}`");
+                    $createSql = (array) ($create[0] ?? []);
+                    $write((string) ($createSql['Create Table'] ?? ''));
+                    $write(';');
+                } elseif ($driver === 'sqlite') {
+                    $create = DB::selectOne("SELECT sql FROM sqlite_master WHERE type='table' AND name = ?", [$table]);
+                    $write((string) ($create->sql ?? ''));
+                    $write(';');
+                }
+
+                $rows = DB::table($table)->get();
+                foreach ($rows as $row) {
+                    $rowArray = (array) $row;
+                    $columns = array_keys($rowArray);
+                    $values = array_map(function ($value) {
+                        return $this->sqlValue($value);
+                    }, array_values($rowArray));
+
+                    $quotedColumns = implode(', ', array_map(fn ($c) => "`{$c}`", $columns));
+                    $write("INSERT INTO `{$table}` ({$quotedColumns}) VALUES (" . implode(', ', $values) . ');');
+                }
+
+                $write('');
+            }
+
+            fclose($stream);
+        };
+
+        return Response::stream($callback, 200, $headers);
+    }
+
+    private function sqlValue($value): string
+    {
+        if ($value === null) {
+            return 'NULL';
+        }
+
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+
+        $escaped = str_replace(["\\", "'"], ["\\\\", "\\'"], (string) $value);
+        return "'" . $escaped . "'";
     }
 }
 

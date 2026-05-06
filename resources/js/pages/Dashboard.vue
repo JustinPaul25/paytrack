@@ -1342,6 +1342,7 @@ const sortedTodayDeliveries = computed(() => {
                                             <th class="table-header">Customer</th>
                                             <th class="table-header table-header-right">Amount</th>
                                             <th class="table-header table-header-center">Status</th>
+                                            <th class="table-header table-header-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1362,6 +1363,9 @@ const sortedTodayDeliveries = computed(() => {
                                                 }">
                                                     {{ invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) }}
                                                 </span>
+                                            </td>
+                                            <td class="table-cell table-cell-center">
+                                                <a :href="`/invoices/${invoice.id}/edit`" class="invoice-link">Edit Timestamp</a>
                                             </td>
                                         </tr>
                                     </tbody>

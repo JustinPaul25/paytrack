@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\RefundRequest;
 use App\Models\StockMovement;
 use App\Models\Reminder;
+use App\Models\Setting;
 use App\Mail\InvoiceDueDateReminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -343,12 +344,12 @@ class InvoiceController extends Controller
                 'delivery_address' => $d->delivery_address,
                 'contact_person' => $d->contact_person,
                 'contact_phone' => $d->contact_phone,
-                'delivery_date' => $d->delivery_date?->format('M d, Y'),
+                'delivery_date' => $d->delivery_date ? Carbon::parse($d->delivery_date)->format('M d, Y') : null,
                 'delivery_time' => $d->delivery_time,
                 'status' => $d->status,
                 'delivery_fee' => $d->delivery_fee,
                 'notes' => $d->notes,
-                'created_at' => $d->created_at?->format('M d, Y'),
+                'created_at' => $d->created_at ? Carbon::parse($d->created_at)->format('M d, Y') : null,
             ];
         });
         
@@ -472,6 +473,7 @@ class InvoiceController extends Controller
             'customers' => $customers,
             'products' => $products,
             'isPaymentOnlyEdit' => $isPaymentOnlyEdit,
+            'canEditTimestamps' => filter_var(Setting::get('can_edit_timestamps', false), FILTER_VALIDATE_BOOL),
         ]);
     }
 
@@ -485,18 +487,39 @@ class InvoiceController extends Controller
         
         // Check if this is a payment-only edit for completed invoice with pending payment
         $isPaymentOnlyEdit = $invoice->status === 'completed' && $invoice->payment_status === 'pending';
+        $canEditTimestamps = filter_var(Setting::get('can_edit_timestamps', false), FILTER_VALIDATE_BOOL);
         
         if ($isPaymentOnlyEdit) {
             // Only allow payment_status update for completed invoices with pending payment
             $validated = $request->validate([
                 'payment_status' => 'required|string|in:pending,paid,failed',
+                'transaction_date' => 'nullable|date',
             ]);
+
+            if (array_key_exists('transaction_date', $validated) && $validated['transaction_date']) {
+                $incomingCreatedAt = Carbon::parse($validated['transaction_date']);
+                if (! $canEditTimestamps) {
+                    $incomingMinute = $incomingCreatedAt->format('Y-m-d H:i');
+                    $existingMinute = $invoice->created_at ? Carbon::parse($invoice->created_at)->format('Y-m-d H:i') : null;
+                    if (! $existingMinute || $incomingMinute !== $existingMinute) {
+                        return back()->withErrors([
+                            'transaction_date' => 'Editing timestamps is currently disabled by admin settings.',
+                        ])->withInput();
+                    }
+                }
+            }
             
             DB::beginTransaction();
             try {
-                $invoice->update([
+                $updateData = [
                     'payment_status' => $validated['payment_status'],
-                ]);
+                ];
+
+                if ($canEditTimestamps && !empty($validated['transaction_date'])) {
+                    $updateData['created_at'] = Carbon::parse($validated['transaction_date']);
+                }
+
+                $invoice->update($updateData);
                 
                 DB::commit();
                 return redirect()->route('invoices.show', $invoice->id)->with('success', 'Payment status updated successfully.');
@@ -520,11 +543,25 @@ class InvoiceController extends Controller
             'invoice_type' => 'required|string|in:walk_in,delivery',
             'credit_term_days' => 'nullable|integer|min:0|max:365',
             'notes' => 'nullable|string',
+            'transaction_date' => 'nullable|date',
             'invoice_items' => 'required|array|min:1',
             'invoice_items.*.product_id' => 'required|exists:products,id',
             'invoice_items.*.quantity' => 'required|integer|min:1',
             'invoice_items.*.price' => 'required|numeric|min:0',
         ]);
+
+        if (array_key_exists('transaction_date', $validated) && $validated['transaction_date']) {
+            $incomingCreatedAt = Carbon::parse($validated['transaction_date']);
+            if (! $canEditTimestamps) {
+                $incomingMinute = $incomingCreatedAt->format('Y-m-d H:i');
+                $existingMinute = $invoice->created_at ? Carbon::parse($invoice->created_at)->format('Y-m-d H:i') : null;
+                if (! $existingMinute || $incomingMinute !== $existingMinute) {
+                    return back()->withErrors([
+                        'transaction_date' => 'Editing timestamps is currently disabled by admin settings.',
+                    ])->withInput();
+                }
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -569,6 +606,14 @@ class InvoiceController extends Controller
                 'invoice_type' => $validated['invoice_type'],
                 'notes' => $validated['notes'] ?? null,
             ];
+
+            if ($canEditTimestamps && !empty($validated['transaction_date'])) {
+                $newCreatedAt = Carbon::parse($validated['transaction_date']);
+                $updateData['created_at'] = $newCreatedAt;
+                if (!empty($invoice->credit_term_days)) {
+                    $updateData['due_date'] = $newCreatedAt->copy()->addDays((int) $invoice->credit_term_days)->toDateString();
+                }
+            }
 
             // Only update credit_term_days if it's provided in the request
             if (array_key_exists('credit_term_days', $validated)) {
