@@ -37,7 +37,6 @@ class CustomerRegistrationRequest extends FormRequest
                 'required',
                 'confirmed',
                 Password::min(8)
-                    ->mixedCase()
                     ->numbers()
                     ->symbols(),
             ],
@@ -86,7 +85,6 @@ class CustomerRegistrationRequest extends FormRequest
             'password.required' => 'Please enter a password.',
             'password.confirmed' => 'The password confirmation does not match.',
             'password.min' => 'Password must be at least 8 characters long.',
-            'password.mixed' => 'Password must contain both uppercase and lowercase letters.',
             'password.numbers' => 'Password must contain at least one number.',
             'password.symbols' => 'Password must contain at least one special character.',
         ];

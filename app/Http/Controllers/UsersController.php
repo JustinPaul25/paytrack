@@ -512,7 +512,10 @@ class UsersController extends Controller
         });
 
         // Apply role filter for staff users
-        if ($userRole === 'admin') {
+        if ($userRole === 'customer') {
+            // Customer-only selection should not include staff/admin rows.
+            $staffUsers = collect();
+        } elseif ($userRole === 'admin') {
             $staffUsers = $staffUsers->filter(function ($user) {
                 return $user['user_role'] === 'Admin';
             });

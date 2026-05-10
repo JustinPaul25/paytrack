@@ -65,15 +65,11 @@ const steps = [
 
 // Password validation functions
 const hasMinLength = computed(() => form.password.length >= 8);
-const hasUppercase = computed(() => /[A-Z]/.test(form.password));
-const hasLowercase = computed(() => /[a-z]/.test(form.password));
 const hasNumber = computed(() => /[0-9]/.test(form.password));
 const hasSpecialChar = computed(() => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(form.password));
 
 const isPasswordValid = computed(() => {
     return hasMinLength.value && 
-           hasUppercase.value && 
-           hasLowercase.value && 
            hasNumber.value && 
            hasSpecialChar.value &&
            form.password === form.password_confirmation;
@@ -116,10 +112,6 @@ const nextStep = () => {
                 // Set specific error messages based on what's missing
                 if (!hasMinLength.value) {
                     form.setError('password', 'Password must be at least 8 characters long.');
-                } else if (!hasUppercase.value) {
-                    form.setError('password', 'Password must contain at least one uppercase letter.');
-                } else if (!hasLowercase.value) {
-                    form.setError('password', 'Password must contain at least one lowercase letter.');
                 } else if (!hasNumber.value) {
                     form.setError('password', 'Password must contain at least one number.');
                 } else if (!hasSpecialChar.value) {
@@ -328,16 +320,6 @@ watch(() => form.city_municipality, () => {
                                         <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
                                         Minimum 8 characters
                                     </li>
-                                    <li :class="hasUppercase ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
-                                        <Check v-if="hasUppercase" class="h-3 w-3 flex-shrink-0" />
-                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
-                                        At least one uppercase letter
-                                    </li>
-                                    <li :class="hasLowercase ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
-                                        <Check v-if="hasLowercase" class="h-3 w-3 flex-shrink-0" />
-                                        <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
-                                        At least one lowercase letter
-                                    </li>
                                     <li :class="hasNumber ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'" class="flex items-center gap-1.5">
                                         <Check v-if="hasNumber" class="h-3 w-3 flex-shrink-0" />
                                         <span v-else class="w-3 h-3 flex-shrink-0 inline-block">•</span>
@@ -351,7 +333,7 @@ watch(() => form.city_municipality, () => {
                                 </ul>
                             </div>
                             <p v-else class="text-xs text-muted-foreground mt-1">
-                                8 minimum Char. Numbers / Special Char.
+                                Minimum 8 characters, with a number and special character.
                             </p>
                         </div>
 

@@ -10,7 +10,7 @@ import CardFooter from '@/components/ui/card/CardFooter.vue';
 import Label from '@/components/ui/label/Label.vue';
 import Swal from 'sweetalert2';
 import { type BreadcrumbItem } from '@/types';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
 
 const form = useForm({
@@ -35,8 +35,19 @@ const breadcrumbs: BreadcrumbItem[] = [
     }
 ]
 
-const profileImage = ref<File|null>(null);
 const profileImageUrl = ref<string|null>(null);
+const emailErrorMessage = computed(() => {
+    if (!form.errors.email) {
+        return '';
+    }
+
+    const normalizedError = form.errors.email.toLowerCase();
+    if (normalizedError.includes('taken') || normalizedError.includes('exists')) {
+        return 'This email is already existing.';
+    }
+
+    return form.errors.email;
+});
 
 function onProfileImageChange(e: Event) {
     const files = (e.target as HTMLInputElement).files;
@@ -91,7 +102,7 @@ function submit() {
                         <div class="flex-1">
                             <Label for="email">Email *</Label>
                             <input id="email" v-model="form.email" class="w-full rounded border px-3 py-2 mt-1" required />
-                            <div v-if="form.errors.email" class="text-red-500 text-xs mt-1">{{ form.errors.email }}</div>
+                            <div v-if="emailErrorMessage" class="text-red-500 text-xs mt-1">{{ emailErrorMessage }}</div>
                         </div>
                     </div>
                     <div class="flex gap-4">
@@ -110,8 +121,8 @@ function submit() {
                                     @click="showPassword = !showPassword"
                                     class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                                 >
-                                    <Eye v-if="!showPassword" class="h-5 w-5" />
-                                    <EyeOff v-else class="h-5 w-5" />
+                                    <EyeOff v-if="!showPassword" class="h-5 w-5" />
+                                    <Eye v-else class="h-5 w-5" />
                                 </button>
                             </div>
                             <div v-if="form.errors.password" class="text-red-500 text-xs mt-1">{{ form.errors.password }}</div>
@@ -131,8 +142,8 @@ function submit() {
                                     @click="showConfirmPassword = !showConfirmPassword"
                                     class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                                 >
-                                    <Eye v-if="!showConfirmPassword" class="h-5 w-5" />
-                                    <EyeOff v-else class="h-5 w-5" />
+                                    <EyeOff v-if="!showConfirmPassword" class="h-5 w-5" />
+                                    <Eye v-else class="h-5 w-5" />
                                 </button>
                             </div>
                             <div v-if="form.errors.password_confirmation" class="text-red-500 text-xs mt-1">{{ form.errors.password_confirmation }}</div>
